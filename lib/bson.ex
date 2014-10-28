@@ -18,7 +18,7 @@ defmodule BSON do
 
   defp encode_value(value) when is_list(value) do
     Stream.with_index(value)
-    |> Stream.map(fn {k, v} -> {Integer.to_string(k), v} end)
+    |> Stream.map(fn {v, ix} -> {Integer.to_string(ix), v} end)
     |> document
   end
 
