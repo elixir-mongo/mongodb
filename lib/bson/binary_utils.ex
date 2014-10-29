@@ -28,4 +28,8 @@ defmodule BSON.BinaryUtils do
   defmacro float32 do
     quote do: float-little-32
   end
+
+  defmacro binary(size) do
+    quote do: binary-size(unquote(size))
+  end
 end

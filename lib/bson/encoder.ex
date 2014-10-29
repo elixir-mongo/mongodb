@@ -32,8 +32,8 @@ defmodule BSON.Encoder do
     [<<IO.iodata_length(binary)::int32>>, subtype, binary]
   end
 
-  def encode(%BSON.ObjectId{value: <<_::binary-8>> = value}),
-    do: [<<IO.iodata_length(value)::int32>>, value]
+  def encode(%BSON.ObjectId{value: <<_::binary(12)>> = value}),
+    do: value
 
   def encode(true),
     do: 0x00
@@ -51,10 +51,10 @@ defmodule BSON.Encoder do
     do: [cstring(pattern), cstring(options)]
 
   def encode(%BSON.JavaScript{code: code, scope: nil}),
-    do: code
+    do: encode(code)
 
   def encode(%BSON.JavaScript{code: code, scope: scope}) do
-    iodata = [code, document(scope)]
+    iodata = [encode(code), document(scope)]
     [<<IO.iodata_length(iodata)::int32>>, iodata]
   end
 
