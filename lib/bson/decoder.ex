@@ -78,9 +78,11 @@ defmodule BSON.Decoder do
     {%BSON.JavaScript{code: code}, rest}
   end
 
-  defp type(@type_js_scope, binary) do
-    {code, rest} = type(@type_string, binary)
-    {scope, rest} = document(rest)
+  defp type(@type_js_scope, <<size::int32, binary::binary>>) do
+    size = size - 4
+    <<binary::binary(size), rest::binary>> = binary
+    {code, binary} = type(@type_string, binary)
+    {scope, ""} = document(binary)
     {%BSON.JavaScript{code: code, scope: scope}, rest}
   end
 
