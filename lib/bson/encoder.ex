@@ -7,6 +7,47 @@ defmodule BSON.Encoder do
   @int64_min -9_223_372_036_854_775_808
   @int64_max  9_223_372_036_854_775_807
 
+  def encode(true),
+    do: 0x01
+
+  def encode(false),
+    do: 0x00
+
+  def encode(nil),
+    do: ""
+
+  def encode(:BSON_min),
+    do: ""
+
+  def encode(:BSON_max),
+    do: ""
+
+  def encode(%BSON.Binary{binary: binary, subtype: subtype}) do
+    subtype = subtype(subtype)
+    [<<IO.iodata_length(binary)::int32>>, subtype, binary]
+  end
+
+  def encode(%BSON.ObjectId{value: <<_::binary(12)>> = value}),
+    do: value
+
+  def encode(%BSON.DateTime{utc: utc}),
+    do: <<utc::int64>>
+
+  def encode(%BSON.Regex{pattern: pattern, options: options}),
+    do: [cstring(pattern), cstring(options)]
+
+  def encode(%BSON.JavaScript{code: code, scope: nil}),
+    do: encode(code)
+
+  def encode(%BSON.JavaScript{code: code, scope: scope}) do
+    iodata = [encode(code), document(scope)]
+    size = IO.iodata_length(iodata) + 4
+    [<<size::int32>>, iodata]
+  end
+
+  def encode(%BSON.Timestamp{value: value}),
+    do: <<value::int64>>
+
   def encode(value) when is_map(value) do
     Map.delete(value, :__struct__)
     |> document
@@ -27,51 +68,11 @@ defmodule BSON.Encoder do
   def encode(value) when is_float(value),
     do: <<value::float64>>
 
-  def encode(%BSON.Binary{binary: binary, subtype: subtype}) do
-    subtype = subtype(subtype)
-    [<<IO.iodata_length(binary)::int32>>, subtype, binary]
-  end
-
-  def encode(%BSON.ObjectId{value: <<_::binary(12)>> = value}),
-    do: value
-
-  def encode(true),
-    do: 0x00
-
-  def encode(false),
-    do: 0x01
-
-  def encode(%BSON.DateTime{utc: utc}),
-    do: <<utc::int64>>
-
-  def encode(nil),
-    do: ""
-
-  def encode(%BSON.Regex{pattern: pattern, options: options}),
-    do: [cstring(pattern), cstring(options)]
-
-  def encode(%BSON.JavaScript{code: code, scope: nil}),
-    do: encode(code)
-
-  def encode(%BSON.JavaScript{code: code, scope: scope}) do
-    iodata = [encode(code), document(scope)]
-    [<<IO.iodata_length(iodata)::int32>>, iodata]
-  end
-
   def encode(value) when is_int32(value),
     do: <<value::int32>>
 
-  def encode(%BSON.Timestamp{value: value}),
-    do: <<value::int64>>
-
   def encode(value) when is_int64(value),
     do: <<value::int64>>
-
-  def encode(:BSON_min),
-    do: ""
-
-  def encode(:BSON_max),
-    do: ""
 
   defp document(doc) do
     iodata =
@@ -90,23 +91,24 @@ defmodule BSON.Encoder do
   defp key(value) when is_atom(value),    do: cstring(Atom.to_string(value))
   defp key(value) when is_binary(value),  do: cstring(value)
 
-  defp type(value) when is_float(value),    do: 0x01
-  defp type(value) when is_binary(value),   do: 0x02
-  defp type(value) when is_map(value),      do: 0x03
-  defp type(value) when is_list(value),     do: 0x04
   defp type(%BSON.Binary{}),                do: 0x05
   defp type(%BSON.ObjectId{}),              do: 0x06
-  defp type(value) when is_boolean(value),  do: 0x08
   defp type(%BSON.DateTime{}),              do: 0x09
-  defp type(nil),                           do: 0x0A
   defp type(%BSON.Regex{}),                 do: 0x0B
   defp type(%BSON.JavaScript{scope: nil}),  do: 0x0D
   defp type(%BSON.JavaScript{}),            do: 0x0F
-  defp type(value) when is_int32(value),    do: 0x10
   defp type(%BSON.Timestamp{}),             do: 0x11
-  defp type(value) when is_int64(value),    do: 0x12
+  defp type(nil),                           do: 0x0A
   defp type(:BSON_min),                     do: 0x13
   defp type(:BSON_max),                     do: 0x14
+  defp type(value) when is_boolean(value),  do: 0x08
+  defp type(value) when is_float(value),    do: 0x01
+  defp type(value) when is_atom(value),     do: 0x02
+  defp type(value) when is_binary(value),   do: 0x02
+  defp type(value) when is_map(value),      do: 0x03
+  defp type(value) when is_list(value),     do: 0x04
+  defp type(value) when is_int32(value),    do: 0x10
+  defp type(value) when is_int64(value),    do: 0x12
 
   defp subtype(:generic),
     do: 0x00
