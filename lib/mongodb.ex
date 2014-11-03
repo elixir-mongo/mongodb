@@ -1,2 +1,0 @@
-defmodule Mongodb do
-end
