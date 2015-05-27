@@ -1,4 +1,4 @@
-defmodule BSON.BinaryUtils do
+defmodule Mongo.BinaryUtils do
   @moduledoc false
 
   defmacro int64 do

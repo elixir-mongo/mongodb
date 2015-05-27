@@ -1,23 +1,5 @@
 defmodule BSON.Decoder do
-  import BSON.BinaryUtils
-
-  @type_float     0x01
-  @type_string    0x02
-  @type_map       0x03
-  @type_list      0x04
-  @type_binary    0x05
-  @type_objectid  0x06
-  @type_bool      0x08
-  @type_datetime  0x09
-  @type_nil       0x0A
-  @type_regex     0x0B
-  @type_js        0x0D
-  @type_js_scope  0x0F
-  @type_int32     0x10
-  @type_timestamp 0x11
-  @type_int64     0x12
-  @type_min       0x13
-  @type_max       0x14
+  use BSON.Utils
 
   def decode(binary) do
     {map, ""} = document(binary)
@@ -34,11 +16,11 @@ defmodule BSON.Decoder do
     {string, rest}
   end
 
-  defp type(@type_map, binary) do
+  defp type(@type_document, binary) do
     document(binary)
   end
 
-  defp type(@type_list, binary) do
+  defp type(@type_array, binary) do
     list(binary)
   end
 
@@ -63,7 +45,7 @@ defmodule BSON.Decoder do
     {%BSON.DateTime{utc: utc}, rest}
   end
 
-  defp type(@type_nil, rest) do
+  defp type(@type_null, rest) do
     {nil, rest}
   end
 
@@ -106,7 +88,7 @@ defmodule BSON.Decoder do
     {:BSON_max, rest}
   end
 
-  defp document(<<size::int32, rest::binary>>) do
+  def document(<<size::int32, rest::binary>>) do
     size = size - 5
     <<doc::binary(size), 0x00, rest::binary>> = rest
 
@@ -147,21 +129,6 @@ defmodule BSON.Decoder do
     [string, rest] = :binary.split(binary, <<0x00>>)
     {string, rest}
   end
-
-  defp subtype(:generic),
-    do: 0x00
-  defp subtype(:function),
-    do: 0x01
-  defp subtype(:binary_old),
-    do: 0x02
-  defp subtype(:uuid_old),
-    do: 0x03
-  defp subtype(:uuid),
-    do: 0x04
-  defp subtype(:md5),
-    do: 0x05
-  defp subtype(int) when is_integer(int) and int in 0x80..0xFF,
-    do: 0x80
 
   defp subtype(0x00),
     do: :generic

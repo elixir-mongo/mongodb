@@ -1,11 +1,5 @@
 defmodule BSON.Encoder do
-  import BSON.Utils
-  import BSON.BinaryUtils
-
-  @int32_min -2_147_483_648
-  @int32_max  2_147_483_647
-  @int64_min -9_223_372_036_854_775_808
-  @int64_max  9_223_372_036_854_775_807
+  use BSON.Utils
 
   def encode(true),
     do: 0x01
@@ -24,17 +18,17 @@ defmodule BSON.Encoder do
 
   def encode(%BSON.Binary{binary: binary, subtype: subtype}) do
     subtype = subtype(subtype)
-    [<<IO.iodata_length(binary)::int32>>, subtype, binary]
+    [<<IO.iodata_length(binary)::int32>>, subtype | binary]
   end
 
   def encode(%BSON.ObjectId{value: <<_::binary(12)>> = value}),
     do: value
 
-  def encode(%BSON.DateTime{utc: utc}),
+  def encode(%BSON.DateTime{utc: utc}) when is_int64(utc),
     do: <<utc::int64>>
 
   def encode(%BSON.Regex{pattern: pattern, options: options}),
-    do: [cstring(pattern), cstring(options)]
+    do: [cstring(pattern) | cstring(options)]
 
   def encode(%BSON.JavaScript{code: code, scope: nil}),
     do: encode(code)
@@ -42,7 +36,7 @@ defmodule BSON.Encoder do
   def encode(%BSON.JavaScript{code: code, scope: scope}) do
     iodata = [encode(code), document(scope)]
     size = IO.iodata_length(iodata) + 4
-    [<<size::int32>>, iodata]
+    [<<size::int32>> | iodata]
   end
 
   def encode(%BSON.Timestamp{value: value}),
@@ -74,7 +68,7 @@ defmodule BSON.Encoder do
   def encode(value) when is_int64(value),
     do: <<value::int64>>
 
-  defp document(doc) do
+  def document(doc) do
     iodata =
       Enum.reduce(doc, [], fn {key, value}, acc ->
         key = key(key)
@@ -91,37 +85,30 @@ defmodule BSON.Encoder do
   defp key(value) when is_atom(value),    do: cstring(Atom.to_string(value))
   defp key(value) when is_binary(value),  do: cstring(value)
 
-  defp type(%BSON.Binary{}),                do: 0x05
-  defp type(%BSON.ObjectId{}),              do: 0x06
-  defp type(%BSON.DateTime{}),              do: 0x09
-  defp type(%BSON.Regex{}),                 do: 0x0B
-  defp type(%BSON.JavaScript{scope: nil}),  do: 0x0D
-  defp type(%BSON.JavaScript{}),            do: 0x0F
-  defp type(%BSON.Timestamp{}),             do: 0x11
-  defp type(nil),                           do: 0x0A
-  defp type(:BSON_min),                     do: 0x13
-  defp type(:BSON_max),                     do: 0x14
-  defp type(value) when is_boolean(value),  do: 0x08
-  defp type(value) when is_float(value),    do: 0x01
-  defp type(value) when is_atom(value),     do: 0x02
-  defp type(value) when is_binary(value),   do: 0x02
-  defp type(value) when is_map(value),      do: 0x03
-  defp type(value) when is_list(value),     do: 0x04
-  defp type(value) when is_int32(value),    do: 0x10
-  defp type(value) when is_int64(value),    do: 0x12
+  defp type(%BSON.Binary{}),                do: @type_binary
+  defp type(%BSON.ObjectId{}),              do: @type_objectid
+  defp type(%BSON.DateTime{}),              do: @type_datetime
+  defp type(%BSON.Regex{}),                 do: @type_regex
+  defp type(%BSON.JavaScript{scope: nil}),  do: @type_js
+  defp type(%BSON.JavaScript{}),            do: @type_js_scope
+  defp type(%BSON.Timestamp{}),             do: @type_timestamp
+  defp type(nil),                           do: @type_null
+  defp type(:BSON_min),                     do: @type_min
+  defp type(:BSON_max),                     do: @type_max
+  defp type(value) when is_boolean(value),  do: @type_bool
+  defp type(value) when is_float(value),    do: @type_float
+  defp type(value) when is_atom(value),     do: @type_string
+  defp type(value) when is_binary(value),   do: @type_string
+  defp type(value) when is_map(value),      do: @type_document
+  defp type(value) when is_list(value),     do: @type_array
+  defp type(value) when is_int32(value),    do: @type_int32
+  defp type(value) when is_int64(value),    do: @type_int64
 
-  defp subtype(:generic),
-    do: 0x00
-  defp subtype(:function),
-    do: 0x01
-  defp subtype(:binary_old),
-    do: 0x02
-  defp subtype(:uuid_old),
-    do: 0x03
-  defp subtype(:uuid),
-    do: 0x04
-  defp subtype(:md5),
-    do: 0x05
-  defp subtype(int) when is_integer(int) and int in 0x80..0xFF,
-    do: 0x80
+  defp subtype(:generic),    do: 0x00
+  defp subtype(:function),   do: 0x01
+  defp subtype(:binary_old), do: 0x02
+  defp subtype(:uuid_old),   do: 0x03
+  defp subtype(:uuid),       do: 0x04
+  defp subtype(:md5),        do: 0x05
+  defp subtype(int) when is_integer(int) and int in 0x80..0xFF, do: 0x80
 end
