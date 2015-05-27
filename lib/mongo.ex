@@ -1,7 +1,15 @@
 defmodule Mongo do
+  # TODO: Timeout
+
   def auth(conn, database, username, password) do
+    GenServer.call(conn, {:auth, database, username, password})
   end
 
-  def set_database(conn, database) do
+  def database(conn) do
+    GenServer.call(conn, :database)
+  end
+
+  def database(conn, database) do
+    GenServer.call(conn, {:database, database})
   end
 end
