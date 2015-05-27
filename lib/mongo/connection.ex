@@ -30,6 +30,12 @@ defmodule Mongo.Connection do
     {:reply, :ok, %{s | database: database}}
   end
 
+  def handle_call({:find_one, coll, query, select}, from, s) do
+    {id, s} = new_command(:one, nil, from, s)
+    find_one(id, coll, query, select, s)
+    {:noreply, s}
+  end
+
   @doc false
   def handle_cast(:connect, %{opts: opts} = s) do
     host      = Keyword.fetch!(opts, :hostname)
@@ -78,14 +84,14 @@ defmodule Mongo.Connection do
 
         if :query_failure in op_reply(reply, :flags),
             do: failure(state, id, reply, s),
-          else: reply(state, id, reply, s)
+          else: message(state, id, reply, s)
 
       :error ->
         {:ok, %{s | tail: data}}
     end
   end
 
-  defp reply(:nonce, id, op_reply(docs: [%{"nonce" => nonce, "ok" => 1.0}]), s) do
+  defp message(:nonce, id, op_reply(docs: [%{"nonce" => nonce, "ok" => 1.0}]), s) do
     {database, username, password} = s.queue[id].params
     digest = digest(nonce, username, password)
     doc = %{authenticate: 1, user: username, nonce: nonce, key: digest}
@@ -94,7 +100,7 @@ defmodule Mongo.Connection do
     {:ok, state(id, :auth, s)}
   end
 
-  defp reply(:auth, id, op_reply(docs: [%{"ok" => 1.0}]), s) do
+  defp message(:auth, id, op_reply(docs: [%{"ok" => 1.0}]), s) do
     unless s.database do
       {database, _, _} = s.queue[id].params
       s = %{s | database: database}
@@ -104,11 +110,17 @@ defmodule Mongo.Connection do
     {:ok, s}
   end
 
+  defp message(:one, id, op_reply(docs: [doc]), s) do
+    s = reply(doc, id, s)
+    {:ok, s}
+  end
+
   defp failure(_state, id, op_reply(docs: [%{"$err" => reason}]), s) do
     error = %Mongo.Error{message: reason}
-    if reply(error, id, s),
-        do: {:ok, s},
-      else: {:error, error, s}
+    case try_reply(error, id, s) do
+      {:ok, s}    -> {:ok, s}
+      {:error, s} -> {:error, error, s}
+    end
   end
 
   defp auth(%{opts: opts} = s) do
@@ -120,12 +132,14 @@ defmodule Mongo.Connection do
     s = %{s | opts: Keyword.drop(opts, [:database, :username, :password, :auth])}
 
     cond do
-      database && username && password ->
+      username && password ->
         auth(database, username, password, nil, s)
       auth ->
         Enum.reduce(auth, s, fn opts, s ->
           auth(opts[:database], opts[:username], opts[:password], nil, s)
         end)
+      true ->
+        s
     end
   end
 
@@ -178,15 +192,26 @@ defmodule Mongo.Connection do
     put_in(s.queue[id].state, state)
   end
 
-  defp reply(reply, id, s) do
-    case Map.fetch(s, id) do
+  defp try_reply(reply, id, s) do
+    command = Map.fetch(s.queue, id)
+    s = %{s | queue: Map.delete(s.queue, id)}
+
+    case command do
       {:ok, %{from: nil}} ->
-        false
+        {:error, s}
       {:ok, %{from: from}} ->
         reply(reply, from)
-        true
+        {:ok, s}
       :error ->
-        false
+        {:error, s}
+    end
+  end
+
+  defp reply(reply, id, s) do
+    case Map.fetch(s.queue, id) do
+      {:ok, %{from: nil}}  -> :ok
+      {:ok, %{from: from}} -> reply(reply, from)
+      :error               -> :ok
     end
 
     %{s | queue: Map.delete(s.queue, id)}

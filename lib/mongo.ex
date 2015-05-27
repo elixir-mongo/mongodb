@@ -12,4 +12,8 @@ defmodule Mongo do
   def database(conn, database) do
     GenServer.call(conn, {:database, database})
   end
+
+  def find_one(conn, coll, query, select) do
+    GenServer.call(conn, {:find_one, coll, query, select})
+  end
 end
