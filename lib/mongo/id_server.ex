@@ -31,11 +31,11 @@ defmodule Mongo.IdServer do
   def init([]) do
     :random.seed(:os.timestamp)
 
-    :ets.new(@name, [:named_table, :public, write_concurrency: true, read_concurrency: true])
+    :ets.new(@name, [:named_table, :public, write_concurrency: true])
     :ets.insert(@name, [machineprocid: {machine_id(), process_id()}])
     :ets.insert(@name, gen_counters(0..@num_counters))
 
-    :erlang.send_after(@reset_timer, self, :reset_counters)
+    Process.send_after(self, :reset_counters, @reset_timer)
 
     {:ok, opposite_on_window(:calendar.universal_time)}
   end
@@ -43,7 +43,7 @@ defmodule Mongo.IdServer do
   def handle_info(:reset_counters, last_reset) do
     new_reset = opposite_on_window(:calendar.universal_time)
     :ets.insert(@name, gen_counters(last_reset+1..new_reset))
-    :erlang.send_after(@reset_timer, self, :reset_counters)
+    Process.send_after(self, :reset_counters, @reset_timer)
 
     {:noreply, new_reset}
   end
