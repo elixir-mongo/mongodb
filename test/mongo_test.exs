@@ -1,19 +1,69 @@
 defmodule MongoTest do
-  # async: true doesn't work
-  use ExUnit.Case, async: true
+  use MongoTest.Case, async: true
   alias Mongo
   alias Mongo.Connection
 
-  test "connect and ping" do
+  defp connect do
     assert {:ok, pid} =
            Connection.start_link(hostname: "localhost", database: "mongodb_test")
-    assert %{"ok" => 1.0} = Mongo.find_one(pid, "$cmd", %{ping: 1}, %{})
+    pid
+  end
+
+  defp connect_auth do
+    assert {:ok, pid} =
+           Connection.start_link(hostname: "localhost", database: "mongodb_test",
+                                 username: "mongodb_user", password: "mongodb_user")
+    pid
+  end
+
+  defmacrop unique_name do
+    {function, _arity} = __CALLER__.function
+    "#{__CALLER__.module}.#{function}"
+  end
+
+  test "connect and ping" do
+    pid = connect()
+    # assert %{"ok" => 1.0} = Mongo.find_one(pid, "$cmd", %{ping: 1}, %{})
+    :timer.sleep(100)
   end
 
   test "auth" do
-    assert {:ok, pid} =
-           Connection.start_link(hostname: "localhost", database: "mongodb_test",
-                                 username: "test_user", password: "test_user")
+    pid = connect_auth()
+
+    # assert %{"ok" => 1.0} = Mongo.find_one(pid, "$cmd", %{ping: 1}, %{})
+    :timer.sleep(100)
+  end
+
+  test "auth wrong" do
+    Process.flag(:trap_exit, true)
+
+    opts = [hostname: "localhost", database: "mongodb_test",
+            username: "mongodb_user", password: "wrong"]
+
+    capture_log fn ->
+      assert {:ok, pid} = Connection.start_link(opts)
+      assert_receive {:EXIT, ^pid, %Mongo.Error{code: 18, message: "authentication failed" <> _}}
+    end
+  end
+
+  test "change default database" do
+    pid = connect()
+    :timer.sleep(100)
+
+    assert "mongodb_test" = Mongo.database(pid)
+    Mongo.database(pid, "mongodb_test2")
+    assert "mongodb_test2" = Mongo.database(pid)
     assert %{"ok" => 1.0} = Mongo.find_one(pid, "$cmd", %{ping: 1}, %{})
   end
+
+  # test "insert and find_one" do
+  #   pid = connect_auth()
+  #   coll = unique_name
+  #   :timer.sleep(100)
+
+  #   Mongo.insert(pid, coll, %{"foo" => 42})
+  #   # Mongo.find_one(pid, "$cmd", %{getLastError: 1}, nil)
+
+  #   assert %{"foo" => 42} = Mongo.find_one(pid, coll, %{foo: 1}, nil)
+  # end
 end

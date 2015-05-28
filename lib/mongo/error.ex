@@ -1,3 +1,3 @@
 defmodule Mongo.Error do
-  defexception [:message]
+  defexception [:message, :code]
 end

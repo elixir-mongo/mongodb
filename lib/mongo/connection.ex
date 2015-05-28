@@ -37,6 +37,12 @@ defmodule Mongo.Connection do
     {:noreply, s}
   end
 
+  def handle_call({:insert, coll, docs}, _from, s) do
+    op_insert(coll: namespace(coll, s), docs: List.wrap(docs), flags: [])
+    |> send(-1, s)
+    {:reply, :ok, s}
+  end
+
   @doc false
   def handle_cast(:connect, %{opts: opts} = s) do
     host      = Keyword.fetch!(opts, :hostname)
@@ -96,8 +102,9 @@ defmodule Mongo.Connection do
     {database, username, password} = s.queue[id].params
     digest = digest(nonce, username, password)
     doc = %{authenticate: 1, user: username, nonce: nonce, key: digest}
+    find_one(id, {database, "$cmd"}, doc, nil, s)
 
-    find_one(id, [database, ?., "$cmd"], doc, nil, s)
+    # find_one(id, [database, ?., "$cmd"], %{getLastError: 1}, nil, s)
     {:ok, state(id, :auth, s)}
   end
 
@@ -111,17 +118,23 @@ defmodule Mongo.Connection do
     {:ok, s}
   end
 
-  defp message(:one, id, op_reply(docs: [doc]), s) do
-    s = reply(doc, id, s)
-    {:ok, s}
+  defp message(:auth, id, op_reply(docs: [%{"ok" => 0.0, "errmsg" => reason, "code" => code}]), s) do
+    reply_error(id, %Mongo.Error{message: "authentication failed: #{reason}", code: code}, s)
   end
 
-  defp failure(_state, id, op_reply(docs: [%{"$err" => reason}]), s) do
-    error = %Mongo.Error{message: reason}
-    case try_reply(error, id, s) do
-      {:ok, s}    -> {:ok, s}
-      {:error, s} -> {:error, error, s}
+  defp message(:auth, id, op_reply(docs: []), s) do
+    reply_error(id, %Mongo.Error{message: "authentication failed"}, s)
+  end
+
+  defp message(:one, id, op_reply(docs: docs), s) do
+    case docs do
+      [doc] -> {:ok, reply(doc, id, s)}
+      []    -> {:ok, reply(nil, id, s)}
     end
+  end
+
+  defp failure(_state, id, op_reply(docs: [%{"$err" => reason, "code" => code }]), s) do
+    reply_error(id, %Mongo.Error{message: reason, code: code}, s)
   end
 
   defp auth(%{opts: opts} = s) do
@@ -150,14 +163,14 @@ defmodule Mongo.Connection do
     s
   end
 
-  defp find_one(request_id, coll, query, select, s) do
+  defp find_one(id, coll, query, select, s) do
     op_query(coll: namespace(coll, s), query: query, select: select,
              num_skip: 0, num_return: 1, flags: [])
-    |> send(request_id, s)
+    |> send(id, s)
   end
 
-  defp send(op, request_id, s) do
-    data = encode(request_id, op)
+  defp send(op, id, s) do
+    data = encode(id, op)
     :gen_tcp.send(s.socket, data)
   end
 
@@ -171,16 +184,12 @@ defmodule Mongo.Connection do
     |> Base.encode16(case: :lower)
   end
 
-  defp namespace(coll, s) when is_binary(coll) do
-    if :binary.match(coll, ".") == :nomatch do
-      [s.database, ?. | coll]
-    else
-      coll
-    end
+  defp namespace({database, coll}, _s) do
+    [database, ?. | coll]
   end
 
-  defp namespace(coll, _s) when is_list(coll) do
-    coll
+  defp namespace(coll, s) do
+    [s.database, ?. | coll]
   end
 
   defp new_command(state, params, from, s) do
@@ -195,18 +204,18 @@ defmodule Mongo.Connection do
     put_in(s.queue[id].state, state)
   end
 
-  defp try_reply(reply, id, s) do
+  defp reply_error(id, error, s) do
     command = Map.fetch(s.queue, id)
     s = %{s | queue: Map.delete(s.queue, id)}
 
     case command do
       {:ok, %{from: nil}} ->
-        {:error, s}
+        {:error, error, s}
       {:ok, %{from: from}} ->
-        reply(reply, from)
+        reply(error, from)
         {:ok, s}
       :error ->
-        {:error, s}
+        {:error, error, s}
     end
   end
 
