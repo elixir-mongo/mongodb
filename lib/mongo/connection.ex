@@ -51,6 +51,8 @@ defmodule Mongo.Connection do
 
   @doc false
   def disconnect({:error, reason}, s) do
+    # TODO: Reply to everyone queue and reset it
+
     host = s.opts[:hostname]
     port = s.opts[:port] || 27017
     Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
@@ -107,13 +109,11 @@ defmodule Mongo.Connection do
   end
 
   def handle_info({:tcp_closed, _}, s) do
-    # TODO: Disconnect so we can reconnect (check example)
-    {:stop, %Mongo.Error{message: "tcp closed"}, s}
+    {:disconnect, {:error, :closed}, s}
   end
 
   def handle_info({:tcp_error, _, reason}, s) do
-    # TODO: Disconnect so we can reconnect (check example)
-    {:stop, %Mongo.Error{message: "tcp error: #{reason}"}, s}
+    {:disconnect, {:error, :reason}, s}
   end
 
   def code_change(_, s, _) do
