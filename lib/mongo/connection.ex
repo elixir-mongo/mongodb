@@ -39,12 +39,12 @@ defmodule Mongo.Connection do
           {:error, reason} ->
             {:stop, reason, s}
           {:tcp_error, reason} ->
-            Logger.error "Mongo tcp error (#{host}:#{port}): #{inspect reason}"
+            Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
             {:backoff, @backoff, s}
         end
 
       {:error, reason} ->
-        Logger.error "Mongo connect error (#{host}:#{port}): #{inspect reason}"
+        Logger.error "Mongo connect error (#{host}:#{port}): #{format_error(reason)}"
         {:backoff, @backoff, s}
     end
   end
@@ -53,7 +53,7 @@ defmodule Mongo.Connection do
   def disconnect({:error, reason}, s) do
     host = s.opts[:hostname]
     port = s.opts[:port] || 27017
-    Logger.error "Mongo tcp error (#{host}:#{port}): #{inspect reason}"
+    Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
     {:backoff, 0, %{s | socket: nil}}
   end
 
@@ -264,6 +264,11 @@ defmodule Mongo.Connection do
     do: {:reply, reply, s}
   defp send_to_reply({:error, reason, s}, reply),
     do: {:disconnect, {:error, reason}, reply, s}
+
+  defp format_error(:closed),
+    do: "closed"
+  defp format_error(error),
+    do: :inet.format_error(error)
 
   defp setup_auth(%{auth: nil, opts: opts} = s) do
     database = opts[:database]
