@@ -70,7 +70,7 @@ defmodule BSON.Encoder do
 
   def document(doc) do
     iodata =
-      Enum.reduce(doc, [], fn {key, value}, acc ->
+      Enum.reduce(doc, "", fn {key, value}, acc ->
         key = key(key)
         type = type(value)
         value = encode(value)

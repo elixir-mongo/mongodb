@@ -6,4 +6,9 @@ defmodule BSON do
   def decode(binary) when is_binary(binary) do
     BSON.Decoder.decode(binary)
   end
+
+  def decode(list) when is_list(list) do
+    IO.iodata_to_binary(list)
+    |> BSON.Decoder.decode
+  end
 end

@@ -1,5 +1,5 @@
 defmodule BSONTest do
-  use ExUnit.Case, async: true
+  use MongoTest.Case, async: true
 
   import BSON, only: [decode: 1]
 
@@ -40,7 +40,7 @@ defmodule BSONTest do
   @bin9 <<16, 0, 0, 0, 5, 101, 0, 3, 0, 0, 0, 0, 1, 2, 3, 0>>
 
   @map10 %{"f" => %BSON.ObjectId{value: <<0,1,2,3,4,5,6,7,8,9,10,11>>}}
-  @bin10 <<20, 0, 0, 0, 6, 102, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0>>
+  @bin10 <<20, 0, 0, 0, 7, 102, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0>>
 
   @map11 %{"g" => true}
   @bin11 <<9, 0, 0, 0, 8, 103, 0, 1, 0>>

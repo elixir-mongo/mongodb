@@ -10,7 +10,7 @@ defmodule BSON.Utils do
       @type_document  0x03
       @type_array     0x04
       @type_binary    0x05
-      @type_objectid  0x06
+      @type_objectid  0x07
       @type_bool      0x08
       @type_datetime  0x09
       @type_null      0x0A
