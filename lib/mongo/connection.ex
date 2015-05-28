@@ -21,7 +21,7 @@ defmodule Mongo.Connection do
   end
 
   @doc false
-  def connect(:init, %{opts: opts} = s) do
+  def connect(_, %{opts: opts} = s) do
     host      = Keyword.fetch!(opts, :hostname)
     host      = if is_binary(host), do: String.to_char_list(host), else: host
     port      = opts[:port] || 27017
@@ -88,6 +88,8 @@ defmodule Mongo.Connection do
   end
 
   def handle_call({:insert, coll, docs}, _from, s) do
+    # TODO: getLastError
+
     op_insert(coll: namespace(coll, s), docs: List.wrap(docs), flags: [])
     |> send(-10, s)
     |> send_to_reply(:ok)
