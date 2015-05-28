@@ -3,6 +3,7 @@ defmodule Mongo.Connection do
   import Mongo.Protocol
 
   @timeout 5000
+  @requestid_max 2147483648
 
   def start_link(opts) do
     opts = Keyword.put_new(opts, :timeout,  @timeout)
@@ -183,9 +184,11 @@ defmodule Mongo.Connection do
   end
 
   defp new_command(state, params, from, s) do
-    command = %{state: state, params: params, from: from}
-    queue   = Map.put(s.queue, s.request_id, command)
-    {s.request_id, %{s | request_id: s.request_id+1, queue: queue}}
+    command    = %{state: state, params: params, from: from}
+    queue      = Map.put(s.queue, s.request_id, command)
+    request_id = rem s.request_id+1, @requestid_max
+
+    {s.request_id, %{s | request_id: request_id, queue: queue}}
   end
 
   defp state(id, state, s) do
