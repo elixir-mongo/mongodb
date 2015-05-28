@@ -12,7 +12,7 @@ defmodule Mongodb.Mixfile do
   #
   # Type `mix help compile.app` for more information
   def application do
-    [applications: [:logger],
+    [applications: [:logger, :connection],
      mod: {Mongo, []},
      env: []]
   end
@@ -27,6 +27,6 @@ defmodule Mongodb.Mixfile do
   #
   # Type `mix help deps` for more examples and options
   defp deps do
-    []
+    [{:connection, github: "fishcakez/connection"}]
   end
 end

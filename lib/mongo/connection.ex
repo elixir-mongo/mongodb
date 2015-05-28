@@ -1,25 +1,64 @@
 defmodule Mongo.Connection do
-  use GenServer
   import Mongo.Protocol
+  require Logger
 
+  @behaviour Connection
   @timeout 5000
   @requestid_max 2147483648
 
   def start_link(opts) do
     opts = Keyword.put_new(opts, :timeout,  @timeout)
-    GenServer.start_link(__MODULE__, opts)
+    Connection.start_link(__MODULE__, opts)
   end
 
   @doc false
   def init(opts) do
-    GenServer.cast(self, :connect)
-    {:ok, %{socket: nil, auth: [], tail: "", queue: %{}, request_id: 0,
-            opts: opts, database: opts[:database]}}
+    s = %{socket: nil, auth: nil, tail: "", queue: %{}, request_id: 0,
+          opts: opts, database: nil, timeout: opts[:timeout] || @timeout}
+    s = setup_auth(s)
+    {:connect, :init, s}
+  end
+
+  @doc false
+  def connect(:init, %{opts: opts} = s) do
+    host      = Keyword.fetch!(opts, :hostname)
+    host      = if is_binary(host), do: String.to_char_list(host), else: host
+    port      = opts[:port] || 27017
+    sock_opts = [:binary, active: false, packet: :raw]
+                ++ (opts[:socket_options] || [])
+
+    case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
+      {:ok, socket} ->
+        s = %{s | socket: socket}
+
+        case init_auth(s) do
+          :ok ->
+            :inet.setopts(socket, active: :once)
+            {:ok, s}
+          {:error, reason} ->
+            {:stop, reason, s}
+        end
+
+      {:error, reason} ->
+        Logger.error "Mongo connect error (#{host}:#{port}): #{inspect reason}"
+        {:backoff, 1000, s}
+    end
+  end
+
+  @doc false
+  def disconnect(info, _) do
+    exit({:bad_disconnect, info})
+  end
+
+  @doc false
+  def handle_cast(msg, _) do
+    exit({:bad_cast, msg})
   end
 
   @doc false
   def handle_call({:auth, database, username, password}, from, s) do
-    s = auth(database, username, password, from, s)
+    {id, s} = new_command(:nonce, {database, username, password}, from, s)
+    find_one(id, "$cmd", %{getnonce: 1}, nil, s)
     {:noreply, s}
   end
 
@@ -39,27 +78,8 @@ defmodule Mongo.Connection do
 
   def handle_call({:insert, coll, docs}, _from, s) do
     op_insert(coll: namespace(coll, s), docs: List.wrap(docs), flags: [])
-    |> send(-1, s)
+    |> send(-10, s)
     {:reply, :ok, s}
-  end
-
-  @doc false
-  def handle_cast(:connect, %{opts: opts} = s) do
-    host      = Keyword.fetch!(opts, :hostname)
-    host      = if is_binary(host), do: String.to_char_list(host), else: host
-    port      = opts[:port] || 27017
-    timeout   = opts[:timeout] || @timeout
-    sock_opts = [:binary, active: :once, packet: :raw]
-                ++ (opts[:socket_options] || [])
-
-    case :gen_tcp.connect(host, port, sock_opts, timeout) do
-      {:ok, socket} ->
-        s = auth(%{s | socket: socket})
-        {:noreply, s}
-
-      {:error, reason} ->
-        {:stop, %Mongo.Error{message: "tcp connect: #{reason}"}, s}
-    end
   end
 
   @doc false
@@ -74,11 +94,21 @@ defmodule Mongo.Connection do
   end
 
   def handle_info({:tcp_closed, _}, s) do
+    # TODO: Disconnect so we can reconnect (check example)
     {:stop, %Mongo.Error{message: "tcp closed"}, s}
   end
 
   def handle_info({:tcp_error, _, reason}, s) do
+    # TODO: Disconnect so we can reconnect (check example)
     {:stop, %Mongo.Error{message: "tcp error: #{reason}"}, s}
+  end
+
+  def code_change(_, s, _) do
+    {:ok, s}
+  end
+
+  def terminate(_, _) do
+    :ok
   end
 
   defp new_data(data, %{tail: tail} = s) do
@@ -137,32 +167,6 @@ defmodule Mongo.Connection do
     reply_error(id, %Mongo.Error{message: reason, code: code}, s)
   end
 
-  defp auth(%{opts: opts} = s) do
-    database = opts[:database]
-    username = opts[:username]
-    password = opts[:password]
-    auth     = opts[:auth]
-
-    s = %{s | opts: Keyword.drop(opts, [:database, :username, :password, :auth])}
-
-    cond do
-      username && password ->
-        auth(database, username, password, nil, s)
-      auth ->
-        Enum.reduce(auth, s, fn opts, s ->
-          auth(opts[:database], opts[:username], opts[:password], nil, s)
-        end)
-      true ->
-        s
-    end
-  end
-
-  defp auth(database, username, password, from, s) do
-    {id, s} = new_command(:nonce, {database, username, password}, from, s)
-    find_one(id, "$cmd", %{getnonce: 1}, nil, s)
-    s
-  end
-
   defp find_one(id, coll, query, select, s) do
     op_query(coll: namespace(coll, s), query: query, select: select,
              num_skip: 0, num_return: 1, flags: [])
@@ -172,6 +176,7 @@ defmodule Mongo.Connection do
   defp send(op, id, s) do
     data = encode(id, op)
     :gen_tcp.send(s.socket, data)
+    # TODO: Handle return value
   end
 
   defp digest(nonce, username, password) do
@@ -231,5 +236,96 @@ defmodule Mongo.Connection do
 
   defp reply(reply, {_, _} = from) do
     GenServer.reply(from, reply)
+  end
+
+  defp setup_auth(%{auth: nil, opts: opts} = s) do
+    database = opts[:database]
+    username = opts[:username]
+    password = opts[:password]
+    auth     = opts[:auth] || []
+
+    auth =
+      Enum.map(auth, fn opts ->
+        database = opts[:database]
+        username = opts[:username]
+        password = opts[:password]
+        {database, username, password}
+      end)
+
+    if database && username && password do
+      auth = auth ++ [{database, username, password}]
+    end
+
+    if auth != [] do
+      database = s.database || (auth |> List.last |> elem(0))
+    end
+
+    opts = Keyword.drop(opts, ~w(database username password auth)a)
+    %{s | auth: auth, opts: opts, database: database}
+  end
+
+  defp init_auth(%{auth: auth} = s) do
+    Enum.find_value(auth, fn opts ->
+      case inactive_auth(opts, s) do
+        :ok ->
+          nil
+        {:error, _} = error ->
+          error
+      end
+    end) || :ok
+  end
+
+  defp inactive_auth({database, username, password}, s) do
+    case inactive_command(-1, database, %{getnonce: 1}, s) do
+      {:ok, %{"nonce" => nonce, "ok" => 1.0}} ->
+        inactive_digest(nonce, database, username, password, s)
+      {:error, reason} ->
+        {:error, %Mongo.Error{message: "auth failed: tcp #{inspect reason}"}}
+    end
+  end
+
+  defp inactive_digest(nonce, database, username, password, s) do
+    digest = digest(nonce, username, password)
+    command = %{authenticate: 1, user: username, nonce: nonce, key: digest}
+
+    case inactive_command(-2, database, command, s) do
+      {:ok, %{"ok" => 1.0}} ->
+        :ok
+      {:ok, %{"ok" => 0.0, "errmsg" => reason, "code" => code}} ->
+        {:error, %Mongo.Error{message: "auth failed for '#{username}': #{reason}", code: code}}
+      {:ok, nil} ->
+        {:error, %Mongo.Error{message: "auth failed for '#{username}'"}}
+      {:error, reason} ->
+        {:error, %Mongo.Error{message: "auth failed: tcp #{inspect reason}"}}
+    end
+  end
+
+  defp inactive_command(id, database, command, s) do
+    find_one(id, {database, "$cmd"}, command, nil, s)
+
+    case inactive_recv(s) do
+      {:ok, ^id, reply} ->
+        case reply do
+          op_reply(docs: [doc]) -> {:ok, doc}
+          op_reply(docs: [])    -> {:ok, nil}
+        end
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  defp inactive_recv(tail \\ "", s) do
+    case :gen_tcp.recv(s.socket, 0, s.timeout) do
+      {:ok, data} ->
+        data = tail <> data
+        case decode(data) do
+          {:ok, id, reply, ""} ->
+            {:ok, id, reply}
+          :error ->
+            inactive_recv(data, s)
+        end
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 end
