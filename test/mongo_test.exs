@@ -53,13 +53,13 @@ defmodule MongoTest do
     assert %{"ok" => 1.0} = Mongo.find_one(pid, "$cmd", %{ping: 1}, %{})
   end
 
-  # test "insert and find_one" do
-  #   pid = connect_auth()
-  #   coll = unique_name
+  test "insert and find_one" do
+    pid = connect_auth()
+    coll = unique_name
 
-  #   Mongo.insert(pid, coll, %{"foo" => 42})
-  #   # Mongo.find_one(pid, "$cmd", %{getLastError: 1}, nil)
+    Mongo.insert(pid, coll, %{foo: 42})
+    # Mongo.find_one(pid, "$cmd", %{getLastError: 1}, nil)
 
-  #   assert %{"foo" => 42} = Mongo.find_one(pid, coll, %{foo: 1}, nil)
-  # end
+    assert %{"foo" => 42} = Mongo.find_one(pid, coll, %{foo: 42}, nil)
+  end
 end
