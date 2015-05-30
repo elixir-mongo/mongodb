@@ -1,11 +1,13 @@
 defmodule Mongo.Connection do
   import Mongo.Protocol
+  import Kernel, except: [send: 2]
   require Logger
 
   @behaviour Connection
   @backoff 1000
   @timeout 5000
   @requestid_max 2147483648
+  @write_concern ~w(w j fsync wtimeout)a
 
   def start_link(opts) do
     opts = Keyword.put_new(opts, :timeout,  @timeout)
@@ -14,18 +16,31 @@ defmodule Mongo.Connection do
 
   @doc false
   def init(opts) do
+    timeout = opts[:timeout] || @timeout
+
+    opts = opts
+           |> Keyword.update!(:hostname, &to_char_list/1)
+           |> Keyword.put_new(:port, 27017)
+           |> Keyword.delete(:timeout)
+
+    {write_concern, opts} = Keyword.split(opts, @write_concern)
+
+    write_concern = Enum.into(write_concern, %{})
+                    |> Map.put_new(:w, 1)
+
     s = %{socket: nil, auth: nil, tail: "", queue: %{}, request_id: 0,
-          opts: opts, database: nil, timeout: opts[:timeout] || @timeout}
+          opts: opts, database: nil, timeout: timeout,
+          write_concern: write_concern}
+
     s = setup_auth(s)
     {:connect, :init, s}
   end
 
   @doc false
   def connect(_, %{opts: opts} = s) do
-    host      = Keyword.fetch!(opts, :hostname)
-    host      = if is_binary(host), do: String.to_char_list(host), else: host
-    port      = opts[:port] || 27017
-    sock_opts = [:binary, active: false, packet: :raw]
+    host = opts[:hostname]
+    port = opts[:port]
+    sock_opts = [:binary, active: false, packet: :raw, send_timeout: s.timeout]
                 ++ (opts[:socket_options] || [])
 
     case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
@@ -51,11 +66,13 @@ defmodule Mongo.Connection do
 
   @doc false
   def disconnect({:error, reason}, s) do
-    # TODO: Reply to everyone queue and reset it
+    # TODO: Reply to everyone in queue and reset it
 
     host = s.opts[:hostname]
     port = s.opts[:port] || 27017
     Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
+
+    # Backoff 0 to churn through all commands in mailbox before reconnecting
     {:backoff, 0, %{s | socket: nil}}
   end
 
@@ -71,7 +88,8 @@ defmodule Mongo.Connection do
 
   def handle_call({:auth, database, username, password}, from, s) do
     {id, s} = new_command(:nonce, {database, username, password}, from, s)
-    find_one(id, "$cmd", %{getnonce: 1}, nil, s)
+    find_one("$cmd", %{getnonce: 1}, nil, s)
+    |> send(id, s)
     |> send_to_noreply
   end
 
@@ -85,16 +103,25 @@ defmodule Mongo.Connection do
 
   def handle_call({:find_one, coll, query, select}, from, s) do
     {id, s} = new_command(:one, nil, from, s)
-    find_one(id, coll, query, select, s)
+    find_one(coll, query, select, s)
+    |> send(id, s)
     |> send_to_noreply
   end
 
-  def handle_call({:insert, coll, docs}, _from, s) do
-    # TODO: getLastError
+  def handle_call({:insert, coll, docs}, from, %{write_concern: write_concern} = s) do
+    insert_op = {-10, op_insert(coll: namespace(coll, s), docs: List.wrap(docs), flags: [])}
 
-    op_insert(coll: namespace(coll, s), docs: List.wrap(docs), flags: [])
-    |> send(-10, s)
-    |> send_to_reply(:ok)
+    if write_concern.w == 0 do
+      insert_op |> send(s) |> send_to_reply(:ok)
+    else
+      {id, s} = new_command(:insert, nil, from, s)
+      command = Map.merge(%{getLastError: 1}, write_concern)
+
+      [insert_op,
+       {id, find_one({:override, coll, "$cmd"}, command, nil, s)}]
+      |> send(s)
+      |> send_to_noreply
+    end
   end
 
   @doc false
@@ -113,7 +140,7 @@ defmodule Mongo.Connection do
   end
 
   def handle_info({:tcp_error, _, reason}, s) do
-    {:disconnect, {:error, :reason}, s}
+    {:disconnect, {:error, reason}, s}
   end
 
   def code_change(_, s, _) do
@@ -147,7 +174,8 @@ defmodule Mongo.Connection do
     doc = %{authenticate: 1, user: username, nonce: nonce, key: digest}
     s = state(id, :auth, s)
 
-    find_one(id, {database, "$cmd"}, doc, nil, s)
+    find_one({database, "$cmd"}, doc, nil, s)
+    |> send(id, s)
     |> send_to_noreply
   end
 
@@ -176,18 +204,41 @@ defmodule Mongo.Connection do
     end
   end
 
+  defp message(:insert, id, op_reply(docs: docs), s) do
+    case docs do
+      [%{"ok" => 1.0}] ->
+        s = reply(:ok, id, s)
+      [%{"ok" => 0.0, "err" => reason, "code" => code}] ->
+        s = reply({:error, %Mongo.Error{message: reason, code: code}}, id, s)
+    end
+    {:ok, s}
+  end
+
   defp failure(_state, id, op_reply(docs: [%{"$err" => reason, "code" => code }]), s) do
     reply_error(id, %Mongo.Error{message: reason, code: code}, s)
   end
 
-  defp find_one(id, coll, query, select, s) do
+  defp find_one(coll, query, select, s) do
     op_query(coll: namespace(coll, s), query: query, select: select,
              num_skip: 0, num_return: 1, flags: [])
-    |> send(id, s)
   end
 
   defp send(op, id, s) do
     data = encode(id, op)
+    case :gen_tcp.send(s.socket, data) do
+      :ok ->
+        {:ok, s}
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  defp send(ops, s) do
+    data =
+      Enum.reduce(ops, "", fn {id, op}, acc ->
+        [acc|encode(id, op)]
+      end)
+
     case :gen_tcp.send(s.socket, data) do
       :ok ->
         {:ok, s}
@@ -206,13 +257,15 @@ defmodule Mongo.Connection do
     |> Base.encode16(case: :lower)
   end
 
-  defp namespace({database, coll}, _s) do
-    [database, ?. | coll]
-  end
 
-  defp namespace(coll, s) do
-    [s.database, ?. | coll]
-  end
+  defp namespace({:override, {database, _}, coll}, _s),
+    do: [database, ?. | coll]
+  defp namespace({:override, _, coll}, s),
+    do: [s.database, ?. | coll]
+  defp namespace({database, coll}, _s),
+    do: [database, ?. | coll]
+  defp namespace(coll, s),
+    do: [s.database, ?. | coll]
 
   defp new_command(state, params, from, s) do
     command    = %{state: state, params: params, from: from}
@@ -333,7 +386,7 @@ defmodule Mongo.Connection do
   end
 
   defp inactive_command(id, database, command, s) do
-    case find_one(id, {database, "$cmd"}, command, nil, s) do
+    case find_one({database, "$cmd"}, command, nil, s) |> send(id, s) do
       {:ok, s} ->
         case inactive_recv(s) do
           {:ok, ^id, reply} ->

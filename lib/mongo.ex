@@ -31,7 +31,13 @@ defmodule Mongo do
 
   def insert(conn, coll, docs) do
     docs = assign_ids(docs)
-    GenServer.call(conn, {:insert, coll, docs})
+
+    case GenServer.call(conn, {:insert, coll, docs}) do
+      :ok ->
+        {:ok, docs}
+      {:error, _} = error ->
+        error
+    end
   end
 
   defp assign_ids(list) when is_list(list) do

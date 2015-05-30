@@ -58,8 +58,6 @@ defmodule MongoTest do
     coll = unique_name
 
     Mongo.insert(pid, coll, %{foo: 42})
-    # Mongo.find_one(pid, "$cmd", %{getLastError: 1}, nil)
-
     assert %{"foo" => 42} = Mongo.find_one(pid, coll, %{foo: 42}, nil)
   end
 end
