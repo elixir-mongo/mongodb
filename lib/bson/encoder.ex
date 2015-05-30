@@ -42,12 +42,14 @@ defmodule BSON.Encoder do
   def encode(%BSON.Timestamp{value: value}),
     do: <<value::int64>>
 
-  def encode(value) when is_map(value) do
-    Map.delete(value, :__struct__)
-    |> document
-  end
+  def encode(%BSON.Keyword{list: list}),
+    do: document(list)
+
+  def encode(value) when is_map(value),
+    do: document(value)
 
   def encode(value) when is_list(value) do
+    # TODO: No Stream
     Stream.with_index(value)
     |> Stream.map(fn {v, ix} -> {Integer.to_string(ix), v} end)
     |> document
@@ -68,13 +70,29 @@ defmodule BSON.Encoder do
   def encode(value) when is_int64(value),
     do: <<value::int64>>
 
+  def document(%BSON.Keyword{list: list}),
+    do: document(list)
+
   def document(doc) do
-    iodata =
-      Enum.reduce(doc, "", fn {key, value}, acc ->
-        key = key(key)
-        type = type(value)
-        value = encode(value)
-        [acc, type, key, value]
+    {_, iodata} =
+      Enum.reduce(doc, {:unknown, ""}, fn
+        {:__struct__, _value}, {:binary, _acc} ->
+          invalid_doc()
+
+        {:__struct__, _value}, {_, acc} ->
+          {:atom, acc}
+
+        {key, _value}, {:binary, _acc} when is_atom(key) ->
+          invalid_doc()
+
+        {key, _value}, {:atom, _acc} when is_binary(key) ->
+          invalid_doc()
+
+        {key, value}, {_, acc} ->
+          {key_type, key} = key(key)
+          type = type(value)
+          value = encode(value)
+          {key_type, [acc, type, key, value]}
       end)
 
     [<<IO.iodata_length(iodata)+5::int32>>, iodata, 0x00]
@@ -82,8 +100,15 @@ defmodule BSON.Encoder do
 
   defp cstring(string), do: [string, 0x00]
 
-  defp key(value) when is_atom(value),    do: cstring(Atom.to_string(value))
-  defp key(value) when is_binary(value),  do: cstring(value)
+  defp key(value) when is_atom(value),
+    do: {:atom, cstring(Atom.to_string(value))}
+  defp key(value) when is_binary(value),
+    do: {:binary, cstring(value)}
+
+  defp invalid_doc do
+    message = "Invalid document containing atom and string keys"
+    raise ArgumentError, message: message
+  end
 
   defp type(%BSON.Binary{}),                do: @type_binary
   defp type(%BSON.ObjectId{}),              do: @type_objectid

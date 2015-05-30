@@ -29,3 +29,8 @@ end
 defmodule BSON.Timestamp do
   defstruct [:value]
 end
+
+defmodule BSON.Keyword do
+  @moduledoc false
+  defstruct [:list]
+end

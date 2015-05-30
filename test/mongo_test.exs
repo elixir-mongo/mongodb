@@ -57,7 +57,7 @@ defmodule MongoTest do
     pid = connect_auth()
     coll = unique_name
 
-    Mongo.insert(pid, coll, %{foo: 42})
-    assert %{"foo" => 42} = Mongo.find_one(pid, coll, %{foo: 42}, nil)
+    assert {:ok, %{_id: id}} = Mongo.insert(pid, coll, %{foo: 42})
+    assert %{"_id" => ^id, "foo" => 42} = Mongo.find_one(pid, coll, %{foo: 42}, nil)
   end
 end

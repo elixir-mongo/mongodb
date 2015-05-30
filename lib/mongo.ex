@@ -30,32 +30,53 @@ defmodule Mongo do
   end
 
   def insert(conn, coll, docs) do
-    docs = assign_ids(docs)
+    {insert, return} = assign_ids(docs, [])
 
-    case GenServer.call(conn, {:insert, coll, docs}) do
+    case GenServer.call(conn, {:insert, coll, insert}) do
       :ok ->
-        {:ok, docs}
+        {:ok, return}
       {:error, _} = error ->
         error
     end
   end
 
-  defp assign_ids(list) when is_list(list) do
-    Enum.map(list, &assign_id/1)
+  defp assign_ids([doc|tail], {insert_acc, return_acc}) do
+    {insert, return} = assign_id(doc)
+    assign_ids(tail, {[insert|insert_acc], [return|return_acc]})
   end
 
-  defp assign_ids(map) when is_map(map) do
+  defp assign_ids([], {insert_acc, return_acc}) do
+    {Enum.reverse(insert_acc), Enum.reverse(return_acc)}
+  end
+
+  defp assign_ids(map, []) when is_map(map) do
     assign_id(map)
   end
 
+  defp assign_id(%{_id: value} = map) when value != nil,
+    do: {map, map}
+  defp assign_id(%{"_id" => value} = map) when value != nil,
+    do: {map, map}
+
   defp assign_id(map) when is_map(map) do
-    case Map.fetch(map, :_id) do
-      {:ok, nil} ->
-        Map.put(map, :_id, Mongo.IdServer.new)
-      :error ->
-        Map.put(map, :_id, Mongo.IdServer.new)
-      {:ok, _} ->
-        map
+    list = Map.to_list(map)
+    id   = Mongo.IdServer.new
+
+    case list do
+      [{key, _}|_] when is_atom(key) ->
+        keyword = %BSON.Keyword{list: [{:_id, id}|list]}
+        map     = Map.put(map, :_id, id)
+
+      [{key, _}|_] when is_binary(key) ->
+        keyword = %BSON.Keyword{list: [{"_id", id}|list]}
+        map     = Map.put(map, :_id, id)
+
+      [] ->
+        # Why are you inserting empty documents =(
+        keyword = %{"_id" => id}
+        map     = keyword
     end
+
+    {keyword, map}
   end
 end
