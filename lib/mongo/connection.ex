@@ -70,14 +70,22 @@ defmodule Mongo.Connection do
 
   @doc false
   def disconnect({:error, reason}, s) do
-    # TODO: Reply to everyone in queue and reset it
+    formatted_reason = format_error(reason)
+
+    Enum.each(s.queue, fn
+      {_id, %{from: nil}} ->
+        :ok
+      {id, %{from: from}} ->
+        error = %Mongo.Error{message: "Mongo tcp error: #{formatted_reason}"}
+        reply(from, {:error, error})
+    end)
 
     host = s.opts[:hostname]
     port = s.opts[:port] || 27017
-    Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
+    Logger.error "Mongo tcp error (#{host}:#{port}): #{formatted_reason}"
 
     # Backoff 0 to churn through all commands in mailbox before reconnecting
-    {:backoff, 0, %{s | socket: nil}}
+    {:backoff, 0, %{s | socket: nil, queue: %{}}}
   end
 
   @doc false
@@ -220,12 +228,12 @@ defmodule Mongo.Connection do
 
     case decode(data) do
       {:ok, id, reply, tail} ->
-        state = s.queue[id][:state]
+        command = s.queue[id][:command]
         s = %{s | tail: tail}
 
         if :query_failure in op_reply(reply, :flags),
-            do: failure(state, id, reply, s),
-          else: message(state, id, reply, s)
+            do: failure(command, id, reply, s),
+          else: message(command, id, reply, s)
 
       :error ->
         {:ok, %{s | tail: data}}
@@ -236,7 +244,7 @@ defmodule Mongo.Connection do
     {database, username, password} = s.queue[id].params
     digest = digest(nonce, username, password)
     doc = %{authenticate: 1, user: username, nonce: nonce, key: digest}
-    s = state(id, :auth, s)
+    s = command(id, :auth, s)
 
     find_one({database, "$cmd"}, doc, nil, s)
     |> send(id, s)
@@ -291,7 +299,7 @@ defmodule Mongo.Connection do
     {:ok, s}
   end
 
-  defp failure(_state, id, op_reply(docs: [%{"$err" => reason, "code" => code }]), s) do
+  defp failure(_command, id, op_reply(docs: [%{"$err" => reason, "code" => code }]), s) do
     {:ok, reply(id, %Mongo.Error{message: reason, code: code}, s)}
   end
 
@@ -345,16 +353,16 @@ defmodule Mongo.Connection do
   defp namespace(coll, s),
     do: [s.database, ?. | coll]
 
-  defp new_command(state, params, from, s) do
-    command    = %{state: state, params: params, from: from}
+  defp new_command(command, params, from, s) do
+    command    = %{command: command, params: params, from: from}
     queue      = Map.put(s.queue, s.request_id, command)
     request_id = rem s.request_id+1, @requestid_max
 
     {s.request_id, %{s | request_id: request_id, queue: queue}}
   end
 
-  defp state(id, state, s) do
-    put_in(s.queue[id].state, state)
+  defp command(id, command, s) do
+    put_in(s.queue[id].command, command)
   end
 
   defp reply(id, reply, s) do
