@@ -127,6 +127,12 @@ defmodule Mongo.Connection do
     |> send_to_noreply
   end
 
+  def handle_call({:kill_cursors, cursor_ids}, _from, s) do
+    op_kill_cursors(cursor_ids: cursor_ids)
+    |> send(-11, s)
+    |> send_to_reply(:ok)
+  end
+
   def handle_call({:find_one, coll, query, select, opts}, from, s) do
     flags   = Keyword.take(opts, @find_one_flags)
     {id, s} = new_command(:find_one, nil, from, s)

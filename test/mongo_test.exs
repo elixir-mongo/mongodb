@@ -103,4 +103,20 @@ defmodule MongoTest do
     assert {:ok, 0, []} =
            Mongo.get_more(pid, coll, cursor_id, num_return: 2)
   end
+
+  test "kill_cursors" do
+    pid = connect_auth()
+    coll = unique_name
+
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 44}, [])
+
+    assert {:ok, cursor_id, [_, _]} =
+           Mongo.find(pid, coll, %{}, nil, num_return: 2)
+    assert :ok = Mongo.kill_cursors(pid, cursor_id)
+
+    assert {:error, %Mongo.Error{code: nil, message: "cursor not found"}} =
+           Mongo.get_more(pid, coll, cursor_id)
+  end
 end

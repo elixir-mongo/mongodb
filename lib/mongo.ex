@@ -33,6 +33,10 @@ defmodule Mongo do
     GenServer.call(conn, {:get_more, coll, cursor_id, opts})
   end
 
+  def kill_cursors(conn, cursor_ids) do
+    GenServer.call(conn, {:kill_cursors, List.wrap(cursor_ids)})
+  end
+
   def find_one(conn, coll, query, select, opts \\ []) do
     GenServer.call(conn, {:find_one, coll, query, select, opts})
   end

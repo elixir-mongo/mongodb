@@ -97,8 +97,8 @@ defmodule Mongo.Protocol do
   end
 
   defp encode_op(op_kill_cursors(cursor_ids: ids)) do
-    binary_ids = for id <- ids, do: <<id::int64>>
-    num = byte_size(binary_ids) / 8
+    binary_ids = for id <- ids, into: "", do: <<id::int64>>
+    num = div byte_size(binary_ids), 8
     [<<0x00::int32, num::int32>> | binary_ids]
   end
 
