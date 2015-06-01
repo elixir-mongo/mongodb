@@ -1,7 +1,9 @@
 defmodule Mongo.Connection do
-  import Mongo.Protocol
   import Kernel, except: [send: 2]
+  import Mongo.Protocol
+  import Mongo.Connection.Utils
   require Logger
+  alias Mongo.Connection.Auth
 
   @behaviour Connection
   @backoff 1000
@@ -36,7 +38,7 @@ defmodule Mongo.Connection do
           opts: opts, database: nil, timeout: timeout,
           write_concern: write_concern}
 
-    s = setup_auth(s)
+    s = Auth.setup(s)
     {:connect, :init, s}
   end
 
@@ -51,7 +53,7 @@ defmodule Mongo.Connection do
       {:ok, socket} ->
         s = %{s | socket: socket}
 
-        case init_auth(s) do
+        case Auth.init(s) do
           :ok ->
             :inet.setopts(socket, active: :once)
             {:ok, s}
@@ -75,7 +77,7 @@ defmodule Mongo.Connection do
     Enum.each(s.queue, fn
       {_id, %{from: nil}} ->
         :ok
-      {id, %{from: from}} ->
+      {_id, %{from: from}} ->
         error = %Mongo.Error{message: "Mongo tcp error: #{formatted_reason}"}
         reply(from, {:error, error})
     end)
@@ -100,7 +102,8 @@ defmodule Mongo.Connection do
 
   def handle_call({:auth, database, username, password}, from, s) do
     {id, s} = new_command(:nonce, {database, username, password}, from, s)
-    find_one("$cmd", %{getnonce: 1}, nil, s)
+    op_query(coll: namespace({database, "$cmd"}, s), query: %{getnonce: 1},
+             select: nil, num_skip: 0, num_return: 1, flags: [])
     |> send(id, s)
     |> send_to_noreply
   end
@@ -145,7 +148,8 @@ defmodule Mongo.Connection do
     flags   = Keyword.take(opts, @find_one_flags)
     {id, s} = new_command(:find_one, nil, from, s)
 
-    find_one(coll, query, select, flags(flags), s)
+    op_query(coll: namespace(coll, s), query: query, select: select,
+             num_skip: 0, num_return: 1, flags: flags(flags))
     |> send(id, s)
     |> send_to_noreply
   end
@@ -158,9 +162,7 @@ defmodule Mongo.Connection do
     if s.write_concern.w == 0 do
       insert_op |> send(s) |> send_to_reply(:ok)
     else
-      {id, s} = new_command(:get_last_error, nil, from, s)
-      command = Map.merge(%{getLastError: 1}, s.write_concern)
-      get_last_error = {id, find_one({:override, coll, "$cmd"}, command, nil, s)}
+      {get_last_error, s} = get_last_error(coll, from, s)
 
       [insert_op, get_last_error]
       |> send(s)
@@ -173,9 +175,7 @@ defmodule Mongo.Connection do
     update_op = {-12, op_update(coll: namespace(coll, s), query: query,
                                 update: update, flags: flags(flags))}
 
-    {id, s} = new_command(:get_last_error, nil, from, s)
-    command = Map.merge(%{getLastError: 1}, s.write_concern)
-    get_last_error = {id, find_one({:override, coll, "$cmd"}, command, nil, s)}
+    {get_last_error, s} = get_last_error(coll, from, s)
 
     [update_op, get_last_error]
     |> send(s)
@@ -187,9 +187,7 @@ defmodule Mongo.Connection do
     delete_op = {-13, op_delete(coll: namespace(coll, s), query: query,
                                 flags: flags)}
 
-    {id, s} = new_command(:get_last_error, nil, from, s)
-    command = Map.merge(%{getLastError: 1}, s.write_concern)
-    get_last_error = {id, find_one({:override, coll, "$cmd"}, command, nil, s)}
+    {get_last_error, s} = get_last_error(coll, from, s)
 
     [delete_op, get_last_error]
     |> send(s)
@@ -246,7 +244,8 @@ defmodule Mongo.Connection do
     doc = %{authenticate: 1, user: username, nonce: nonce, key: digest}
     s = command(id, :auth, s)
 
-    find_one({database, "$cmd"}, doc, nil, s)
+    op_query(coll: namespace({database, "$cmd"}, s), query: doc, select: nil,
+             num_skip: 0, num_return: 1, flags: [])
     |> send(id, s)
     |> send_to_noreply
   end
@@ -303,55 +302,14 @@ defmodule Mongo.Connection do
     {:ok, reply(id, %Mongo.Error{message: reason, code: code}, s)}
   end
 
-  defp find_one(coll, query, select, opts \\ [], s) do
-    flags = Keyword.take(opts, @find_one_flags)
-    op_query(coll: namespace(coll, s), query: query, select: select,
-             num_skip: 0, num_return: 1, flags: flags(flags))
+  defp get_last_error(coll, from, s) do
+    {id, s} = new_command(:get_last_error, nil, from, s)
+    command = Map.merge(%{getLastError: 1}, s.write_concern)
+    op = op_query(coll: namespace({:override, coll, "$cmd"}, s), query: command,
+                  select: nil, num_skip: 0, num_return: 1, flags: [])
+
+    {{id, op}, s}
   end
-
-  defp send(op, id, s) do
-    data = encode(id, op)
-    case :gen_tcp.send(s.socket, data) do
-      :ok ->
-        {:ok, s}
-      {:error, _} = error ->
-        error
-    end
-  end
-
-  defp send(ops, s) do
-    data =
-      Enum.reduce(ops, "", fn {id, op}, acc ->
-        [acc|encode(id, op)]
-      end)
-
-    case :gen_tcp.send(s.socket, data) do
-      :ok ->
-        {:ok, s}
-      {:error, _} = error ->
-        error
-    end
-  end
-
-  defp digest(nonce, username, password) do
-    :crypto.hash(:md5, [nonce, username, digest_password(username, password)])
-    |> Base.encode16(case: :lower)
-  end
-
-  defp digest_password(username, password) do
-    :crypto.hash(:md5, [username, ":mongo:", password])
-    |> Base.encode16(case: :lower)
-  end
-
-  # TODO: Fix the terrible :override hack
-  defp namespace({:override, {database, _}, coll}, _s),
-    do: [database, ?. | coll]
-  defp namespace({:override, _, coll}, s),
-    do: [s.database, ?. | coll]
-  defp namespace({database, coll}, _s),
-    do: [database, ?. | coll]
-  defp namespace(coll, s),
-    do: [s.database, ?. | coll]
 
   defp new_command(command, params, from, s) do
     command    = %{command: command, params: params, from: from}
@@ -393,101 +351,6 @@ defmodule Mongo.Connection do
     do: "closed"
   defp format_error(error),
     do: :inet.format_error(error)
-
-  defp setup_auth(%{auth: nil, opts: opts} = s) do
-    database = opts[:database]
-    username = opts[:username]
-    password = opts[:password]
-    auth     = opts[:auth] || []
-
-    auth =
-      Enum.map(auth, fn opts ->
-        database = opts[:database]
-        username = opts[:username]
-        password = opts[:password]
-        {database, username, password}
-      end)
-
-    if database && username && password do
-      auth = auth ++ [{database, username, password}]
-    end
-
-    if auth != [] do
-      database = s.database || (auth |> List.last |> elem(0))
-    end
-
-    opts = Keyword.drop(opts, ~w(database username password auth)a)
-    %{s | auth: auth, opts: opts, database: database}
-  end
-
-  defp init_auth(%{auth: auth} = s) do
-    Enum.find_value(auth, fn opts ->
-      case inactive_auth(opts, s) do
-        :ok ->
-          nil
-        {:error, _} = error ->
-          error
-      end
-    end) || :ok
-  end
-
-  defp inactive_auth({database, username, password}, s) do
-    case inactive_command(-1, database, %{getnonce: 1}, s) do
-      {:ok, %{"nonce" => nonce, "ok" => 1.0}} ->
-        inactive_digest(nonce, database, username, password, s)
-      {:tcp_error, _} = error ->
-        error
-    end
-  end
-
-  defp inactive_digest(nonce, database, username, password, s) do
-    digest = digest(nonce, username, password)
-    command = %{authenticate: 1, user: username, nonce: nonce, key: digest}
-
-    case inactive_command(-2, database, command, s) do
-      {:ok, %{"ok" => 1.0}} ->
-        :ok
-      {:ok, %{"ok" => 0.0, "errmsg" => reason, "code" => code}} ->
-        {:error, %Mongo.Error{message: "auth failed for '#{username}': #{reason}", code: code}}
-      {:ok, nil} ->
-        {:error, %Mongo.Error{message: "auth failed for '#{username}'"}}
-      {:tcp_error, _} = error ->
-        error
-    end
-  end
-
-  defp inactive_command(id, database, command, s) do
-    case find_one({database, "$cmd"}, command, nil, s) |> send(id, s) do
-      {:ok, s} ->
-        case inactive_recv(s) do
-          {:ok, ^id, reply} ->
-            case reply do
-              op_reply(docs: [doc]) -> {:ok, doc}
-              op_reply(docs: [])    -> {:ok, nil}
-            end
-          {:tcp_error, _} = error ->
-            error
-        end
-      {:error, reason} ->
-        {:tcp_error, reason}
-    end
-  end
-
-  defp inactive_recv(tail \\ "", s) do
-    case :gen_tcp.recv(s.socket, 0, s.timeout) do
-      {:ok, data} ->
-        data = tail <> data
-        case decode(data) do
-          {:ok, id, reply, ""} ->
-            {:ok, id, reply}
-          :error ->
-            inactive_recv(data, s)
-        end
-
-      {:error, reason} ->
-        {:tcp_error, reason}
-    end
-  end
 
   defp flags(flags) do
     Enum.reduce(flags, [], fn
