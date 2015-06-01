@@ -141,4 +141,22 @@ defmodule MongoTest do
     assert :ok = Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: false)
     assert {:ok, 0, []} = Mongo.find(pid, coll, %{bar: 0}, nil)
   end
+
+  test "delete" do
+    pid = connect_auth()
+    coll = unique_name
+
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
+
+    assert :ok = Mongo.delete(pid, coll, %{foo: 42}, multi: false)
+    assert {:ok, 0, [_, _]} = Mongo.find(pid, coll, %{foo: 42}, nil)
+
+    assert :ok = Mongo.delete(pid, coll, %{foo: 42}, multi: true)
+    assert {:ok, 0, []} = Mongo.find(pid, coll, %{foo: 42}, nil)
+
+    assert {:ok, 0, [_]} = Mongo.find(pid, coll, %{foo: 43}, nil)
+  end
 end

@@ -12,29 +12,35 @@ defmodule Mongo.Protocol do
   @op_delete        2006
   @op_kill_cursors  2007
 
-  @flags %{
-    upsert:            0x1,
-    multi:             0x2,
+  @update_flags [
+    upsert: 0x1,
+    multi:  0x2
+  ]
 
-    continue_on_error: 0x1,
+  @insert_flags [
+    continue_on_error: 0x1
+  ]
 
+  @query_flags [
     tailable_cursor:   0x2,
     slave_ok:          0x4,
     oplog_replay:      0x8,
     no_cursor_timeout: 0x10,
     await_data:        0x20,
     exhaust:           0x40,
-    partial:           0x80,
+    partial:           0x80
+  ]
 
-    single_remove:     0x1
-  }
+  @delete_flags [
+    single: 0x1
+  ]
 
-  @reply_flags %{
+  @reply_flags [
     cursor_not_found:   0x1,
     query_failure:      0x2,
     shard_config_stale: 0x4,
     await_capable:      0x8
-  }
+  ]
 
   @header_size 4 * 4
 
@@ -71,18 +77,18 @@ defmodule Mongo.Protocol do
   end
 
   defp encode_op(op_update(coll: coll, flags: flags, query: query, update: update)) do
-    [<<0x00::int32>>, coll, <<0x00, blit_flags(flags)::int32>>,
+    [<<0x00::int32>>, coll, <<0x00, blit_flags(:update, flags)::int32>>,
      Encoder.document(query), Encoder.document(update)]
   end
 
   defp encode_op(op_insert(flags: flags, coll: coll, docs: docs)) do
-    [<<blit_flags(flags)::int32>>, coll, 0x00 |
+    [<<blit_flags(:insert, flags)::int32>>, coll, 0x00 |
      Enum.map(docs, &Encoder.document/1)]
   end
 
   defp encode_op(op_query(flags: flags, coll: coll, num_skip: num_skip,
                           num_return: num_return, query: query, select: select)) do
-    [<<blit_flags(flags)::int32>>, coll, <<0x00, num_skip::int32,
+    [<<blit_flags(:query, flags)::int32>>, coll, <<0x00, num_skip::int32,
        num_return::int32>>, Encoder.document(query) |
      maybe(select, &Encoder.document/1)]
   end
@@ -92,7 +98,7 @@ defmodule Mongo.Protocol do
   end
 
   defp encode_op(op_delete(coll: coll, flags: flags, query: query)) do
-    [<<0x00::int32>>, coll, <<0x00, blit_flags(flags)::binary>> |
+    [<<0x00::int32>>, coll, <<0x00, blit_flags(:delete, flags)::int32>> |
      Encoder.document(query)]
   end
 
@@ -140,9 +146,9 @@ defmodule Mongo.Protocol do
     decode_documents(rest, [doc|acc])
   end
 
-  defp blit_flags(flags) do
+  defp blit_flags(op, flags) do
     import Bitwise
-    Enum.reduce(flags, 0x0, &(flag_to_bit(&1) ||| &2))
+    Enum.reduce(flags, 0x0, &(flag_to_bit(op, &1) ||| &2))
   end
 
   defp unblit_flags(bits) do
@@ -154,11 +160,23 @@ defmodule Mongo.Protocol do
     end)
   end
 
-  Enum.each(@flags, fn {flag, bit} ->
-    defp flag_to_bit(unquote(flag)), do: unquote(bit)
+  Enum.each(@update_flags, fn {flag, bit} ->
+    defp flag_to_bit(:update, unquote(flag)), do: unquote(bit)
   end)
 
-  defp flag_to_bit(_flag), do: 0x0
+  Enum.each(@insert_flags, fn {flag, bit} ->
+    defp flag_to_bit(:insert, unquote(flag)), do: unquote(bit)
+  end)
+
+  Enum.each(@query_flags, fn {flag, bit} ->
+    defp flag_to_bit(:query, unquote(flag)), do: unquote(bit)
+  end)
+
+  Enum.each(@delete_flags, fn {flag, bit} ->
+    defp flag_to_bit(:delete, unquote(flag)), do: unquote(bit)
+  end)
+
+  defp flag_to_bit(_op, _flag), do: 0x0
 
   defp maybe(nil, _fun), do: ""
   defp maybe(value, fun), do: fun.(value)

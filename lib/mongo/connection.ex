@@ -174,6 +174,20 @@ defmodule Mongo.Connection do
     |> send_to_noreply
   end
 
+  def handle_call({:delete, coll, query, opts}, from, s) do
+    flags = if Keyword.get(opts, :multi, false), do: [], else: [:single]
+    delete_op = {-13, op_delete(coll: namespace(coll, s), query: query,
+                                flags: flags)}
+
+    {id, s} = new_command(:get_last_error, nil, from, s)
+    command = Map.merge(%{getLastError: 1}, s.write_concern)
+    get_last_error = {id, find_one({:override, coll, "$cmd"}, command, nil, s)}
+
+    [delete_op, get_last_error]
+    |> send(s)
+    |> send_to_noreply
+  end
+
   @doc false
   def handle_info({:tcp, _, data}, %{socket: socket, tail: tail} = s) do
     case new_data(tail <> data, s) do
