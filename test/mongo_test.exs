@@ -60,4 +60,12 @@ defmodule MongoTest do
     assert {:ok, %{_id: id}} = Mongo.insert(pid, coll, %{foo: 42})
     assert %{"_id" => ^id, "foo" => 42} = Mongo.find_one(pid, coll, %{foo: 42}, nil)
   end
+
+  test "insert flags" do
+    pid = connect_auth()
+    coll = unique_name
+
+    assert {:ok, %{_id: _, foo: 42}} =
+           Mongo.insert(pid, coll, %{foo: 42}, [continue_on_error: true])
+  end
 end

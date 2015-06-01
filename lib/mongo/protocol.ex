@@ -142,7 +142,7 @@ defmodule Mongo.Protocol do
 
   defp blit_flags(flags) do
     import Bitwise
-    Enum.reduce(flags, 0x0, &(&1 ||| &2))
+    Enum.reduce(flags, 0x0, &(flag_to_bit(&1) ||| &2))
   end
 
   defp unblit_flags(bits) do
@@ -157,6 +157,8 @@ defmodule Mongo.Protocol do
   Enum.each(@flags, fn {flag, bit} ->
     defp flag_to_bit(unquote(flag)), do: unquote(bit)
   end)
+
+  defp flag_to_bit(_flag), do: 0x0
 
   defp maybe(nil, _fun), do: ""
   defp maybe(value, fun), do: fun.(value)

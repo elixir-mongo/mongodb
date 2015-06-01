@@ -108,14 +108,15 @@ defmodule Mongo.Connection do
     |> send_to_noreply
   end
 
-  def handle_call({:insert, coll, docs}, from, %{write_concern: write_concern} = s) do
-    insert_op = {-10, op_insert(coll: namespace(coll, s), docs: List.wrap(docs), flags: [])}
+  def handle_call({:insert, coll, docs, opts}, from, s) do
+    insert_op = {-10, op_insert(coll: namespace(coll, s), docs: List.wrap(docs),
+                                flags: flags(opts))}
 
-    if write_concern.w == 0 do
+    if s.write_concern.w == 0 do
       insert_op |> send(s) |> send_to_reply(:ok)
     else
       {id, s} = new_command(:insert, nil, from, s)
-      command = Map.merge(%{getLastError: 1}, write_concern)
+      command = Map.merge(%{getLastError: 1}, s.write_concern)
 
       [insert_op,
        {id, find_one({:override, coll, "$cmd"}, command, nil, s)}]
@@ -416,5 +417,12 @@ defmodule Mongo.Connection do
       {:error, reason} ->
         {:tcp_error, reason}
     end
+  end
+
+  defp flags(flags) do
+    Enum.reduce(flags, [], fn
+      {flag, true},   acc -> [flag|acc]
+      {_flag, false}, acc -> acc
+    end)
   end
 end
