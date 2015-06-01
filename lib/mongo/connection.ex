@@ -8,6 +8,10 @@ defmodule Mongo.Connection do
   @timeout 5000
   @requestid_max 2147483648
   @write_concern ~w(w j fsync wtimeout)a
+  @insert_flags ~w(continue_on_error)a
+  @find_one_flags ~w(slave_ok exhaust partial)a
+  @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust
+                 partial)a
 
   def start_link(opts) do
     opts = Keyword.put_new(opts, :timeout,  @timeout)
@@ -101,14 +105,39 @@ defmodule Mongo.Connection do
     {:reply, :ok, %{s | database: database}}
   end
 
-  def handle_call({:find_one, coll, query, select}, from, s) do
-    {id, s} = new_command(:one, nil, from, s)
-    find_one(coll, query, select, s)
+  def handle_call({:find, coll, query, select, opts}, from, s) do
+    flags      = Keyword.take(opts, @find_flags)
+    num_skip   = Keyword.get(opts, :num_skip, 0)
+    num_return = Keyword.get(opts, :num_return, 0)
+    {id, s}    = new_command(:find_all, nil, from, s)
+
+    op_query(coll: namespace(coll, s), query: query, select: select,
+             num_skip: num_skip, num_return: num_return, flags: flags(flags))
+    |> send(id, s)
+    |> send_to_noreply
+  end
+
+  def handle_call({:get_more, coll, cursor_id, opts}, from, s) do
+    num_return = Keyword.get(opts, :num_return, 0)
+    {id, s}    = new_command(:get_more, nil, from, s)
+
+    op_get_more(coll: namespace(coll, s), cursor_id: cursor_id,
+                num_return: num_return)
+    |> send(id, s)
+    |> send_to_noreply
+  end
+
+  def handle_call({:find_one, coll, query, select, opts}, from, s) do
+    flags   = Keyword.take(opts, @find_one_flags)
+    {id, s} = new_command(:find_one, nil, from, s)
+
+    find_one(coll, query, select, flags(flags), s)
     |> send(id, s)
     |> send_to_noreply
   end
 
   def handle_call({:insert, coll, docs, opts}, from, s) do
+    opts = Keyword.take(opts, @insert_flags)
     insert_op = {-10, op_insert(coll: namespace(coll, s), docs: List.wrap(docs),
                                 flags: flags(opts))}
 
@@ -191,37 +220,51 @@ defmodule Mongo.Connection do
   end
 
   defp message(:auth, id, op_reply(docs: [%{"ok" => 0.0, "errmsg" => reason, "code" => code}]), s) do
-    reply_error(id, %Mongo.Error{message: "authentication failed: #{reason}", code: code}, s)
+    {:ok, reply(id, %Mongo.Error{message: "authentication failed: #{reason}", code: code}, s)}
   end
 
   defp message(:auth, id, op_reply(docs: []), s) do
-    reply_error(id, %Mongo.Error{message: "authentication failed"}, s)
+    {:ok, reply(id, %Mongo.Error{message: "authentication failed"}, s)}
   end
 
-  defp message(:one, id, op_reply(docs: docs), s) do
+  defp message(:find_all, id, op_reply(docs: docs, cursor_id: cursor_id), s) do
+    {:ok, reply(id, {:ok, cursor_id, docs}, s)}
+  end
+
+  defp message(:get_more, id, op_reply(flags: flags, docs: docs, cursor_id: cursor_id), s) do
+    if :cursor_not_found in flags do
+      reason = %Mongo.Error{message: "cursor not found"}
+      {:ok, reply(id, {:error, reason}, s)}
+    else
+      {:ok, reply(id, {:ok, cursor_id, docs}, s)}
+    end
+  end
+
+  defp message(:find_one, id, op_reply(docs: docs), s) do
     case docs do
-      [doc] -> {:ok, reply(doc, id, s)}
-      []    -> {:ok, reply(nil, id, s)}
+      [doc] -> {:ok, reply(id, doc, s)}
+      []    -> {:ok, reply(id, nil, s)}
     end
   end
 
   defp message(:insert, id, op_reply(docs: docs), s) do
     case docs do
       [%{"ok" => 1.0}] ->
-        s = reply(:ok, id, s)
+        s = reply(id, :ok, s)
       [%{"ok" => 0.0, "err" => reason, "code" => code}] ->
-        s = reply({:error, %Mongo.Error{message: reason, code: code}}, id, s)
+        s = reply(id, {:error, %Mongo.Error{message: reason, code: code}}, s)
     end
     {:ok, s}
   end
 
   defp failure(_state, id, op_reply(docs: [%{"$err" => reason, "code" => code }]), s) do
-    reply_error(id, %Mongo.Error{message: reason, code: code}, s)
+    {:ok, reply(id, %Mongo.Error{message: reason, code: code}, s)}
   end
 
-  defp find_one(coll, query, select, s) do
+  defp find_one(coll, query, select, opts \\ [], s) do
+    flags = Keyword.take(opts, @find_one_flags)
     op_query(coll: namespace(coll, s), query: query, select: select,
-             num_skip: 0, num_return: 1, flags: [])
+             num_skip: 0, num_return: 1, flags: flags(flags))
   end
 
   defp send(op, id, s) do
@@ -280,22 +323,7 @@ defmodule Mongo.Connection do
     put_in(s.queue[id].state, state)
   end
 
-  defp reply_error(id, error, s) do
-    command = Map.fetch(s.queue, id)
-    s = %{s | queue: Map.delete(s.queue, id)}
-
-    case command do
-      {:ok, %{from: nil}} ->
-        {:error, error, s}
-      {:ok, %{from: from}} ->
-        reply(error, from)
-        {:ok, s}
-      :error ->
-        {:error, error, s}
-    end
-  end
-
-  defp reply(reply, id, s) do
+  defp reply(id, reply, s) do
     case Map.fetch(s.queue, id) do
       {:ok, %{from: nil}}  -> :ok
       {:ok, %{from: from}} -> reply(reply, from)

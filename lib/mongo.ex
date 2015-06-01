@@ -1,8 +1,6 @@
 defmodule Mongo do
   # TODO: Timeout
 
-  @insert_flags ~w(continue_on_error)a
-
   @doc false
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
@@ -27,16 +25,19 @@ defmodule Mongo do
     GenServer.call(conn, {:database, database})
   end
 
-  def find(conn, coll, query, select, opts) do
-    GenServer.call(conn, {:find, coll, query, select})
+  def find(conn, coll, query, select, opts \\ []) do
+    GenServer.call(conn, {:find, coll, query, select, opts})
   end
 
-  def find_one(conn, coll, query, select) do
-    GenServer.call(conn, {:find_one, coll, query, select})
+  def get_more(conn, coll, cursor_id, opts \\ []) do
+    GenServer.call(conn, {:get_more, coll, cursor_id, opts})
+  end
+
+  def find_one(conn, coll, query, select, opts \\ []) do
+    GenServer.call(conn, {:find_one, coll, query, select, opts})
   end
 
   def insert(conn, coll, docs, opts \\ []) do
-    opts = Keyword.take(opts, @insert_flags)
     {insert, return} = assign_ids(docs, [])
 
     case GenServer.call(conn, {:insert, coll, insert, opts}) do

@@ -57,8 +57,9 @@ defmodule MongoTest do
     pid = connect_auth()
     coll = unique_name
 
-    assert {:ok, %{_id: id}} = Mongo.insert(pid, coll, %{foo: 42})
+    assert {:ok, %{_id: id}} = Mongo.insert(pid, coll, %{foo: 42, bar: 43})
     assert %{"_id" => ^id, "foo" => 42} = Mongo.find_one(pid, coll, %{foo: 42}, nil)
+    assert %{"_id" => ^id, "bar" => 43} = Mongo.find_one(pid, coll, %{}, %{bar: 43})
   end
 
   test "insert flags" do
@@ -67,5 +68,39 @@ defmodule MongoTest do
 
     assert {:ok, %{_id: _, foo: 42}} =
            Mongo.insert(pid, coll, %{foo: 42}, [continue_on_error: true])
+  end
+
+  test "find" do
+    pid = connect_auth()
+    coll = unique_name
+
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
+
+    assert {:ok, 0, [%{"foo" => 42}, %{"foo" => 43}]} =
+           Mongo.find(pid, coll, %{}, nil)
+    assert {:ok, _, [%{"foo" => 43}]} =
+           Mongo.find(pid, coll, %{}, nil, num_skip: 1)
+  end
+
+  test "find and get_more" do
+    pid = connect_auth()
+    coll = unique_name
+
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 44}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 45}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 46}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 47}, [])
+
+    assert {:ok, cursor_id, [%{"foo" => 42}, %{"foo" => 43}]} =
+           Mongo.find(pid, coll, %{}, nil, num_return: 2)
+    assert {:ok, ^cursor_id, [%{"foo" => 44}, %{"foo" => 45}]} =
+           Mongo.get_more(pid, coll, cursor_id, num_return: 2)
+    assert {:ok, ^cursor_id, [%{"foo" => 46}, %{"foo" => 47}]} =
+           Mongo.get_more(pid, coll, cursor_id, num_return: 2)
+    assert {:ok, 0, []} =
+           Mongo.get_more(pid, coll, cursor_id, num_return: 2)
   end
 end
