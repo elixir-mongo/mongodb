@@ -4,7 +4,7 @@ defmodule Mongo.Connection.Auth do
   import Mongo.Connection.Utils
 
   def setup(%{auth: nil, opts: opts} = s) do
-    database = opts[:database]
+    database = Keyword.fetch!(opts, :database)
     username = opts[:username]
     password = opts[:password]
     auth     = opts[:auth] || []
@@ -17,12 +17,8 @@ defmodule Mongo.Connection.Auth do
         {database, username, password}
       end)
 
-    if database && username && password do
+    if username && password do
       auth = auth ++ [{database, username, password}]
-    end
-
-    if auth != [] do
-      database = s.database || (auth |> List.last |> elem(0))
     end
 
     opts = Keyword.drop(opts, ~w(database username password auth)a)

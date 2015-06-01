@@ -57,7 +57,7 @@ defmodule Mongo do
   end
 
   def delete(conn, coll, query, opts \\ []) do
-    GenServer.call(conn, {:delete, coll, query, opts})
+    GenServer.call(conn, {:delete , coll, query, opts})
   end
 
   defp assign_ids([doc|tail], {insert_acc, return_acc}) do
