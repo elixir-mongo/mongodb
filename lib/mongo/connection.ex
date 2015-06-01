@@ -10,8 +10,8 @@ defmodule Mongo.Connection do
   @write_concern ~w(w j fsync wtimeout)a
   @insert_flags ~w(continue_on_error)a
   @find_one_flags ~w(slave_ok exhaust partial)a
-  @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust
-                 partial)a
+  @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust partial)a
+  @update_flags ~w(upsert multi)a
 
   def start_link(opts) do
     opts = Keyword.put_new(opts, :timeout,  @timeout)
@@ -143,21 +143,35 @@ defmodule Mongo.Connection do
   end
 
   def handle_call({:insert, coll, docs, opts}, from, s) do
-    opts = Keyword.take(opts, @insert_flags)
+    flags = Keyword.take(opts, @insert_flags)
     insert_op = {-10, op_insert(coll: namespace(coll, s), docs: List.wrap(docs),
-                                flags: flags(opts))}
+                                flags: flags(flags))}
 
     if s.write_concern.w == 0 do
       insert_op |> send(s) |> send_to_reply(:ok)
     else
-      {id, s} = new_command(:insert, nil, from, s)
+      {id, s} = new_command(:get_last_error, nil, from, s)
       command = Map.merge(%{getLastError: 1}, s.write_concern)
+      get_last_error = {id, find_one({:override, coll, "$cmd"}, command, nil, s)}
 
-      [insert_op,
-       {id, find_one({:override, coll, "$cmd"}, command, nil, s)}]
+      [insert_op, get_last_error]
       |> send(s)
       |> send_to_noreply
     end
+  end
+
+  def handle_call({:update, coll, query, update, opts}, from, s) do
+    flags = Keyword.take(opts, @update_flags)
+    update_op = {-12, op_update(coll: namespace(coll, s), query: query,
+                                update: update, flags: flags(flags))}
+
+    {id, s} = new_command(:get_last_error, nil, from, s)
+    command = Map.merge(%{getLastError: 1}, s.write_concern)
+    get_last_error = {id, find_one({:override, coll, "$cmd"}, command, nil, s)}
+
+    [update_op, get_last_error]
+    |> send(s)
+    |> send_to_noreply
   end
 
   @doc false
@@ -253,7 +267,7 @@ defmodule Mongo.Connection do
     end
   end
 
-  defp message(:insert, id, op_reply(docs: docs), s) do
+  defp message(:get_last_error, id, op_reply(docs: docs), s) do
     case docs do
       [%{"ok" => 1.0}] ->
         s = reply(id, :ok, s)
@@ -307,7 +321,7 @@ defmodule Mongo.Connection do
     |> Base.encode16(case: :lower)
   end
 
-
+  # TODO: Fix the terrible :override hack
   defp namespace({:override, {database, _}, coll}, _s),
     do: [database, ?. | coll]
   defp namespace({:override, _, coll}, s),

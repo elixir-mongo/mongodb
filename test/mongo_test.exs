@@ -119,4 +119,26 @@ defmodule MongoTest do
     assert {:error, %Mongo.Error{code: nil, message: "cursor not found"}} =
            Mongo.get_more(pid, coll, cursor_id)
   end
+
+  test "update" do
+    pid = connect_auth()
+    coll = unique_name
+
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
+    assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
+
+    assert :ok = Mongo.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: true)
+    assert {:ok, 0, [%{"foo" => 43}, %{"foo" => 44}]} =
+           Mongo.find(pid, coll, %{}, nil)
+
+    assert :ok = Mongo.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: false)
+    assert {:ok, 0, [%{"foo" => 44}, %{"foo" => 44}]} =
+           Mongo.find(pid, coll, %{}, nil)
+
+    assert :ok = Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: true)
+    assert {:ok, 0, [%{"bar" => 42}]} = Mongo.find(pid, coll, %{bar: 42}, nil)
+
+    assert :ok = Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: false)
+    assert {:ok, 0, []} = Mongo.find(pid, coll, %{bar: 0}, nil)
+  end
 end

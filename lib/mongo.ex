@@ -52,6 +52,10 @@ defmodule Mongo do
     end
   end
 
+  def update(conn, coll, query, update, opts \\ []) do
+    GenServer.call(conn, {:update, coll, query, update, opts})
+  end
+
   defp assign_ids([doc|tail], {insert_acc, return_acc}) do
     {insert, return} = assign_id(doc)
     assign_ids(tail, {[insert|insert_acc], [return|return_acc]})

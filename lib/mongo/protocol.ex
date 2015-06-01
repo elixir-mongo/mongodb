@@ -14,7 +14,7 @@ defmodule Mongo.Protocol do
 
   @flags %{
     upsert:            0x1,
-    multiupdate:       0x2,
+    multi:             0x2,
 
     continue_on_error: 0x1,
 
@@ -39,11 +39,11 @@ defmodule Mongo.Protocol do
   @header_size 4 * 4
 
   defrecordp :msg_header, [:length, :request_id, :response_to, :op_code]
-  defrecord  :op_update, [:coll, :flags, :select, :update]
+  defrecord  :op_update, [:coll, :flags, :query, :update]
   defrecord  :op_insert, [:flags, :coll, :docs]
   defrecord  :op_query, [:flags, :coll, :num_skip, :num_return, :query, :select]
   defrecord  :op_get_more, [:coll, :num_return, :cursor_id]
-  defrecord  :op_delete, [:coll, :flags, :select]
+  defrecord  :op_delete, [:coll, :flags, :query]
   defrecord  :op_kill_cursors, [:cursor_ids]
   defrecord  :op_reply, [:flags, :cursor_id, :from, :num, :docs]
 
@@ -70,9 +70,9 @@ defmodule Mongo.Protocol do
     end
   end
 
-  defp encode_op(op_update(coll: coll, flags: flags, select: select, update: update)) do
+  defp encode_op(op_update(coll: coll, flags: flags, query: query, update: update)) do
     [<<0x00::int32>>, coll, <<0x00, blit_flags(flags)::int32>>,
-     Encoder.document(select), Encoder.document(update)]
+     Encoder.document(query), Encoder.document(update)]
   end
 
   defp encode_op(op_insert(flags: flags, coll: coll, docs: docs)) do
@@ -91,9 +91,9 @@ defmodule Mongo.Protocol do
     [<<0x00::int32>>, coll | <<0x00, num_return::int32, cursor_id::int64>>]
   end
 
-  defp encode_op(op_delete(coll: coll, flags: flags, select: select)) do
+  defp encode_op(op_delete(coll: coll, flags: flags, query: query)) do
     [<<0x00::int32>>, coll, <<0x00, blit_flags(flags)::binary>> |
-     Encoder.document(select)]
+     Encoder.document(query)]
   end
 
   defp encode_op(op_kill_cursors(cursor_ids: ids)) do
