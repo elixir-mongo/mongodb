@@ -25,6 +25,7 @@ defmodule Mongo.Connection do
     timeout = opts[:timeout] || @timeout
 
     opts = opts
+           |> Keyword.put_new(:hostname, "localhost")
            |> Keyword.update!(:hostname, &to_char_list/1)
            |> Keyword.put_new(:port, 27017)
            |> Keyword.delete(:timeout)
