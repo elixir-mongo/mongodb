@@ -2,6 +2,7 @@ defmodule MongoTest do
   use MongoTest.Case, async: true
   alias Mongo
   alias Mongo.Connection
+  alias Mongo.ReadResult, as: Read
 
   defp connect do
     assert {:ok, pid} =
@@ -77,9 +78,9 @@ defmodule MongoTest do
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
 
-    assert {:ok, 0, [%{"foo" => 42}, %{"foo" => 43}]} =
+    assert {:ok, %Read{cursor_id: 0, from: 0, num: 2, docs: [%{"foo" => 42}, %{"foo" => 43}]}} =
            Mongo.find(pid, coll, %{}, nil)
-    assert {:ok, _, [%{"foo" => 43}]} =
+    assert {:ok, %Read{cursor_id: 0, from: 0, num: 1, docs: [%{"foo" => 43}]}} =
            Mongo.find(pid, coll, %{}, nil, num_skip: 1)
   end
 
@@ -94,13 +95,13 @@ defmodule MongoTest do
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 46}, [])
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 47}, [])
 
-    assert {:ok, cursor_id, [%{"foo" => 42}, %{"foo" => 43}]} =
+    assert {:ok, %Read{cursor_id: cursor_id, from: 0, docs: [%{"foo" => 42}, %{"foo" => 43}]}} =
            Mongo.find(pid, coll, %{}, nil, num_return: 2)
-    assert {:ok, ^cursor_id, [%{"foo" => 44}, %{"foo" => 45}]} =
+    assert {:ok, %Read{cursor_id: ^cursor_id, from: 2, docs: [%{"foo" => 44}, %{"foo" => 45}]}} =
            Mongo.get_more(pid, coll, cursor_id, num_return: 2)
-    assert {:ok, ^cursor_id, [%{"foo" => 46}, %{"foo" => 47}]} =
+    assert {:ok, %Read{cursor_id: ^cursor_id, from: 4, docs: [%{"foo" => 46}, %{"foo" => 47}]}} =
            Mongo.get_more(pid, coll, cursor_id, num_return: 2)
-    assert {:ok, 0, []} =
+    assert {:ok, %Read{cursor_id: 0, from: 6, docs: []}} =
            Mongo.get_more(pid, coll, cursor_id, num_return: 2)
   end
 
@@ -112,7 +113,7 @@ defmodule MongoTest do
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 44}, [])
 
-    assert {:ok, cursor_id, [_, _]} =
+    assert {:ok, %Read{cursor_id: cursor_id, num: 2}} =
            Mongo.find(pid, coll, %{}, nil, num_return: 2)
     assert :ok = Mongo.kill_cursors(pid, cursor_id)
 
@@ -128,18 +129,20 @@ defmodule MongoTest do
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
 
     assert :ok = Mongo.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: true)
-    assert {:ok, 0, [%{"foo" => 43}, %{"foo" => 44}]} =
+    assert {:ok, %Read{docs: [%{"foo" => 43}, %{"foo" => 44}]}} =
            Mongo.find(pid, coll, %{}, nil)
 
     assert :ok = Mongo.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: false)
-    assert {:ok, 0, [%{"foo" => 44}, %{"foo" => 44}]} =
+    assert {:ok, %Read{docs: [%{"foo" => 44}, %{"foo" => 44}]}} =
            Mongo.find(pid, coll, %{}, nil)
 
     assert :ok = Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: true)
-    assert {:ok, 0, [%{"bar" => 42}]} = Mongo.find(pid, coll, %{bar: 42}, nil)
+    assert {:ok, %Read{docs: [%{"bar" => 42}]}} =
+           Mongo.find(pid, coll, %{bar: 42}, nil)
 
     assert :ok = Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: false)
-    assert {:ok, 0, []} = Mongo.find(pid, coll, %{bar: 0}, nil)
+    assert {:ok, %Read{docs: []}} =
+           Mongo.find(pid, coll, %{bar: 0}, nil)
   end
 
   test "delete" do
@@ -152,11 +155,11 @@ defmodule MongoTest do
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
 
     assert :ok = Mongo.delete(pid, coll, %{foo: 42}, multi: false)
-    assert {:ok, 0, [_, _]} = Mongo.find(pid, coll, %{foo: 42}, nil)
+    assert {:ok, %Read{num: 2}} = Mongo.find(pid, coll, %{foo: 42}, nil)
 
     assert :ok = Mongo.delete(pid, coll, %{foo: 42}, multi: true)
-    assert {:ok, 0, []} = Mongo.find(pid, coll, %{foo: 42}, nil)
+    assert {:ok, %Read{num: 0}} = Mongo.find(pid, coll, %{foo: 42}, nil)
 
-    assert {:ok, 0, [_]} = Mongo.find(pid, coll, %{foo: 43}, nil)
+    assert {:ok, %Read{num: 1}} = Mongo.find(pid, coll, %{foo: 43}, nil)
   end
 end

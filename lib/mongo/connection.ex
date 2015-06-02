@@ -4,6 +4,7 @@ defmodule Mongo.Connection do
   import Mongo.Connection.Utils
   require Logger
   alias Mongo.Connection.Auth
+  alias Mongo.ReadResult
 
   @behaviour Connection
   @backoff 1000
@@ -269,16 +270,18 @@ defmodule Mongo.Connection do
     {:ok, reply(id, %Mongo.Error{message: "authentication failed"}, s)}
   end
 
-  defp message(:find_all, id, op_reply(docs: docs, cursor_id: cursor_id), s) do
-    {:ok, reply(id, {:ok, cursor_id, docs}, s)}
+  defp message(:find_all, id, op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num), s) do
+    result = %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}
+    {:ok, reply(id, {:ok, result}, s)}
   end
 
-  defp message(:get_more, id, op_reply(flags: flags, docs: docs, cursor_id: cursor_id), s) do
+  defp message(:get_more, id, op_reply(flags: flags, docs: docs, cursor_id: cursor_id, from: from, num: num), s) do
     if :cursor_not_found in flags do
       reason = %Mongo.Error{message: "cursor not found"}
       {:ok, reply(id, {:error, reason}, s)}
     else
-      {:ok, reply(id, {:ok, cursor_id, docs}, s)}
+      result = %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}
+      {:ok, reply(id, {:ok, result}, s)}
     end
   end
 
