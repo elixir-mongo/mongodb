@@ -7,6 +7,7 @@ version =
   version
   |> String.split(".")
   |> Enum.map(&elem(Integer.parse(&1), 0))
+  |> List.to_tuple
 
 {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase()')
 {_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase()')
