@@ -1,16 +1,25 @@
 ExUnit.start()
 
+{string, 0} = System.cmd("mongod", ~w'--version')
+["db version v" <> version, _] = String.split(string, "\n", parts: 2)
+
+version =
+  version
+  |> String.split(".")
+  |> Enum.map(&elem(Integer.parse(&1), 0))
+
 {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase()')
 {_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase()')
 
-# 2.4
-{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.addUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]})')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.addUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]})')
-
-# >2.6
-# {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.createUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]})')
-# {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.createUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]})')
-
+if version < {2, 6, 0} do
+  {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.addUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]})')
+  {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.addUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]})')
+else
+  {_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user")')
+  {_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user2")')
+  {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.createUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]})')
+  {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.createUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]})')
+end
 
 defmodule MongoTest.Case do
   use ExUnit.CaseTemplate
