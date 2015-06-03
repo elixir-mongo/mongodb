@@ -42,41 +42,30 @@ defmodule Mongo do
   end
 
   def insert(conn, coll, docs, opts \\ []) do
-    {insert, return} = assign_ids(docs, [])
-
-    case GenServer.call(conn, {:insert, coll, insert, opts}) do
-      :ok ->
-        {:ok, return}
-      {:error, _} = error ->
-        error
-    end
+    docs = assign_ids(docs)
+    GenServer.call(conn, {:insert, coll, docs, opts})
   end
 
   def update(conn, coll, query, update, opts \\ []) do
     GenServer.call(conn, {:update, coll, query, update, opts})
   end
 
-  def delete(conn, coll, query, opts \\ []) do
-    GenServer.call(conn, {:delete , coll, query, opts})
+  def remove(conn, coll, query, opts \\ []) do
+    GenServer.call(conn, {:remove , coll, query, opts})
   end
 
-  defp assign_ids([doc|tail], {insert_acc, return_acc}) do
-    {insert, return} = assign_id(doc)
-    assign_ids(tail, {[insert|insert_acc], [return|return_acc]})
+  defp assign_ids(doc) when is_map(doc) do
+    assign_id(doc)
   end
 
-  defp assign_ids([], {insert_acc, return_acc}) do
-    {Enum.reverse(insert_acc), Enum.reverse(return_acc)}
-  end
-
-  defp assign_ids(map, []) when is_map(map) do
-    assign_id(map)
+  defp assign_ids(list) when is_list(list) do
+    Enum.map(list, &assign_id/1)
   end
 
   defp assign_id(%{_id: value} = map) when value != nil,
-    do: {map, map}
+    do: map
   defp assign_id(%{"_id" => value} = map) when value != nil,
-    do: {map, map}
+    do: map
 
   defp assign_id(map) when is_map(map) do
     list = Map.to_list(map)
@@ -84,19 +73,14 @@ defmodule Mongo do
 
     case list do
       [{key, _}|_] when is_atom(key) ->
-        keyword = %BSON.Keyword{list: [{:_id, id}|list]}
-        map     = Map.put(map, :_id, id)
+        %BSON.Keyword{list: [{:_id, id}|list]}
 
       [{key, _}|_] when is_binary(key) ->
-        keyword = %BSON.Keyword{list: [{"_id", id}|list]}
-        map     = Map.put(map, :_id, id)
+        %BSON.Keyword{list: [{"_id", id}|list]}
 
       [] ->
         # Why are you inserting empty documents =(
-        keyword = %{"_id" => id}
-        map     = keyword
+        %{"_id" => id}
     end
-
-    {keyword, map}
   end
 end

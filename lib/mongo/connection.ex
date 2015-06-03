@@ -5,6 +5,7 @@ defmodule Mongo.Connection do
   require Logger
   alias Mongo.Connection.Auth
   alias Mongo.ReadResult
+  alias Mongo.WriteResult
 
   @behaviour Connection
   @backoff 1000
@@ -158,13 +159,14 @@ defmodule Mongo.Connection do
 
   def handle_call({:insert, coll, docs, opts}, from, s) do
     flags = Keyword.take(opts, @insert_flags)
-    insert_op = {-10, op_insert(coll: namespace(coll, s), docs: List.wrap(docs),
-                                flags: flags(flags))}
+    docs = List.wrap(docs)
+    insert_op = {-10, op_insert(coll: namespace(coll, s), docs: docs, flags: flags(flags))}
 
     if s.write_concern.w == 0 do
       insert_op |> send(s) |> send_to_reply(:ok)
     else
-      {get_last_error, s} = get_last_error(coll, from, s)
+      params = %{type: :insert, n: length(docs)}
+      {get_last_error, s} = get_last_error(coll, params, from, s)
 
       [insert_op, get_last_error]
       |> send(s)
@@ -177,19 +179,21 @@ defmodule Mongo.Connection do
     update_op = {-12, op_update(coll: namespace(coll, s), query: query,
                                 update: update, flags: flags(flags))}
 
-    {get_last_error, s} = get_last_error(coll, from, s)
+    params = %{type: :update}
+    {get_last_error, s} = get_last_error(coll, params, from, s)
 
     [update_op, get_last_error]
     |> send(s)
     |> send_to_noreply
   end
 
-  def handle_call({:delete, coll, query, opts}, from, s) do
+  def handle_call({:remove, coll, query, opts}, from, s) do
     flags = if Keyword.get(opts, :multi, false), do: [], else: [:single]
     delete_op = {-13, op_delete(coll: namespace(coll, s), query: query,
                                 flags: flags)}
 
-    {get_last_error, s} = get_last_error(coll, from, s)
+    params = %{type: :remove}
+    {get_last_error, s} = get_last_error(coll, params, from, s)
 
     [delete_op, get_last_error]
     |> send(s)
@@ -292,22 +296,38 @@ defmodule Mongo.Connection do
     end
   end
 
-  defp message(:get_last_error, id, op_reply(docs: docs), s) do
-    case docs do
-      [%{"ok" => 1.0}] ->
-        s = reply(id, :ok, s)
-      [%{"ok" => 0.0, "err" => reason, "code" => code}] ->
-        s = reply(id, {:error, %Mongo.Error{message: reason, code: code}}, s)
+  defp message(:get_last_error, id, op_reply(docs: [doc]), s) do
+    case doc do
+      %{"ok" => 1.0, "err" => nil} ->
+        params = s.queue[id].params
+        result = write_result(params, doc)
+        s = reply(id, {:ok, result}, s)
+
+      %{"ok" => 1.0, "err" => message, "code" => code} ->
+        s = reply(id, {:error, %Mongo.Error{message: message, code: code}}, s)
+
+      %{"ok" => 0.0, "errmsg" => message, "code" => code} ->
+        s = reply(id, {:error, %Mongo.Error{message: message, code: code}}, s)
     end
+
     {:ok, s}
   end
+
+  defp write_result(%{type: :insert, n: n}, _doc),
+    do: %WriteResult{type: :insert, num_inserted: n}
+  defp write_result(%{type: :update}, %{"n" => n, "upserted" => id}),
+    do: %WriteResult{type: :update, num_matched: n, upserted_id: id}
+  defp write_result(%{type: :update}, %{"n" => n, }),
+    do: %WriteResult{type: :update, num_matched: n}
+  defp write_result(%{type: :remove}, %{"n" => n}),
+    do: %WriteResult{type: :remove, num_matched: n, num_removed: n}
 
   defp failure(_command, id, op_reply(docs: [%{"$err" => reason, "code" => code }]), s) do
     {:ok, reply(id, %Mongo.Error{message: reason, code: code}, s)}
   end
 
-  defp get_last_error(coll, from, s) do
-    {id, s} = new_command(:get_last_error, nil, from, s)
+  defp get_last_error(coll, params, from, s) do
+    {id, s} = new_command(:get_last_error, params, from, s)
     command = Map.merge(%{getLastError: 1}, s.write_concern)
     op = op_query(coll: namespace({:override, coll, "$cmd"}, s), query: command,
                   select: nil, num_skip: 0, num_return: 1, flags: [])

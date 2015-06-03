@@ -3,6 +3,7 @@ defmodule MongoTest do
   alias Mongo
   alias Mongo.Connection
   alias Mongo.ReadResult, as: Read
+  alias Mongo.WriteResult, as: Write
 
   defp connect do
     assert {:ok, pid} =
@@ -58,16 +59,17 @@ defmodule MongoTest do
     pid = connect_auth()
     coll = unique_name
 
-    assert {:ok, %{_id: id}} = Mongo.insert(pid, coll, %{foo: 42, bar: 43})
-    assert %{"_id" => ^id, "foo" => 42} = Mongo.find_one(pid, coll, %{foo: 42}, nil)
-    assert %{"_id" => ^id, "bar" => 43} = Mongo.find_one(pid, coll, %{}, %{bar: 43})
+    assert {:ok, %Write{type: :insert, num_inserted: 1}} =
+           Mongo.insert(pid, coll, %{foo: 42, bar: 43})
+    assert %{"foo" => 42} = Mongo.find_one(pid, coll, %{foo: 42}, nil)
+    assert %{"bar" => 43} = Mongo.find_one(pid, coll, %{}, %{bar: 43})
   end
 
   test "insert flags" do
     pid = connect_auth()
     coll = unique_name
 
-    assert {:ok, %{_id: _, foo: 42}} =
+    assert {:ok, _} =
            Mongo.insert(pid, coll, %{foo: 42}, [continue_on_error: true])
   end
 
@@ -128,24 +130,28 @@ defmodule MongoTest do
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
 
-    assert :ok = Mongo.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: true)
+    assert {:ok, %Write{type: :update, num_matched: 2}} =
+           Mongo.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: true)
     assert {:ok, %Read{docs: [%{"foo" => 43}, %{"foo" => 44}]}} =
            Mongo.find(pid, coll, %{}, nil)
 
-    assert :ok = Mongo.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: false)
+    assert {:ok, %Write{type: :update, num_matched: 1}} =
+           Mongo.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: false)
     assert {:ok, %Read{docs: [%{"foo" => 44}, %{"foo" => 44}]}} =
            Mongo.find(pid, coll, %{}, nil)
 
-    assert :ok = Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: true)
+    assert {:ok, %Write{type: :update, num_matched: 1, upserted_id: %BSON.ObjectId{}}} =
+           Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: true)
     assert {:ok, %Read{docs: [%{"bar" => 42}]}} =
            Mongo.find(pid, coll, %{bar: 42}, nil)
 
-    assert :ok = Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: false)
+    assert {:ok, %Write{type: :update, num_matched: 0}} =
+           Mongo.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: false)
     assert {:ok, %Read{docs: []}} =
            Mongo.find(pid, coll, %{bar: 0}, nil)
   end
 
-  test "delete" do
+  test "remove" do
     pid = connect_auth()
     coll = unique_name
 
@@ -154,10 +160,12 @@ defmodule MongoTest do
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 43}, [])
 
-    assert :ok = Mongo.delete(pid, coll, %{foo: 42}, multi: false)
+    assert {:ok, %Write{num_matched: 1, num_removed: 1}} =
+           Mongo.remove(pid, coll, %{foo: 42}, multi: false)
     assert {:ok, %Read{num: 2}} = Mongo.find(pid, coll, %{foo: 42}, nil)
 
-    assert :ok = Mongo.delete(pid, coll, %{foo: 42}, multi: true)
+    assert {:ok, %Write{num_matched: 2, num_removed: 2}} =
+           Mongo.remove(pid, coll, %{foo: 42}, multi: true)
     assert {:ok, %Read{num: 0}} = Mongo.find(pid, coll, %{foo: 42}, nil)
 
     assert {:ok, %Read{num: 1}} = Mongo.find(pid, coll, %{foo: 43}, nil)
