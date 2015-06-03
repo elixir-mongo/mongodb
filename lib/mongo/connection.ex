@@ -53,10 +53,16 @@ defmodule Mongo.Connection do
     case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
       {:ok, socket} ->
         s = %{s | socket: socket}
+        # A suitable :buffer is only set if :recbuf is included in
+        # :socket_options.
+        {:ok, [sndbuf: sndbuf, recbuf: recbuf, buffer: buffer]} =
+          :inet.getopts(socket, [:sndbuf, :recbuf, :buffer])
+        buffer = buffer |> max(sndbuf) |> max(recbuf)
+        :ok = :inet.setopts(socket, buffer: buffer)
 
         case Auth.init(s) do
           :ok ->
-            :inet.setopts(socket, active: :once)
+            :ok = :inet.setopts(socket, active: :once)
             {:ok, s}
           {:error, reason} ->
             {:stop, reason, s}

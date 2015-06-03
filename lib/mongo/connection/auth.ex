@@ -30,7 +30,7 @@ defmodule Mongo.Connection.Auth do
       case inactive_auth(opts, s) do
         :ok ->
           nil
-        {:error, _} = error ->
+        error ->
           error
       end
     end) || :ok
