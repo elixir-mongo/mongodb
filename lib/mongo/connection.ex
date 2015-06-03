@@ -8,8 +8,6 @@ defmodule Mongo.Connection do
   alias Mongo.WriteResult
 
   @behaviour Connection
-  @backoff 1000
-  @timeout 5000
   @requestid_max 2147483648
   @write_concern ~w(w j fsync wtimeout)a
   @insert_flags ~w(continue_on_error)a
@@ -18,18 +16,18 @@ defmodule Mongo.Connection do
   @update_flags ~w(upsert multi)a
 
   def start_link(opts) do
-    opts = Keyword.put_new(opts, :timeout,  @timeout)
     Connection.start_link(__MODULE__, opts)
   end
 
   @doc false
   def init(opts) do
-    timeout = opts[:timeout] || @timeout
+    timeout = opts[:timeout] || 5000
 
     opts = opts
            |> Keyword.put_new(:hostname, "localhost")
            |> Keyword.update!(:hostname, &to_char_list/1)
            |> Keyword.put_new(:port, 27017)
+           |> Keyword.put_new(:backoff, 1000)
            |> Keyword.delete(:timeout)
 
     {write_concern, opts} = Keyword.split(opts, @write_concern)
@@ -64,12 +62,12 @@ defmodule Mongo.Connection do
             {:stop, reason, s}
           {:tcp_error, reason} ->
             Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
-            {:backoff, @backoff, s}
+            {:backoff, s.opts[:backoff], s}
         end
 
       {:error, reason} ->
         Logger.error "Mongo connect error (#{host}:#{port}): #{format_error(reason)}"
-        {:backoff, @backoff, s}
+        {:backoff, s.opts[:backoff], s}
     end
   end
 
