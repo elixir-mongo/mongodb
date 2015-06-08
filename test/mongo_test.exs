@@ -42,7 +42,7 @@ defmodule MongoTest do
 
     capture_log fn ->
       assert {:ok, pid} = Connection.start_link(opts)
-      assert_receive {:EXIT, ^pid, %Mongo.Error{code: 18, message: "auth failed" <> _}}
+      assert_receive {:EXIT, ^pid, %Mongo.Error{code: 18}}
     end
   end
 

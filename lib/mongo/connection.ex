@@ -21,6 +21,7 @@ defmodule Mongo.Connection do
 
   @doc false
   def init(opts) do
+    :random.seed(:os.timestamp)
     timeout = opts[:timeout] || 5000
 
     opts = opts
@@ -50,7 +51,7 @@ defmodule Mongo.Connection do
 
     case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
       {:ok, socket} ->
-        s = %{s | socket: socket}
+        s = %{s | socket: socket, tail: ""}
         # A suitable :buffer is only set if :recbuf is included in
         # :socket_options.
         {:ok, [sndbuf: sndbuf, recbuf: recbuf, buffer: buffer]} =
@@ -58,7 +59,7 @@ defmodule Mongo.Connection do
         buffer = buffer |> max(sndbuf) |> max(recbuf)
         :ok = :inet.setopts(socket, buffer: buffer)
 
-        case Auth.init(s) do
+        case init_connection(s) do
           :ok ->
             :ok = :inet.setopts(socket, active: :once)
             {:ok, s}
@@ -72,6 +73,16 @@ defmodule Mongo.Connection do
       {:error, reason} ->
         Logger.error "Mongo connect error (#{host}:#{port}): #{format_error(reason)}"
         {:backoff, s.opts[:backoff], s}
+    end
+  end
+
+  defp init_connection(s) do
+    case sync_command(-1, s.database, [ismaster: 1], s) do
+      {:ok, %{"ok" => 1.0} = reply} ->
+        s = %{s | wire_version: reply["maxWireVersion"] || 0}
+        Auth.run(s)
+      {:tcp_error, _} = error ->
+        error
     end
   end
 
@@ -230,8 +241,13 @@ defmodule Mongo.Connection do
   end
 
   defp new_data(data, %{tail: tail} = s) do
+    # NOTE: This can be optimized by building an iolist and only concat to
+    #       a binary when we know we have enough data according to the
+    #       message header.
     data = tail <> data
 
+    # Also note that this is re-parsing the message header every time
+    # on new data
     case decode(data) do
       {:ok, id, reply, tail} ->
         command = s.queue[id][:command]

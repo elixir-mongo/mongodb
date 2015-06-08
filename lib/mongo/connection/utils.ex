@@ -2,14 +2,23 @@ defmodule Mongo.Connection.Utils do
   @moduledoc false
   import Mongo.Protocol
 
-  def digest(nonce, username, password) do
-    :crypto.hash(:md5, [nonce, username, digest_password(username, password)])
-    |> Base.encode16(case: :lower)
-  end
-
-  def digest_password(username, password) do
-    :crypto.hash(:md5, [username, ":mongo:", password])
-    |> Base.encode16(case: :lower)
+  def sync_command(id, database, command, s) do
+    op = op_query(coll: namespace({database, "$cmd"}, s), query: command,
+                  select: nil, num_skip: 0, num_return: 1, flags: [])
+    case send(op, id, s) do
+      {:ok, s} ->
+        case sync_recv(s) do
+          {:ok, ^id, reply} ->
+            case reply do
+              op_reply(docs: [doc]) -> {:ok, doc}
+              op_reply(docs: [])    -> {:ok, nil}
+            end
+          {:tcp_error, _} = error ->
+            error
+        end
+      {:error, reason} ->
+        {:tcp_error, reason}
+    end
   end
 
   def send(op, id, s) do
@@ -45,4 +54,30 @@ defmodule Mongo.Connection.Utils do
     do: [database, ?. | coll]
   def namespace(coll, s),
     do: [s.database, ?. | coll]
+
+  def digest(nonce, username, password) do
+    :crypto.hash(:md5, [nonce, username, digest_password(username, password)])
+    |> Base.encode16(case: :lower)
+  end
+
+  def digest_password(username, password) do
+    :crypto.hash(:md5, [username, ":mongo:", password])
+    |> Base.encode16(case: :lower)
+  end
+
+  defp sync_recv(tail \\ "", s) do
+    case :gen_tcp.recv(s.socket, 0, s.timeout) do
+      {:ok, data} ->
+        data = tail <> data
+        case decode(data) do
+          {:ok, id, reply, ""} ->
+            {:ok, id, reply}
+          :error ->
+            sync_recv(data, s)
+        end
+
+      {:error, reason} ->
+        {:tcp_error, reason}
+    end
+  end
 end
