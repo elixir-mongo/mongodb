@@ -73,10 +73,10 @@ defmodule Mongo do
 
     case list do
       [{key, _}|_] when is_atom(key) ->
-        %BSON.Keyword{list: [{:_id, id}|list]}
+        [{:_id, id}|list]
 
       [{key, _}|_] when is_binary(key) ->
-        %BSON.Keyword{list: [{"_id", id}|list]}
+        [{"_id", id}|list]
 
       [] ->
         # Why are you inserting empty documents =(

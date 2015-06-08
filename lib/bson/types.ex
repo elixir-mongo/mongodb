@@ -1,5 +1,5 @@
 defmodule BSON.Binary do
-  defstruct [:binary, :subtype]
+  defstruct [binary: nil, subtype: :generic]
 end
 
 defmodule BSON.ObjectId do
@@ -28,9 +28,4 @@ end
 
 defmodule BSON.Timestamp do
   defstruct [:value]
-end
-
-defmodule BSON.Keyword do
-  @moduledoc false
-  defstruct [:list]
 end

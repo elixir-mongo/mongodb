@@ -31,13 +31,11 @@ defmodule Mongo.Connection do
            |> Keyword.delete(:timeout)
 
     {write_concern, opts} = Keyword.split(opts, @write_concern)
+    write_concern = Keyword.put_new(write_concern, :w, 1)
 
-    write_concern = Enum.into(write_concern, %{})
-                    |> Map.put_new(:w, 1)
-
-    s = %{socket: nil, auth: nil, tail: "", queue: %{}, request_id: 0,
-          opts: opts, database: nil, timeout: timeout,
-          write_concern: write_concern}
+    s = %{socket: nil, auth: nil, tail: nil, queue: %{}, request_id: 0, opts: opts,
+          database: nil, timeout: timeout, write_concern: write_concern,
+          wire_version: nil}
 
     s = Auth.setup(s)
     {:connect, :init, s}
@@ -163,10 +161,10 @@ defmodule Mongo.Connection do
 
   def handle_call({:insert, coll, docs, opts}, from, s) do
     flags = Keyword.take(opts, @insert_flags)
-    docs = List.wrap(docs)
+    docs = doc_wrap(docs)
     insert_op = {-10, op_insert(coll: namespace(coll, s), docs: docs, flags: flags(flags))}
 
-    if s.write_concern.w == 0 do
+    if s.write_concern[:w] == 0 do
       insert_op |> send(s) |> send_to_reply(:ok)
     else
       params = %{type: :insert, n: length(docs)}
@@ -332,7 +330,7 @@ defmodule Mongo.Connection do
 
   defp get_last_error(coll, params, from, s) do
     {id, s} = new_command(:get_last_error, params, from, s)
-    command = Map.merge(%{getLastError: 1}, s.write_concern)
+    command = [{:getLastError, 1}|s.write_concern]
     op = op_query(coll: namespace({:override, coll, "$cmd"}, s), query: command,
                   select: nil, num_skip: 0, num_return: 1, flags: [])
 
@@ -386,4 +384,11 @@ defmodule Mongo.Connection do
       {_flag, false}, acc -> acc
     end)
   end
+
+  defp doc_wrap(%{} = doc),
+    do: [doc]
+  defp doc_wrap([{_, _}|_] = doc),
+    do: [doc]
+  defp doc_wrap(list) when is_list(list),
+    do: list
 end

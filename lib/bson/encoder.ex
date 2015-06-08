@@ -42,18 +42,21 @@ defmodule BSON.Encoder do
   def encode(%BSON.Timestamp{value: value}),
     do: <<value::int64>>
 
-  def encode(%BSON.Keyword{list: list}),
-    do: document(list)
+  def encode([]) do
+    document([])
+  end
+
+  def encode([{_, _} | _] = value) do
+    document(value)
+  end
+
+  def encode(value) when is_list(value) do
+    array(value, 0)
+    |> document
+  end
 
   def encode(value) when is_map(value),
     do: document(value)
-
-  def encode(value) when is_list(value) do
-    # TODO: No Stream
-    Stream.with_index(value)
-    |> Stream.map(fn {v, ix} -> {Integer.to_string(ix), v} end)
-    |> document
-  end
 
   def encode(value) when is_atom(value),
     do: encode(Atom.to_string(value))
@@ -69,9 +72,6 @@ defmodule BSON.Encoder do
 
   def encode(value) when is_int64(value),
     do: <<value::int64>>
-
-  def document(%BSON.Keyword{list: list}),
-    do: document(list)
 
   def document(doc) do
     {_, iodata} =
@@ -104,6 +104,11 @@ defmodule BSON.Encoder do
     do: {:atom, cstring(Atom.to_string(value))}
   defp key(value) when is_binary(value),
     do: {:binary, cstring(value)}
+
+  defp array([], _ix),
+    do: []
+  defp array([hd|tl], ix) when not is_tuple(hd),
+    do: [{Integer.to_string(ix), hd} | array(tl, ix+1)]
 
   defp invalid_doc do
     message = "Invalid document containing atom and string keys"
