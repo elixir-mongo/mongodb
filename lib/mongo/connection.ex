@@ -19,6 +19,10 @@ defmodule Mongo.Connection do
     Connection.start_link(__MODULE__, opts)
   end
 
+  def stop(conn) do
+    Connection.cast(conn, :stop)
+  end
+
   @doc false
   def init(opts) do
     :random.seed(:os.timestamp)
@@ -106,7 +110,20 @@ defmodule Mongo.Connection do
     {:backoff, 0, %{s | socket: nil, queue: %{}}}
   end
 
+  def disconnect(:close, %{socket: nil} = s) do
+    {:stop, :normal, s}
+  end
+
+  def disconnect(:close, %{socket: socket} = s) do
+    :gen_tcp.close(socket)
+    {:stop, :normal, %{s | socket: nil}}
+  end
+
   @doc false
+  def handle_cast(:stop, s) do
+    {:disconnect, :close, s}
+  end
+
   def handle_cast(msg, _) do
     exit({:bad_cast, msg})
   end
