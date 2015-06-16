@@ -65,23 +65,36 @@ defmodule MongoTest do
     assert %{"bar" => 43} = Mongo.find_one(pid, coll, %{}, %{bar: 43})
   end
 
-  test "insert" do
+  test "insert without assigned id" do
     pid = connect_auth()
     coll = unique_name
 
     assert {:ok, _} = Mongo.insert(pid, coll, %{})
     assert {:ok, _} = Mongo.insert(pid, coll, %{foo: 42})
     assert {:ok, _} = Mongo.insert(pid, coll, %{"foo" => 42})
-    assert {:ok, _} = Mongo.insert(pid, coll, %{_id: 111, foo: 42})
-    assert {:ok, _} = Mongo.insert(pid, coll, %{"_id" => 222, "foo" => 42})
     assert {:ok, _} = Mongo.insert(pid, coll, [%{foo: 42}])
 
     # Empty document is always treated as an empty collection
     assert {:ok, _} = Mongo.insert(pid, coll, foo: 42)
     assert {:ok, _} = Mongo.insert(pid, coll, [{"foo", 42}])
-    assert {:ok, _} = Mongo.insert(pid, coll, _id: 333, foo: 42)
-    assert {:ok, _} = Mongo.insert(pid, coll, [{"_id", 444}, {"foo", 42}])
     assert {:ok, _} = Mongo.insert(pid, coll, [[foo: 42]])
+  end
+
+  test "insert with assigned id" do
+    pid = connect_auth()
+    coll = unique_name
+
+    assert {:ok, _} = Mongo.insert(pid, coll, %{_id: 111, foo: 42})
+    assert %{"foo" => 42} = Mongo.find_one(pid, coll, %{_id: 111}, nil)
+
+    assert {:ok, _} = Mongo.insert(pid, coll, %{"_id" => 222, "foo" => 43})
+    assert %{"foo" => 43} = Mongo.find_one(pid, coll, %{_id: 222}, nil)
+
+    assert {:ok, _} = Mongo.insert(pid, coll, _id: 333, foo: 44)
+    assert %{"foo" => 44} = Mongo.find_one(pid, coll, %{_id: 333}, nil)
+
+    assert {:ok, _} = Mongo.insert(pid, coll, [{"_id", 444}, {"foo", 45}])
+    assert %{"foo" => 45} = Mongo.find_one(pid, coll, %{_id: 444}, nil)
   end
 
   test "insert flags" do

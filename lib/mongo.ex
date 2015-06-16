@@ -74,11 +74,9 @@ defmodule Mongo do
   defp assign_id([{_, _} | _] = keyword) do
     case Keyword.take(keyword, [:_id, "_id"]) do
       [{_key, value} | _] when value != nil ->
-        add_id(keyword)
+        keyword
       [] ->
         add_id(keyword)
-      _ ->
-        keyword
     end
   end
 
@@ -90,7 +88,7 @@ defmodule Mongo do
     add_id(doc, Mongo.IdServer.new)
   end
   defp add_id([{key, _}|_] = list, id) when is_atom(key) do
-    [{:id, id}|list]
+    [{:_id, id}|list]
   end
   defp add_id([{key, _}|_] = list, id) when is_binary(key) do
     [{"_id", id}|list]
