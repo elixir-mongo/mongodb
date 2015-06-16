@@ -58,6 +58,10 @@ defmodule Mongo do
     assign_id(doc)
   end
 
+  defp assign_ids([{_, _} | _] = doc) do
+    assign_id(doc)
+  end
+
   defp assign_ids(list) when is_list(list) do
     Enum.map(list, &assign_id/1)
   end
@@ -67,20 +71,32 @@ defmodule Mongo do
   defp assign_id(%{"_id" => value} = map) when value != nil,
     do: map
 
-  defp assign_id(map) when is_map(map) do
-    list = Map.to_list(map)
-    id   = Mongo.IdServer.new
-
-    case list do
-      [{key, _}|_] when is_atom(key) ->
-        [{:_id, id}|list]
-
-      [{key, _}|_] when is_binary(key) ->
-        [{"_id", id}|list]
-
+  defp assign_id([{_, _} | _] = keyword) do
+    case Keyword.take(keyword, [:_id, "_id"]) do
+      [{_key, value} | _] when value != nil ->
+        add_id(keyword)
       [] ->
-        # Why are you inserting empty documents =(
-        %{"_id" => id}
+        add_id(keyword)
+      _ ->
+        keyword
     end
+  end
+
+  defp assign_id(map) when is_map(map) do
+    map |> Map.to_list |> add_id
+  end
+
+  defp add_id(doc) do
+    add_id(doc, Mongo.IdServer.new)
+  end
+  defp add_id([{key, _}|_] = list, id) when is_atom(key) do
+    [{:id, id}|list]
+  end
+  defp add_id([{key, _}|_] = list, id) when is_binary(key) do
+    [{"_id", id}|list]
+  end
+  defp add_id([], id) do
+    # Why are you inserting empty documents =(
+    %{"_id" => id}
   end
 end
