@@ -130,6 +130,7 @@ defmodule BSON.Encoder do
   defp type(value) when is_atom(value),     do: @type_string
   defp type(value) when is_binary(value),   do: @type_string
   defp type(value) when is_map(value),      do: @type_document
+  defp type([{_,_}|_]),                     do: @type_document
   defp type(value) when is_list(value),     do: @type_array
   defp type(value) when is_int32(value),    do: @type_int32
   defp type(value) when is_int64(value),    do: @type_int64

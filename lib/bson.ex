@@ -3,6 +3,10 @@ defmodule BSON do
     BSON.Encoder.encode(map)
   end
 
+  def encode([{_, _}|_] = keyword) do
+    BSON.Encoder.encode(keyword)
+  end
+
   def decode(binary) when is_binary(binary) do
     BSON.Decoder.decode(binary)
   end
