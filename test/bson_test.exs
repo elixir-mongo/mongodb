@@ -118,6 +118,16 @@ defmodule BSONTest do
     assert decode(@bin20) == @map20
   end
 
+  test "keywords" do
+    keyword = [set: [title: "x"]]
+    map     = %{"set" => %{"title" => "x"}}
+    encoded = <<28, 0, 0, 0, 3, 115, 101, 116, 0, 18, 0, 0, 0, 2, 116, 105, 116, 108, 101, 0, 2, 0, 0, 0, 120, 0, 0, 0>>
+
+    assert encode(keyword) == encoded
+    assert encode(map)     == encoded
+    assert decode(encoded) == map
+  end
+
   test "encode atom" do
     assert encode(%{hello: "world"}) == @bin1
   end
