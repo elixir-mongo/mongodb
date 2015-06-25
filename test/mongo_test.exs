@@ -39,4 +39,18 @@ defmodule Mongo.Test do
     assert [%{"foo" => 42}] = Mongo.aggregate(Pool, coll, [], batch_size: 1) |> Enum.take(1)
     assert [%{"foo" => 45}] = Mongo.aggregate(Pool, coll, [], batch_size: 1) |> Enum.drop(3)
   end
+
+  test "count" do
+    coll = unique_name
+
+    assert 0 = Mongo.count(Pool, coll, [])
+
+    Pool.transaction(fn pid->
+      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
+      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
+    end)
+
+    assert 2 = Mongo.count(Pool, coll, [])
+    assert 1 = Mongo.count(Pool, coll, %{foo: 42})
+  end
 end

@@ -1,6 +1,5 @@
 defmodule Mongo do
-  # alias Mongo.Pool
-  # alias Mongo.Connection
+  alias Mongo.Connection
   alias Mongo.SinglyCursor
   alias Mongo.AggregationCursor
 
@@ -33,12 +32,40 @@ defmodule Mongo do
       query = query ++ [cursor: filter_nils(cursor)]
     end
 
-    opts = Keyword.drop(opts, [:allow_disk_use, :max_time, :use_cursor])
+    opts = Keyword.drop(opts, ~w(allow_disk_use max_time use_cursor)a)
 
     if cursor? do
       aggregation_cursor(pool, "$cmd", query, nil, opts)
     else
       singly_cursor(pool, "$cmd", query, nil, opts)
+    end
+  end
+
+  def count(pool, coll, filter, opts \\ []) do
+    query = [
+      count: coll,
+      query: filter,
+      limit: opts[:limit],
+      skip: opts[:skip],
+      hint: opts[:hint]
+    ] |> filter_nils
+
+    opts = Keyword.drop(opts, ~w(limit skip hint))
+
+    runCommand(pool, query, opts)["n"]
+  end
+
+  def runCommand(pool, query, opts \\ []) do
+    result =
+      pool.transaction(fn pid ->
+        Connection.find_one(pid, "$cmd", query, [], [num_return: -1] ++ opts)
+      end)
+
+    case result do
+      %{"ok" => 1.0} = doc ->
+        doc
+      %{"ok" => 0.0, "errmsg" => reason, "code" => code} ->
+        raise %Mongo.Error{message: "runCommand failed: #{reason}", code: code}
     end
   end
 

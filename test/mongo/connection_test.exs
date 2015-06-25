@@ -1,4 +1,4 @@
-defmodule Mongo.CollectionTest do
+defmodule Mongo.ConnectionTest do
   use MongoTest.Case, async: true
   alias Mongo.Connection
   alias Mongo.ReadResult, as: Read
