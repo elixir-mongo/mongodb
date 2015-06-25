@@ -23,6 +23,95 @@ defmodule Mongo.Connection do
     Connection.cast(conn, :stop)
   end
 
+  def auth(conn, database, username, password) do
+    GenServer.call(conn, {:auth, database, username, password})
+  end
+
+  def database(conn) do
+    GenServer.call(conn, :database)
+  end
+
+  def database(conn, database) do
+    GenServer.call(conn, {:database, database})
+  end
+
+  def find(conn, coll, query, select, opts \\ []) do
+    GenServer.call(conn, {:find, coll, query, select, opts})
+  end
+
+  def get_more(conn, coll, cursor_id, opts \\ []) do
+    GenServer.call(conn, {:get_more, coll, cursor_id, opts})
+  end
+
+  def kill_cursors(conn, cursor_ids) do
+    GenServer.call(conn, {:kill_cursors, List.wrap(cursor_ids)})
+  end
+
+  def find_one(conn, coll, query, select, opts \\ []) do
+    GenServer.call(conn, {:find_one, coll, query, select, opts})
+  end
+
+  def insert(conn, coll, docs, opts \\ []) do
+    docs = assign_ids(docs)
+    GenServer.call(conn, {:insert, coll, docs, opts})
+  end
+
+  def update(conn, coll, query, update, opts \\ []) do
+    GenServer.call(conn, {:update, coll, query, update, opts})
+  end
+
+  def remove(conn, coll, query, opts \\ []) do
+    GenServer.call(conn, {:remove , coll, query, opts})
+  end
+
+  def wire_version(conn) do
+    GenServer.call(conn, :wire_version)
+  end
+
+  defp assign_ids(doc) when is_map(doc) do
+    assign_id(doc)
+  end
+
+  defp assign_ids([{_, _} | _] = doc) do
+    assign_id(doc)
+  end
+
+  defp assign_ids(list) when is_list(list) do
+    Enum.map(list, &assign_id/1)
+  end
+
+  defp assign_id(%{_id: value} = map) when value != nil,
+    do: map
+  defp assign_id(%{"_id" => value} = map) when value != nil,
+    do: map
+
+  defp assign_id([{_, _} | _] = keyword) do
+    case Keyword.take(keyword, [:_id, "_id"]) do
+      [{_key, value} | _] when value != nil ->
+        keyword
+      [] ->
+        add_id(keyword)
+    end
+  end
+
+  defp assign_id(map) when is_map(map) do
+    map |> Map.to_list |> add_id
+  end
+
+  defp add_id(doc) do
+    add_id(doc, Mongo.IdServer.new)
+  end
+  defp add_id([{key, _}|_] = list, id) when is_atom(key) do
+    [{:_id, id}|list]
+  end
+  defp add_id([{key, _}|_] = list, id) when is_binary(key) do
+    [{"_id", id}|list]
+  end
+  defp add_id([], id) do
+    # Why are you inserting empty documents =(
+    %{"_id" => id}
+  end
+
   @doc false
   def init(opts) do
     :random.seed(:os.timestamp)
@@ -64,8 +153,9 @@ defmodule Mongo.Connection do
         :ok = :inet.setopts(socket, buffer: buffer)
 
         case init_connection(s) do
-          :ok ->
+          {:ok, s} ->
             :ok = :inet.setopts(socket, active: :once)
+            connect_hook(s)
             {:ok, s}
           {:error, reason} ->
             {:stop, reason, s}
@@ -81,12 +171,20 @@ defmodule Mongo.Connection do
   end
 
   defp init_connection(s) do
+    # wire version
+    # https://github.com/mongodb/mongo/blob/master/src/mongo/db/wire_version.h
     case sync_command(-1, s.database, [ismaster: 1], s) do
       {:ok, %{"ok" => 1.0} = reply} ->
         s = %{s | wire_version: reply["maxWireVersion"] || 0}
         Auth.run(s)
       {:tcp_error, _} = error ->
         error
+    end
+  end
+
+  defp connect_hook(s) do
+    if pid = s.opts[:on_connect] do
+      Kernel.send(pid, {__MODULE__, :on_connect, self})
     end
   end
 
@@ -135,7 +233,7 @@ defmodule Mongo.Connection do
 
   def handle_call({:auth, database, username, password}, from, s) do
     {id, s} = new_command(:nonce, {database, username, password}, from, s)
-    op_query(coll: namespace({database, "$cmd"}, s), query: %{getnonce: 1},
+    op_query(coll: namespace({database, "$cmd"}, s), query: [getnonce: 1],
              select: nil, num_skip: 0, num_return: 1, flags: [])
     |> send(id, s)
     |> send_to_noreply
@@ -153,7 +251,7 @@ defmodule Mongo.Connection do
     flags      = Keyword.take(opts, @find_flags)
     num_skip   = Keyword.get(opts, :num_skip, 0)
     num_return = Keyword.get(opts, :num_return, 0)
-    {id, s}    = new_command(:find_all, nil, from, s)
+    {id, s}    = new_command(:find, nil, from, s)
 
     op_query(coll: namespace(coll, s), query: query, select: select,
              num_skip: num_skip, num_return: num_return, flags: flags(flags))
@@ -228,6 +326,10 @@ defmodule Mongo.Connection do
     [delete_op, get_last_error]
     |> send(s)
     |> send_to_noreply
+  end
+
+  def handle_call(:wire_version, _from, s) do
+    {:reply, s.wire_version, s}
   end
 
   @doc false
@@ -309,7 +411,7 @@ defmodule Mongo.Connection do
     {:ok, reply(id, %Mongo.Error{message: "authentication failed"}, s)}
   end
 
-  defp message(:find_all, id, op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num), s) do
+  defp message(:find, id, op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num), s) do
     result = %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}
     {:ok, reply(id, {:ok, result}, s)}
   end

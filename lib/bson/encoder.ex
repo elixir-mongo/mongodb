@@ -111,7 +111,7 @@ defmodule BSON.Encoder do
     do: [{Integer.to_string(ix), hd} | array(tl, ix+1)]
 
   defp invalid_doc do
-    message = "Invalid document containing atom and string keys"
+    message = "invalid document containing atom and string keys"
     raise ArgumentError, message: message
   end
 

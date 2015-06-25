@@ -50,6 +50,8 @@ defmodule Mongo.Connection.Utils do
     do: [database, ?. | coll]
   def namespace({:override, _, coll}, s),
     do: [s.database, ?. | coll]
+  def namespace({:override, coll}, _s),
+    do: coll
   def namespace({database, coll}, _s),
     do: [database, ?. | coll]
   def namespace(coll, s),

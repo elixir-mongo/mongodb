@@ -5,29 +5,25 @@ Mongodb
 
 ## Immediate Roadmap
 
+  * Remove database override and multi-auth
   * Documentation
   * Move low-level API to `Connection` and have `Mongo` be the next-gen driver API
     - Split database and collection actions?
   * Implement Inspect protocol for BSON types
   * Move BSON encoding to client process
   * Replica sets
-  * New 3.0 authentication
+    - Block in client (and timeout) when waiting for new primary selection
   * New 2.6 write queries and bulk writes
   * Cursors
   * Reconnect backoffs with https://github.com/ferd/backoff
+  * Lazy connect
 
 ## Tentative Roadmap
 
   * SSL
   * Use meta-driver test suite
   * Smarter pooling
-    - A single connection can serve multiple requests concurrently so traditional
-      pooling (like poolboy) a where single process takes exclusive access of a
-      connection may not fit. Furthermore it is not ideal that long running
-      cursors reserves a connection from the pool for the cursor's full duration.
-      Pooling libraries such as sbroker allows a connection to serve multiple
-      requests, ideally it would be combined with a dispatcher that selects an
-      appropriate connection based on its internal queue.
+    - A single connection can serve multiple requests concurrently so traditional pooling (like poolboy) a where single process takes exclusive access of a connection may not fit. Furthermore it is not ideal that long running cursors reserves a connection from the pool for the cursor's full duration. Pooling libraries such as sbroker allows a connection to serve multiple requests, ideally it would be combined with a dispatcher that selects an appropriate connection based on its internal queue.
   * Server selection / Read preference
     - https://www.mongodb.com/blog/post/server-selection-next-generation-mongodb-drivers
     - http://docs.mongodb.org/manual/reference/read-preference

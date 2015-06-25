@@ -33,7 +33,7 @@ defmodule Mongo.Connection.Auth do
         error ->
           error
       end
-    end) || :ok
+    end) || {:ok, s}
   end
 
   defp mechanism(%{wire_version: version}) when version >= 3,
