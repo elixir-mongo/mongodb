@@ -50,7 +50,22 @@ defmodule Mongo.Test do
       assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
     end)
 
-    assert 2 = Mongo.count(Pool, coll, [])
+    assert 2 = Mongo.count(Pool, coll, %{})
     assert 1 = Mongo.count(Pool, coll, %{foo: 42})
+  end
+
+  test "distinct" do
+    coll = unique_name
+
+    assert [] = Mongo.distinct(Pool, coll, "foo", %{})
+
+    Pool.transaction(fn pid->
+      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
+      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
+      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
+    end)
+
+    assert [42, 43] = Mongo.distinct(Pool, coll, "foo", %{})
+    assert [42]     = Mongo.distinct(Pool, coll, "foo", %{foo: 42})
   end
 end

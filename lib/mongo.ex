@@ -50,9 +50,22 @@ defmodule Mongo do
       hint: opts[:hint]
     ] |> filter_nils
 
-    opts = Keyword.drop(opts, ~w(limit skip hint))
+    opts = Keyword.drop(opts, ~w(limit skip hint)a)
 
     runCommand(pool, query, opts)["n"]
+  end
+
+  def distinct(pool, coll, field, filter, opts \\ []) do
+    query = [
+      distinct: coll,
+      key: field,
+      query: filter,
+      maxTimeMS: opts[:max_time]
+    ] |> filter_nils
+
+    opts = Keyword.drop(opts, ~w(max_time))
+
+    runCommand(pool, query, opts)["values"]
   end
 
   def runCommand(pool, query, opts \\ []) do
