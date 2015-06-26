@@ -68,4 +68,40 @@ defmodule Mongo.Test do
     assert [42, 43] = Mongo.distinct(Pool, coll, "foo", %{})
     assert [42]     = Mongo.distinct(Pool, coll, "foo", %{foo: 42})
   end
+
+  test "find" do
+    coll = unique_name
+
+    assert [] = Mongo.find(Pool, coll, %{}) |> Enum.to_list
+
+    Pool.transaction(fn pid->
+      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42, bar: 1}, [])
+      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43, bar: 2}, [])
+      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 44, bar: 3}, [])
+    end)
+
+    assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}] =
+           Mongo.find(Pool, coll, %{}) |> Enum.to_list
+
+    # Mongo is weird with batch_size=1
+    assert [%{"foo" => 42}] = Mongo.find(Pool, coll, %{}, batch_size: 1) |> Enum.to_list
+
+    assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}] =
+           Mongo.find(Pool, coll, %{}, batch_size: 2) |> Enum.to_list
+
+    assert [%{"foo" => 42}, %{"foo" => 43}] =
+           Mongo.find(Pool, coll, %{}, limit: 2) |> Enum.to_list
+
+    assert [%{"foo" => 42}, %{"foo" => 43}] =
+           Mongo.find(Pool, coll, %{}, batch_size: 2, limit: 2) |> Enum.to_list
+
+    assert [%{"foo" => 42}] =
+           Mongo.find(Pool, coll, %{bar: 1}) |> Enum.to_list
+
+    assert [%{"bar" => 1}, %{"bar" => 2}, %{"bar" => 3}] =
+           Mongo.find(Pool, coll, %{}, projection: %{bar: 1}) |> Enum.to_list
+
+    assert [%{"bar" => 1}] =
+           Mongo.find(Pool, coll, %{"$query": %{foo: 42}}, projection: %{bar: 1}) |> Enum.to_list
+  end
 end

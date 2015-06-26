@@ -77,7 +77,7 @@ defmodule Mongo.ConnectionTest do
     assert {:ok, %Read{cursor_id: 0, from: 0, num: 2, docs: [%{"foo" => 42}, %{"foo" => 43}]}} =
            Connection.find(pid, coll, %{}, nil)
     assert {:ok, %Read{cursor_id: 0, from: 0, num: 1, docs: [%{"foo" => 43}]}} =
-           Connection.find(pid, coll, %{}, nil, num_skip: 1)
+           Connection.find(pid, coll, %{}, nil, skip: 1)
   end
 
   test "find and get_more" do
@@ -92,13 +92,13 @@ defmodule Mongo.ConnectionTest do
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 47}, [])
 
     assert {:ok, %Read{cursor_id: cursor_id, from: 0, docs: [%{"foo" => 42}, %{"foo" => 43}]}} =
-           Connection.find(pid, coll, %{}, nil, num_return: 2)
+           Connection.find(pid, coll, %{}, nil, batch_size: 2)
     assert {:ok, %Read{cursor_id: ^cursor_id, from: 2, docs: [%{"foo" => 44}, %{"foo" => 45}]}} =
-           Connection.get_more(pid, coll, cursor_id, num_return: 2)
+           Connection.get_more(pid, coll, cursor_id, batch_size: 2)
     assert {:ok, %Read{cursor_id: ^cursor_id, from: 4, docs: [%{"foo" => 46}, %{"foo" => 47}]}} =
-           Connection.get_more(pid, coll, cursor_id, num_return: 2)
+           Connection.get_more(pid, coll, cursor_id, batch_size: 2)
     assert {:ok, %Read{cursor_id: 0, from: 6, docs: []}} =
-           Connection.get_more(pid, coll, cursor_id, num_return: 2)
+           Connection.get_more(pid, coll, cursor_id, batch_size: 2)
   end
 
   test "kill_cursors" do
@@ -110,7 +110,7 @@ defmodule Mongo.ConnectionTest do
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 44}, [])
 
     assert {:ok, %Read{cursor_id: cursor_id, num: 2}} =
-           Connection.find(pid, coll, %{}, nil, num_return: 2)
+           Connection.find(pid, coll, %{}, nil, batch_size: 2)
     assert :ok = Connection.kill_cursors(pid, cursor_id)
 
     assert {:error, %Mongo.Error{code: nil, message: "cursor not found"}} =

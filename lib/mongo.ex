@@ -1,7 +1,5 @@
 defmodule Mongo do
   alias Mongo.Connection
-  alias Mongo.SinglyCursor
-  alias Mongo.AggregationCursor
 
   @doc false
   def start(_type, _args) do
@@ -68,10 +66,37 @@ defmodule Mongo do
     runCommand(pool, query, opts)["values"]
   end
 
+  def find(pool, coll, filter, opts \\ []) do
+    query = [
+      "$comment": opts[:comment],
+      "$maxTimeMS": opts[:max_time],
+      "$orderby": opts[:sort]
+    ] ++ Enum.into(opts[:modifiers] || [], [])
+
+    query = filter_nils(query)
+
+    if query == [] do
+      query = filter
+    else
+      filter = normalize_doc(filter)
+      unless Keyword.has_key?(filter, "$query") do
+        filter = [{"$query", filter}]
+      end
+      query = filter ++ query
+    end
+
+    select = opts[:projection]
+
+    opts = cursor_type(opts[:cursor_type]) ++
+           Keyword.drop(opts, ~w(comment max_time modifiers sort cursor_type projection)a)
+
+    cursor(pool, coll, query, select, opts)
+  end
+
   def runCommand(pool, query, opts \\ []) do
     result =
       pool.transaction(fn pid ->
-        Connection.find_one(pid, "$cmd", query, [], [num_return: -1] ++ opts)
+        Connection.find_one(pid, "$cmd", query, [], opts)
       end)
 
     case result do
@@ -82,8 +107,17 @@ defmodule Mongo do
     end
   end
 
+  defp cursor(pool, coll, query, select, opts) do
+    %Mongo.Cursor{
+      pool: pool,
+      coll: coll,
+      query: query,
+      select: select,
+      opts: opts}
+  end
+
   defp singly_cursor(pool, coll, query, select, opts) do
-    %SinglyCursor{
+    %Mongo.SinglyCursor{
       pool: pool,
       coll: coll,
       query: query,
@@ -92,7 +126,7 @@ defmodule Mongo do
   end
 
   defp aggregation_cursor(pool, coll, query, select, opts) do
-    %AggregationCursor{
+    %Mongo.AggregationCursor{
       pool: pool,
       coll: coll,
       query: query,
@@ -108,4 +142,20 @@ defmodule Mongo do
     Enum.reject(map, fn {_key, value} -> is_nil(value) end)
     |> Enum.into(%{})
   end
+
+  defp normalize_doc(doc) do
+    Enum.map(doc, fn
+      {key, value} when is_binary(key) ->
+        {key, value}
+      {key, value} when is_atom(key) ->
+        {Atom.to_string(key), value}
+    end)
+  end
+
+  defp cursor_type(nil),
+    do: []
+  defp cursor_type(:tailable),
+    do: [tailable_cursor: true]
+  defp cursor_type(:tailable_await),
+    do: [tailable_cursor: true, await_data: true]
 end

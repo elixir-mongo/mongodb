@@ -12,7 +12,7 @@ defmodule Mongo.Connection do
   @write_concern ~w(w j fsync wtimeout)a
   @insert_flags ~w(continue_on_error)a
   @find_one_flags ~w(slave_ok exhaust partial)a
-  @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust partial)a
+  @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results)a
   @update_flags ~w(upsert multi)a
 
   def start_link(opts) do
@@ -249,8 +249,8 @@ defmodule Mongo.Connection do
 
   def handle_call({:find, coll, query, select, opts}, from, s) do
     flags      = Keyword.take(opts, @find_flags)
-    num_skip   = Keyword.get(opts, :num_skip, 0)
-    num_return = Keyword.get(opts, :num_return, 0)
+    num_skip   = Keyword.get(opts, :skip, 0)
+    num_return = Keyword.get(opts, :batch_size, 0)
     {id, s}    = new_command(:find, nil, from, s)
 
     op_query(coll: namespace(coll, s), query: query, select: select,
@@ -260,7 +260,7 @@ defmodule Mongo.Connection do
   end
 
   def handle_call({:get_more, coll, cursor_id, opts}, from, s) do
-    num_return = Keyword.get(opts, :num_return, 0)
+    num_return = Keyword.get(opts, :batch_size, 0)
     {id, s}    = new_command(:get_more, nil, from, s)
 
     op_get_more(coll: namespace(coll, s), cursor_id: cursor_id,
