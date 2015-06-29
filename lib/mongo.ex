@@ -50,7 +50,9 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(limit skip hint)a)
 
+    # Mongo 2.4 and 2.6 returns a float
     runCommand(pool, query, opts)["n"]
+    |> trunc
   end
 
   def distinct(pool, coll, field, filter, opts \\ []) do
