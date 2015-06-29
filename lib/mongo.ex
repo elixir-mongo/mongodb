@@ -95,7 +95,7 @@ defmodule Mongo do
 
   def runCommand(pool, query, opts \\ []) do
     result =
-      pool.transaction(fn pid ->
+      transaction(pool, fn pid ->
         Connection.find_one(pid, "$cmd", query, [], opts)
       end)
 
@@ -158,4 +158,10 @@ defmodule Mongo do
     do: [tailable_cursor: true]
   defp cursor_type(:tailable_await),
     do: [tailable_cursor: true, await_data: true]
+
+  @doc false
+  def transaction(pool, fun) when is_atom(pool),
+    do: pool.transaction(fun)
+  def transaction(conn, fun) when is_pid(conn),
+    do: fun.(conn)
 end

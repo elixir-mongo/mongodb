@@ -1,11 +1,11 @@
+import Record, only: [defrecordp: 2]
+alias Mongo.Connection
+alias Mongo.ReadResult
+
 defmodule Mongo.Cursor do
   defstruct [:pool, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
-    import Record, only: [defrecordp: 2]
-    alias Mongo.Connection
-    alias Mongo.ReadResult
-
     defrecordp :state, [:pool, :cursor, :buffer, :limit]
 
     def reduce(%{pool: pool, coll: coll, query: query, select: select, opts: opts},
@@ -23,7 +23,7 @@ defmodule Mongo.Cursor do
       opts = batch_size(limit, opts)
 
       fn ->
-        pool.transaction(fn pid ->
+        Mongo.transaction(pool, fn pid ->
           case Connection.find(pid, coll, query, projector, opts) do
             {:ok, %ReadResult{cursor_id: cursor, docs: docs, num: num}} ->
               state(pool: pool, cursor: cursor, buffer: docs, limit: new_limit(limit, num))
@@ -49,7 +49,7 @@ defmodule Mongo.Cursor do
         state(buffer: [], limit: limit, pool: pool, cursor: cursor) = state ->
           opts = batch_size(limit, opts)
 
-          pool.transaction(fn pid ->
+          Mongo.transaction(pool, fn pid ->
             case Connection.get_more(pid, coll, cursor, opts) do
               {:ok, %ReadResult{cursor_id: cursor, docs: []}} ->
                 {:halt, state(state, cursor: cursor)}
@@ -70,8 +70,8 @@ defmodule Mongo.Cursor do
         state(cursor: 0) ->
           :ok
         state(cursor: cursor, pool: pool) ->
-          pool.transaction(fn pid ->
-            Mongo.Connection.kill_cursors(pid, [cursor])
+          Mongo.transaction(pool, fn pid ->
+            Connection.kill_cursors(pid, [cursor])
           end)
       end
     end
@@ -101,10 +101,6 @@ defmodule Mongo.AggregationCursor do
   defstruct [:pool, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
-    import Record, only: [defrecordp: 2]
-    alias Mongo.Connection
-    alias Mongo.ReadResult
-
     defrecordp :state, [:pool, :cursor, :coll, :buffer]
 
     def reduce(%{pool: pool, coll: coll, query: query, select: select, opts: opts},
@@ -118,7 +114,7 @@ defmodule Mongo.AggregationCursor do
 
     defp start_fun(pool, coll, query, projector, opts) do
       fn ->
-        pool.transaction(fn pid ->
+        Mongo.transaction(pool, fn pid ->
           opts = Keyword.put(opts, :batch_size, -1)
 
           case Connection.find(pid, coll, query, projector, opts) do
@@ -137,7 +133,7 @@ defmodule Mongo.AggregationCursor do
           {:halt, state}
 
         state(buffer: [], pool: pool, cursor: cursor, coll: coll) = state ->
-          pool.transaction(fn pid ->
+          Mongo.transaction(pool, fn pid ->
             case Connection.get_more(pid, {:override, coll}, cursor, opts) do
               {:ok, %ReadResult{cursor_id: cursor, docs: []}} ->
                 {:halt, state(state, cursor: cursor)}
@@ -158,8 +154,8 @@ defmodule Mongo.AggregationCursor do
         state(cursor: 0) ->
           :ok
         state(cursor: cursor, pool: pool) ->
-          pool.transaction(fn pid ->
-            Mongo.Connection.kill_cursors(pid, [cursor])
+          Mongo.transaction(pool, fn pid ->
+            Connection.kill_cursors(pid, [cursor])
           end)
       end
     end
@@ -178,10 +174,6 @@ defmodule Mongo.SinglyCursor do
   defstruct [:pool, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
-    import Record, only: [defrecordp: 2]
-    alias Mongo.Connection
-    alias Mongo.ReadResult
-
     defrecordp :state, [:pool, :cursor, :buffer]
 
     def reduce(%{pool: pool, coll: coll, query: query, select: select, opts: opts},
@@ -196,7 +188,7 @@ defmodule Mongo.SinglyCursor do
 
     defp start_fun(pool, coll, query, projector, opts) do
       fn ->
-        pool.transaction(fn pid ->
+        Mongo.transaction(pool, fn pid ->
           case Connection.find(pid, coll, query, projector, opts) do
             {:ok, %ReadResult{cursor_id: 0, docs: [%{"ok" => 1.0, "result" => docs}]}} ->
               docs
