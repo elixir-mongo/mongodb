@@ -32,6 +32,8 @@ defmodule Mongo.Connection.Utils do
   end
 
   def send(ops, s) do
+    ops = List.wrap(ops)
+
     data =
       Enum.reduce(ops, "", fn {id, op}, acc ->
         [acc|encode(id, op)]

@@ -278,7 +278,7 @@ defmodule Mongo.Connection do
 
   def handle_call({:kill_cursors, cursor_ids}, _from, s) do
     op_kill_cursors(cursor_ids: cursor_ids)
-    |> send(-11, s)
+    |> send(-10, s)
     |> send_to_reply(:ok)
   end
 
@@ -295,18 +295,10 @@ defmodule Mongo.Connection do
   def handle_call({:insert, coll, docs, opts}, from, s) do
     flags = Keyword.take(opts, @insert_flags)
     docs = doc_wrap(docs)
-    insert_op = {-10, op_insert(coll: namespace(coll, s), docs: docs, flags: flags(flags))}
+    insert_op = {-11, op_insert(coll: namespace(coll, s), docs: docs, flags: flags(flags))}
 
-    if s.write_concern[:w] == 0 do
-      insert_op |> send(s) |> send_to_reply(:ok)
-    else
-      params = %{type: :insert, n: length(docs)}
-      {get_last_error, s} = get_last_error(coll, params, from, s)
-
-      [insert_op, get_last_error]
-      |> send(s)
-      |> send_to_noreply
-    end
+    params = %{type: :insert, n: length(docs)}
+    write_concern_op(insert_op, params, coll, opts, from, s)
   end
 
   def handle_call({:update, coll, query, update, opts}, from, s) do
@@ -315,11 +307,7 @@ defmodule Mongo.Connection do
                                 update: update, flags: flags(flags))}
 
     params = %{type: :update}
-    {get_last_error, s} = get_last_error(coll, params, from, s)
-
-    [update_op, get_last_error]
-    |> send(s)
-    |> send_to_noreply
+    write_concern_op(update_op, params, coll, opts, from, s)
   end
 
   def handle_call({:remove, coll, query, opts}, from, s) do
@@ -328,11 +316,7 @@ defmodule Mongo.Connection do
                                 flags: flags)}
 
     params = %{type: :remove}
-    {get_last_error, s} = get_last_error(coll, params, from, s)
-
-    [delete_op, get_last_error]
-    |> send(s)
-    |> send_to_noreply
+    write_concern_op(delete_op, params, coll, opts, from, s)
   end
 
   def handle_call(:wire_version, _from, s) do
@@ -470,11 +454,26 @@ defmodule Mongo.Connection do
     {:ok, reply(id, %Mongo.Error{message: reason, code: code}, s)}
   end
 
-  defp get_last_error(coll, params, from, s) do
+  defp write_concern_op(op, params, coll, opts, from, s) do
+    write_concern = Keyword.take(opts, @write_concern)
+    write_concern = Dict.merge(s.write_concern, write_concern)
+
+    if write_concern[:w] == 0 do
+      op |> send(s) |> send_to_reply(:ok)
+    else
+      {get_last_error, s} = get_last_error(coll, params, write_concern, from, s)
+
+      [op, get_last_error]
+      |> send(s)
+      |> send_to_noreply
+    end
+  end
+
+  defp get_last_error(coll, params, write_concern, from, s) do
     {id, s} = new_command(:get_last_error, params, from, s)
-    command = [{:getLastError, 1}|s.write_concern]
+    command = [{:getLastError, 1}|write_concern]
     op = op_query(coll: namespace({:override, coll, "$cmd"}, s), query: command,
-                  select: nil, num_skip: 0, num_return: 1, flags: [])
+                  select: nil, num_skip: 0, num_return: -1, flags: [])
 
     {{id, op}, s}
   end

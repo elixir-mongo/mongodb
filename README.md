@@ -8,6 +8,7 @@ Mongodb
   * Remove database override and multi-auth
   * Bang and non-bang `Mongo` functions
   * Documentation
+  * Make sure requests don't go over the 16mb limit
   * Move low-level API to `Connection` and have `Mongo` be the next-gen driver API
     - Split database and collection actions?
   * Move BSON encoding to client process

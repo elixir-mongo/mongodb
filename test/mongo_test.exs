@@ -104,5 +104,7 @@ defmodule Mongo.Test do
 
     assert [%{"_id" => ^id, "foo" => 42, "bar" => 1}] =
            Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
+
+    assert :ok = Mongo.insert_one(Pool, coll, %{}, w: 0)
   end
 end
