@@ -6,10 +6,10 @@ Mongodb
 ## Immediate Roadmap
 
   * Remove database override and multi-auth
+  * Bang and non-bang `Mongo` functions
   * Documentation
   * Move low-level API to `Connection` and have `Mongo` be the next-gen driver API
     - Split database and collection actions?
-  * Implement Inspect protocol for BSON types
   * Move BSON encoding to client process
   * Replica sets
     - Block in client (and timeout) when waiting for new primary selection

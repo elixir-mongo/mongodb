@@ -1,6 +1,5 @@
 defmodule Mongo.Test do
   use MongoTest.Case, async: true
-  alias Mongo.Connection
 
   defmodule Pool do
     use Mongo.Pool, name: __MODULE__, adapter: Mongo.Pool.Poolboy
@@ -14,12 +13,10 @@ defmodule Mongo.Test do
   test "aggregate" do
     coll = unique_name
 
-    Pool.transaction(fn pid->
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 44}, [])
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 45}, [])
-    end)
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42})
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 43})
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 44})
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 45})
 
     assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}, %{"foo" => 45}] =
            Mongo.aggregate(Pool, coll, []) |> Enum.to_list
@@ -45,10 +42,8 @@ defmodule Mongo.Test do
 
     assert 0 = Mongo.count(Pool, coll, [])
 
-    Pool.transaction(fn pid->
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
-    end)
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42})
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 43})
 
     assert 2 = Mongo.count(Pool, coll, %{})
     assert 1 = Mongo.count(Pool, coll, %{foo: 42})
@@ -59,11 +54,9 @@ defmodule Mongo.Test do
 
     assert [] = Mongo.distinct(Pool, coll, "foo", %{})
 
-    Pool.transaction(fn pid->
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
-    end)
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42})
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42})
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 43})
 
     assert [42, 43] = Mongo.distinct(Pool, coll, "foo", %{})
     assert [42]     = Mongo.distinct(Pool, coll, "foo", %{foo: 42})
@@ -74,11 +67,9 @@ defmodule Mongo.Test do
 
     assert [] = Mongo.find(Pool, coll, %{}) |> Enum.to_list
 
-    Pool.transaction(fn pid->
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42, bar: 1}, [])
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43, bar: 2}, [])
-      assert {:ok, _} = Connection.insert(pid, coll, %{foo: 44, bar: 3}, [])
-    end)
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42, bar: 1})
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 43, bar: 2})
+    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 44, bar: 3})
 
     assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}] =
            Mongo.find(Pool, coll, %{}) |> Enum.to_list
@@ -103,5 +94,15 @@ defmodule Mongo.Test do
 
     assert [%{"bar" => 1}] =
            Mongo.find(Pool, coll, %{"$query": %{foo: 42}}, projection: %{bar: 1}) |> Enum.to_list
+  end
+
+  test "insert_one" do
+    coll = unique_name
+
+    assert {:ok, result} = Mongo.insert_one(Pool, coll, %{foo: 42, bar: 1})
+    assert %Mongo.InsertOneResult{inserted_id: id} = result
+
+    assert [%{"_id" => ^id, "foo" => 42, "bar" => 1}] =
+           Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
   end
 end

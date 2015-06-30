@@ -1,5 +1,6 @@
 defmodule Mongo do
   alias Mongo.Connection
+  alias Mongo.WriteResult
 
   @doc false
   def start(_type, _args) do
@@ -109,6 +110,21 @@ defmodule Mongo do
     end
   end
 
+  def insert_one(pool, coll, doc, opts \\ []) do
+    single_doc(doc)
+
+    transaction(pool, fn pid ->
+      case Connection.insert(pid, coll, doc, opts) do
+        :ok ->
+          :ok
+        {:ok, %WriteResult{inserted_ids: ids}} ->
+          {:ok, %Mongo.InsertOneResult{inserted_id: List.first(ids)}}
+        {:error, error} ->
+          raise error
+      end
+    end)
+  end
+
   defp cursor(pool, coll, query, select, opts) do
     %Mongo.Cursor{
       pool: pool,
@@ -160,6 +176,10 @@ defmodule Mongo do
     do: [tailable_cursor: true]
   defp cursor_type(:tailable_await),
     do: [tailable_cursor: true, await_data: true]
+
+  defp single_doc(doc) when is_map(doc), do: :ok
+  defp single_doc([]), do: :ok
+  defp single_doc([{_, _} | _]), do: :ok
 
   @doc false
   def transaction(pool, fun) when is_atom(pool),
