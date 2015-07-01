@@ -176,6 +176,41 @@ defmodule Mongo do
     end)
   end
 
+  def replace_one(pool, coll, filter, replacement, opts \\ []) do
+    replace_docs(replacement)
+    opts = [multi: false] ++ opts
+
+    pool.transaction(fn pid ->
+      case Connection.update(pid, coll, filter, replacement, opts) do
+        :ok ->
+          :ok
+        {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
+          {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
+        {:error, error} ->
+          raise error
+      end
+    end)
+  end
+
+  defp replace_docs([{key, _}|_]),
+    do: key |> key_to_string |> replace_key
+  defp replace_docs(map) when is_map(map) and map_size(map) == 0,
+    do: :ok
+  defp replace_docs(map) when is_map(map),
+    do: Enum.at(map, 0) |> elem(0) |> key_to_string |> replace_key
+  defp replace_docs(list) when is_list(list),
+    do: Enum.map(list, &replace_docs/1)
+
+  defp replace_key(<<?$, _::binary>>),
+    do: raise(ArgumentError, message: "replace does not allow atomic modifiers")
+  defp replace_key(_),
+    do: :ok
+
+  defp key_to_string(key) when is_atom(key),
+    do: Atom.to_string(key)
+  defp key_to_string(key) when is_binary(key),
+    do: key
+
   defp cursor(pool, coll, query, select, opts) do
     %Mongo.Cursor{
       pool: pool,
