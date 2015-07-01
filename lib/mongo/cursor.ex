@@ -23,7 +23,7 @@ defmodule Mongo.Cursor do
       opts = batch_size(limit, opts)
 
       fn ->
-        Mongo.transaction(pool, fn pid ->
+        pool.transaction(fn pid ->
           case Connection.find(pid, coll, query, projector, opts) do
             {:ok, %ReadResult{cursor_id: cursor, docs: docs, num: num}} ->
               state(pool: pool, cursor: cursor, buffer: docs, limit: new_limit(limit, num))
@@ -49,7 +49,7 @@ defmodule Mongo.Cursor do
         state(buffer: [], limit: limit, pool: pool, cursor: cursor) = state ->
           opts = batch_size(limit, opts)
 
-          Mongo.transaction(pool, fn pid ->
+          pool.transaction(fn pid ->
             case Connection.get_more(pid, coll, cursor, opts) do
               {:ok, %ReadResult{cursor_id: cursor, docs: []}} ->
                 {:halt, state(state, cursor: cursor)}
@@ -70,7 +70,7 @@ defmodule Mongo.Cursor do
         state(cursor: 0) ->
           :ok
         state(cursor: cursor, pool: pool) ->
-          Mongo.transaction(pool, fn pid ->
+          pool.transaction(fn pid ->
             Connection.kill_cursors(pid, [cursor])
           end)
       end
@@ -114,7 +114,7 @@ defmodule Mongo.AggregationCursor do
 
     defp start_fun(pool, coll, query, projector, opts) do
       fn ->
-        Mongo.transaction(pool, fn pid ->
+        pool.transaction(fn pid ->
           opts = Keyword.put(opts, :batch_size, -1)
 
           case Connection.find(pid, coll, query, projector, opts) do
@@ -133,7 +133,7 @@ defmodule Mongo.AggregationCursor do
           {:halt, state}
 
         state(buffer: [], pool: pool, cursor: cursor, coll: coll) = state ->
-          Mongo.transaction(pool, fn pid ->
+          pool.transaction(fn pid ->
             case Connection.get_more(pid, {:override, coll}, cursor, opts) do
               {:ok, %ReadResult{cursor_id: cursor, docs: []}} ->
                 {:halt, state(state, cursor: cursor)}
@@ -154,7 +154,7 @@ defmodule Mongo.AggregationCursor do
         state(cursor: 0) ->
           :ok
         state(cursor: cursor, pool: pool) ->
-          Mongo.transaction(pool, fn pid ->
+          pool.transaction(fn pid ->
             Connection.kill_cursors(pid, [cursor])
           end)
       end
@@ -188,7 +188,7 @@ defmodule Mongo.SinglyCursor do
 
     defp start_fun(pool, coll, query, projector, opts) do
       fn ->
-        Mongo.transaction(pool, fn pid ->
+        pool.transaction(fn pid ->
           case Connection.find(pid, coll, query, projector, opts) do
             {:ok, %ReadResult{cursor_id: 0, docs: [%{"ok" => 1.0, "result" => docs}]}} ->
               docs

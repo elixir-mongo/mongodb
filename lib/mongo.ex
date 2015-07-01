@@ -98,7 +98,7 @@ defmodule Mongo do
 
   def runCommand(pool, query, opts \\ []) do
     result =
-      transaction(pool, fn pid ->
+      pool.transaction(fn pid ->
         Connection.find_one(pid, "$cmd", query, [], opts)
       end)
 
@@ -113,7 +113,7 @@ defmodule Mongo do
   def insert_one(pool, coll, doc, opts \\ []) do
     single_doc(doc)
 
-    transaction(pool, fn pid ->
+    pool.transaction(fn pid ->
       case Connection.insert(pid, coll, doc, opts) do
         :ok ->
           :ok
@@ -181,9 +181,4 @@ defmodule Mongo do
   defp single_doc([]), do: :ok
   defp single_doc([{_, _} | _]), do: :ok
 
-  @doc false
-  def transaction(pool, fun) when is_atom(pool),
-    do: pool.transaction(fun)
-  def transaction(conn, fun) when is_pid(conn),
-    do: fun.(conn)
 end
