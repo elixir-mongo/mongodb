@@ -146,6 +146,21 @@ defmodule Mongo do
     end)
   end
 
+  def delete_one(pool, coll, filter, opts \\ []) do
+    opts = [multi: false] ++ opts
+
+    pool.transaction(fn pid ->
+      case Connection.remove(pid, coll, filter, opts) do
+        :ok ->
+          :ok
+        {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
+          {:ok, %Mongo.DeleteResult{deleted_count: n}}
+        {:error, error} ->
+          raise error
+      end
+    end)
+  end
+
   defp cursor(pool, coll, query, select, opts) do
     %Mongo.Cursor{
       pool: pool,

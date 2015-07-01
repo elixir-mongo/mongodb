@@ -15,6 +15,10 @@ defmodule Mongo.InsertManyResult do
   defstruct [:inserted_ids]
 end
 
+defmodule Mongo.DeleteResult do
+  defstruct [:deleted_count]
+end
+
 defmodule Mongo.WriteResult do
   # On 2.4 num_modified will always be nil
 
