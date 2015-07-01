@@ -99,12 +99,31 @@ defmodule Mongo.Test do
   test "insert_one" do
     coll = unique_name
 
-    assert {:ok, result} = Mongo.insert_one(Pool, coll, %{foo: 42, bar: 1})
+    assert_raise FunctionClauseError, fn ->
+      Mongo.insert_one(Pool, coll, [%{foo: 42, bar: 1}])
+    end
+
+    assert {:ok, result} = Mongo.insert_one(Pool, coll, %{foo: 42})
     assert %Mongo.InsertOneResult{inserted_id: id} = result
 
-    assert [%{"_id" => ^id, "foo" => 42, "bar" => 1}] =
-           Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
+    assert [%{"_id" => ^id, "foo" => 42}] = Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
 
     assert :ok = Mongo.insert_one(Pool, coll, %{}, w: 0)
+  end
+
+  test "insert_many" do
+    coll = unique_name
+
+    assert_raise FunctionClauseError, fn ->
+      Mongo.insert_many(Pool, coll, %{foo: 42, bar: 1})
+    end
+
+    assert {:ok, result} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 43}])
+    assert %Mongo.InsertManyResult{inserted_ids: %{0 => id0, 1 => id1}} = result
+
+    assert [%{"_id" => ^id0, "foo" => 42}] = Mongo.find(Pool, coll, %{_id: id0}) |> Enum.to_list
+    assert [%{"_id" => ^id1, "foo" => 43}] = Mongo.find(Pool, coll, %{_id: id1}) |> Enum.to_list
+
+    assert :ok = Mongo.insert_many(Pool, coll, [%{}], w: 0)
   end
 end

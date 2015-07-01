@@ -125,6 +125,27 @@ defmodule Mongo do
     end)
   end
 
+  def insert_many(pool, coll, docs, opts \\ []) do
+    many_docs(docs)
+
+    # NOTE: Only for 2.4
+    ordered? = Keyword.get(opts, :ordered, true)
+    opts = Keyword.put(opts, :continue_on_error, not ordered?)
+
+    pool.transaction(fn pid ->
+      case Connection.insert(pid, coll, docs, opts) do
+        :ok ->
+          :ok
+        {:ok, %WriteResult{inserted_ids: ids}} ->
+          ids = Enum.with_index(ids)
+                |> Enum.into(%{}, fn {x, y} -> {y, x} end)
+          {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
+        {:error, error} ->
+          raise error
+      end
+    end)
+  end
+
   defp cursor(pool, coll, query, select, opts) do
     %Mongo.Cursor{
       pool: pool,
@@ -181,4 +202,6 @@ defmodule Mongo do
   defp single_doc([]), do: :ok
   defp single_doc([{_, _} | _]), do: :ok
 
+  defp many_docs([]), do: :ok
+  defp many_docs([first | _]) when not is_tuple(first), do: :ok
 end
