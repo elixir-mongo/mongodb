@@ -141,4 +141,16 @@ defmodule Mongo.Test do
     assert {:ok, %Mongo.DeleteResult{deleted_count: 0}} = Mongo.delete_one(Pool, coll, %{foo: 42})
     assert [%{"foo" => 43}] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
   end
+
+  test "delete_many" do
+    coll = unique_name
+
+    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
+
+    assert {:ok, %Mongo.DeleteResult{deleted_count: 2}} = Mongo.delete_many(Pool, coll, %{foo: 42})
+    assert [] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+
+    assert {:ok, %Mongo.DeleteResult{deleted_count: 0}} = Mongo.delete_one(Pool, coll, %{foo: 42})
+    assert [%{"foo" => 43}] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+  end
 end
