@@ -1,25 +1,14 @@
-language: erlang
+language: elixir
 otp_release:
   - 17.4
 cache: apt
 before_install:
-  - wget http://s3.hex.pm/builds/elixir/$ELIXIRVERSION.zip
-  - unzip -d elixir $ELIXIRVERSION.zip
   - npm install -g mongodb-version-manager
-install:
   - m $MONGOVERSION
   - mkdir db
-  - export PATH=`m path`:$PATH
-  - export PATH=`pwd`/elixir/bin:$PATH
-  - mix local.hex --force
 before_script:
   - mongod --fork --logpath mongo.log --dbpath db
-  - mix deps.get
-script:
-  - mix test
 env:
-  global:
-    - ELIXIRVERSION=v1.0.4
   matrix:
     - MONGOVERSION=2.4.14
     - MONGOVERSION=2.6.10
