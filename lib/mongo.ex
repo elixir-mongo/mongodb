@@ -177,7 +177,7 @@ defmodule Mongo do
   end
 
   def replace_one(pool, coll, filter, replacement, opts \\ []) do
-    replace_docs(replacement)
+    modifier_docs(replacement, :replace)
     opts = [multi: false] ++ opts
 
     pool.transaction(fn pid ->
@@ -192,18 +192,38 @@ defmodule Mongo do
     end)
   end
 
-  defp replace_docs([{key, _}|_]),
-    do: key |> key_to_string |> replace_key
-  defp replace_docs(map) when is_map(map) and map_size(map) == 0,
-    do: :ok
-  defp replace_docs(map) when is_map(map),
-    do: Enum.at(map, 0) |> elem(0) |> key_to_string |> replace_key
-  defp replace_docs(list) when is_list(list),
-    do: Enum.map(list, &replace_docs/1)
+  def update_one(pool, coll, filter, update, opts \\ []) do
+    modifier_docs(update, :update)
+    opts = [multi: false] ++ opts
 
-  defp replace_key(<<?$, _::binary>>),
+    pool.transaction(fn pid ->
+      case Connection.update(pid, coll, filter, update, opts) do
+        :ok ->
+          :ok
+        {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
+          {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
+        {:error, error} ->
+          raise error
+      end
+    end)
+  end
+
+  defp modifier_docs([{key, _}|_], type),
+    do: key |> key_to_string |> modifier_key(type)
+  defp modifier_docs(map, _type) when is_map(map) and map_size(map) == 0,
+    do: :ok
+  defp modifier_docs(map, type) when is_map(map),
+    do: Enum.at(map, 0) |> elem(0) |> key_to_string |> modifier_key(type)
+  defp modifier_docs(list, type) when is_list(list),
+    do: Enum.map(list, &modifier_docs(&1, type))
+
+  defp modifier_key(<<?$, _::binary>>, :replace),
     do: raise(ArgumentError, message: "replace does not allow atomic modifiers")
-  defp replace_key(_),
+  defp modifier_key(<<?$, _::binary>>, :update),
+    do: :ok
+  defp modifier_key(<<_, _::binary>>, :update),
+    do: raise(ArgumentError, message: "update only allows atomic modifiers")
+  defp modifier_key(_, _),
     do: :ok
 
   defp key_to_string(key) when is_atom(key),

@@ -174,4 +174,29 @@ defmodule Mongo.Test do
     assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
     assert [_] = Mongo.find(Pool, coll, %{foo: 1}) |> Enum.to_list
   end
+
+  test "update_one" do
+    coll = unique_name
+
+    assert_raise ArgumentError, fn ->
+      Mongo.update_one(Pool, coll, %{foo: 42}, %{foo: 0})
+    end
+
+    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
+
+    assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_id: nil}} =
+           Mongo.update_one(Pool, coll, %{foo: 42}, %{"$set": %{foo: 0}})
+
+    assert [_] = Mongo.find(Pool, coll, %{foo: 0}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+
+    assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_id: id}} =
+           Mongo.update_one(Pool, coll, %{foo: 50}, %{"$set": %{foo: 0}}, upsert: true)
+    assert [_] = Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
+
+    assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_id: nil}} =
+           Mongo.update_one(Pool, coll, %{foo: 43}, %{"$set": %{foo: 1}}, upsert: true)
+    assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 1}) |> Enum.to_list
+  end
 end
