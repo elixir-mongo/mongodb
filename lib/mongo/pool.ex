@@ -3,12 +3,11 @@ defmodule Mongo.Pool do
 
   defmacro __using__(opts) do
     adapter = Keyword.fetch!(opts, :adapter)
-    name    = Keyword.fetch!(opts, :name)
 
     quote do
       @behaviour unquote(__MODULE__)
       @adapter   unquote(adapter)
-      @name      unquote(name).Adapter
+      @name      __MODULE__.Adapter
 
       def start_link(opts) do
         import Supervisor.Spec, warn: false
