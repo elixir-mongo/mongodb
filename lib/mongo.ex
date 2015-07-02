@@ -208,6 +208,22 @@ defmodule Mongo do
     end)
   end
 
+  def update_many(pool, coll, filter, update, opts \\ []) do
+    modifier_docs(update, :update)
+    opts = [multi: true] ++ opts
+
+    pool.transaction(fn pid ->
+      case Connection.update(pid, coll, filter, update, opts) do
+        :ok ->
+          :ok
+        {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
+          {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
+        {:error, error} ->
+          raise error
+      end
+    end)
+  end
+
   defp modifier_docs([{key, _}|_], type),
     do: key |> key_to_string |> modifier_key(type)
   defp modifier_docs(map, _type) when is_map(map) and map_size(map) == 0,
