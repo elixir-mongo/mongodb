@@ -228,4 +228,26 @@ defmodule Mongo.Test do
     assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
     assert [_] = Mongo.find(Pool, coll, %{foo: 1}) |> Enum.to_list
   end
+
+  test "save_one" do
+    coll = unique_name
+    id = Mongo.IdServer.new
+
+    assert {:ok, %Mongo.SaveOneResult{matched_count: 0, modified_count: 0, upserted_id: %BSON.ObjectId{}}} =
+           Mongo.save_one(Pool, coll, %{foo: 42})
+    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveOneResult{matched_count: 0, modified_count: 0, upserted_id: %BSON.ObjectId{}}} =
+           Mongo.save_one(Pool, coll, %{foo: 42})
+    assert [_, _] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveOneResult{matched_count: 0, modified_count: 1, upserted_id: %BSON.ObjectId{}}} =
+           Mongo.save_one(Pool, coll, %{_id: id, foo: 43})
+     assert [_] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveOneResult{matched_count: 1, modified_count: 1, upserted_id: nil}} =
+           Mongo.save_one(Pool, coll, %{_id: id, foo: 44})
+    assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+  end
 end

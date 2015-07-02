@@ -23,6 +23,10 @@ defmodule Mongo.UpdateResult do
   defstruct [:matched_count, :modified_count, :upserted_id]
 end
 
+defmodule Mongo.SaveOneResult do
+  defstruct [:matched_count, :modified_count, :upserted_id]
+end
+
 defmodule Mongo.WriteResult do
   # On 2.4 num_modified will always be nil
 

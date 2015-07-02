@@ -130,7 +130,7 @@ defmodule Mongo do
 
     # NOTE: Only for 2.4
     ordered? = Keyword.get(opts, :ordered, true)
-    opts = Keyword.put(opts, :continue_on_error, not ordered?)
+    opts = [continue_on_error: not ordered?] ++ opts
 
     pool.transaction(fn pid ->
       case Connection.insert(pid, coll, docs, opts) do
@@ -224,6 +224,38 @@ defmodule Mongo do
     end)
   end
 
+  def save_one(pool, coll, doc, opts \\ []) do
+    case get_id(doc) do
+      {:ok, id} ->
+        opts = [upsert: true] ++ opts
+        case replace_one(pool, coll, %{_id: id}, doc, opts) do
+          :ok ->
+            :ok
+          {:ok, result} ->
+            %Mongo.SaveOneResult{
+              matched_count: result.matched_count,
+              modified_count: result.modified_count,
+              upserted_id: result.upserted_id}
+        end
+      :error ->
+        case insert_one(pool, coll, doc, opts) do
+          :ok ->
+            :ok
+          {:ok, result} ->
+            %Mongo.SaveOneResult{
+              matched_count: 0,
+              modified_count: 0,
+              upserted_id: result.inserted_id}
+        end
+    end
+    |> save_result
+  end
+
+  defp save_result(:ok),
+    do: :ok
+  defp save_result(result),
+    do: {:ok, result}
+
   defp modifier_docs([{key, _}|_], type),
     do: key |> key_to_string |> modifier_key(type)
   defp modifier_docs(map, _type) when is_map(map) and map_size(map) == 0,
@@ -299,10 +331,24 @@ defmodule Mongo do
   defp cursor_type(:tailable_await),
     do: [tailable_cursor: true, await_data: true]
 
+  defp get_id(doc) do
+    case fetch_value(doc, "_id") do
+      {:ok, id}  -> {:ok, id}
+      :error     -> fetch_value(doc, :_id)
+    end
+  end
+
+  defp fetch_value(doc, key) do
+    case Dict.fetch(doc, key) do
+      {:ok, nil} -> :error
+      {:ok, id}  -> {:ok, id}
+      :error     -> :error
+    end
+  end
+
   defp single_doc(doc) when is_map(doc), do: :ok
   defp single_doc([]), do: :ok
   defp single_doc([{_, _} | _]), do: :ok
 
-  defp many_docs([]), do: :ok
   defp many_docs([first | _]) when not is_tuple(first), do: :ok
 end
