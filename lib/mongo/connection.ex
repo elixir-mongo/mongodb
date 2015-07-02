@@ -73,19 +73,18 @@ defmodule Mongo.Connection do
 
   defp assign_ids(doc) when is_map(doc) do
     [assign_id(doc)]
-    |> Enum.unzip
+    |> unzip
   end
 
   defp assign_ids([{_, _} | _] = doc) do
     [assign_id(doc)]
-    |> Enum.unzip
+    |> unzip
   end
 
   defp assign_ids(list) when is_list(list) do
     Enum.map(list, &assign_id/1)
-    |> Enum.unzip
+    |> unzip
   end
-
   defp assign_id(%{_id: id} = map) when id != nil,
     do: {id, map}
   defp assign_id(%{"_id" => id} = map) when id != nil,
@@ -117,6 +116,15 @@ defmodule Mongo.Connection do
   defp add_id([], id) do
     # Why are you inserting empty documents =(
     [{"_id", id}]
+  end
+
+  defp unzip(list) do
+    {xs, ys} =
+      Enum.reduce(list, {[], []}, fn {x, y}, {xs, ys} ->
+        {[x|xs], [y|ys]}
+      end)
+
+    {Enum.reverse(xs), Enum.reverse(ys)}
   end
 
   @doc false
