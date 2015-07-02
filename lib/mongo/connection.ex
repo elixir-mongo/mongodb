@@ -456,8 +456,8 @@ defmodule Mongo.Connection do
 
   defp write_result(%{type: :insert, n: n}, _doc),
     do: %WriteResult{type: :insert, num_inserted: n}
-  defp write_result(%{type: :update}, %{"n" => n, "upserted" => id}),
-    do: %WriteResult{type: :update, num_matched: n, num_modified: n, upserted_id: id}
+  defp write_result(%{type: :update}, %{"n" => 1, "upserted" => id}),
+    do: %WriteResult{type: :update, num_matched: 0, num_modified: 1, upserted_id: id}
   defp write_result(%{type: :update}, %{"n" => n}),
     do: %WriteResult{type: :update, num_matched: n, num_modified: n}
   defp write_result(%{type: :remove}, %{"n" => n}),

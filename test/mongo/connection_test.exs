@@ -124,22 +124,22 @@ defmodule Mongo.ConnectionTest do
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
 
-    assert {:ok, %Write{type: :update, num_matched: 2}} =
+    assert {:ok, %Write{type: :update, num_matched: 2, num_modified: 2}} =
            Connection.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: true)
     assert {:ok, %Read{docs: [%{"foo" => 43}, %{"foo" => 44}]}} =
            Connection.find(pid, coll, %{}, nil)
 
-    assert {:ok, %Write{type: :update, num_matched: 1}} =
+    assert {:ok, %Write{type: :update, num_matched: 1, num_modified: 1}} =
            Connection.update(pid, coll, %{}, %{"$inc": %{foo: 1}}, multi: false)
     assert {:ok, %Read{docs: [%{"foo" => 44}, %{"foo" => 44}]}} =
            Connection.find(pid, coll, %{}, nil)
 
-    assert {:ok, %Write{type: :update, num_matched: 1, upserted_id: %BSON.ObjectId{}}} =
+    assert {:ok, %Write{type: :update, num_matched: 0, num_modified: 1, upserted_id: %BSON.ObjectId{}}} =
            Connection.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: true)
     assert {:ok, %Read{docs: [%{"bar" => 42}]}} =
            Connection.find(pid, coll, %{bar: 42}, nil)
 
-    assert {:ok, %Write{type: :update, num_matched: 0}} =
+    assert {:ok, %Write{type: :update, num_matched: 0, num_modified: 0}} =
            Connection.update(pid, coll, %{foo: 0}, %{bar: 42}, upsert: false)
     assert {:ok, %Read{docs: []}} =
            Connection.find(pid, coll, %{bar: 0}, nil)
