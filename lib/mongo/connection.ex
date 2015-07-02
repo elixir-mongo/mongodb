@@ -440,6 +440,11 @@ defmodule Mongo.Connection do
         s = reply(id, {:ok, result}, s)
 
       %{"ok" => 1.0, "err" => message, "code" => code} ->
+        # If a batch insert (OP_INSERT) fails some documents may still have been
+        # inserted, but mongo always returns {n: 0}
+        # When we support the 2.6 bulk write API we will get number of inserted
+        # documents and should change the return value to be something like:
+        # {:error, %WriteResult{}, %Error{}}
         s = reply(id, {:error, %Mongo.Error{message: message, code: code}}, s)
 
       %{"ok" => 0.0, "errmsg" => message, "code" => code} ->

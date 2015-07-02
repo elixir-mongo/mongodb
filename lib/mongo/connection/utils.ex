@@ -32,19 +32,19 @@ defmodule Mongo.Connection.Utils do
   end
 
   def send(ops, s) do
-    ops = List.wrap(ops)
-
-    data =
-      Enum.reduce(ops, "", fn {id, op}, acc ->
-        [acc|encode(id, op)]
-      end)
-
-    case :gen_tcp.send(s.socket, data) do
-      :ok ->
-        {:ok, s}
-      {:error, _} = error ->
-        error
-    end
+    # Do a separate :gen_tcp.send/2 for each message because mongosniff
+    # cannot handle more than one message per packet. TCP is a stream
+    # protocol, but no.
+    Enum.find_value(List.wrap(ops), fn {id, op} ->
+      data = encode(id, op)
+      case :gen_tcp.send(s.socket, data) do
+        :ok ->
+          nil
+        {:error, _} = error ->
+          error
+      end
+    end)
+    || {:ok, s}
   end
 
   # TODO: Fix the terrible :override hack
