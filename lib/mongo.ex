@@ -83,7 +83,7 @@ defmodule Mongo do
       query = filter
     else
       filter = normalize_doc(filter)
-      unless Keyword.has_key?(filter, "$query") do
+      unless List.keymember?(filter, "$query", 0) do
         filter = [{"$query", filter}]
       end
       query = filter ++ query
