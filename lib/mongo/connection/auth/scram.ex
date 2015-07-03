@@ -76,8 +76,7 @@ defmodule Mongo.Connection.Auth.SCRAM do
   end
 
   defp hi(password, salt, iterations) do
-    {:ok, key} = :pbkdf2.pbkdf2(:sha, password, salt, iterations, 20)
-    key
+    Mongo.PBKDF2Cache.pbkdf2(password, salt, iterations)
   end
 
   defp generate_proof(salted_password, auth_message) do

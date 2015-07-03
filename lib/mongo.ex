@@ -7,7 +7,8 @@ defmodule Mongo do
     import Supervisor.Spec, warn: false
 
     children = [
-      worker(Mongo.IdServer, [])
+      worker(Mongo.IdServer, []),
+      worker(Mongo.PBKDF2Cache, [])
     ]
 
     opts = [strategy: :one_for_one, name: Mongo.Supervisor]
