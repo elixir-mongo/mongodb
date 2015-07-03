@@ -251,10 +251,105 @@ defmodule Mongo do
     |> save_result
   end
 
+  def save_many(pool, coll, docs, opts \\ []) do
+    many_docs(docs)
+
+    # NOTE: Only for 2.4
+    ordered? = Keyword.get(opts, :ordered, true)
+    opts = [continue_on_error: not ordered?, upsert: true] ++ opts
+    docs = docs_id_ix(docs)
+
+    if ordered? do
+      # Ugh, horribly inefficient
+      save_ordered(pool, coll, docs, opts)
+    else
+      save_unordered(pool, coll, docs, opts)
+    end
+    |> save_result
+  end
+
   defp save_result(:ok),
     do: :ok
   defp save_result(result),
     do: {:ok, result}
+
+  defp save_ordered(pool, coll, docs, opts) do
+    chunked_docs = Enum.chunk_by(docs, fn {_, id, _} -> id == :error end)
+    result = %Mongo.SaveManyResult{matched_count: 0, modified_count: 0, upserted_ids: %{}}
+
+    Enum.reduce(chunked_docs, result, fn docs, result ->
+      {ix, id, _doc} = hd(docs)
+      if id == :error do
+        save_insert(result, ix, pool, coll, docs, opts)
+      else
+        save_replace(result, ix, pool, coll, docs, opts)
+      end
+    end)
+  end
+
+  defp save_unordered(pool, coll, docs, opts) do
+    docs = Enum.group_by(docs, fn {_, id, _} -> id == :error end)
+    insert_docs  = docs[true] || []
+    replace_docs = docs[false] || []
+
+    %Mongo.SaveManyResult{matched_count: 0, modified_count: 0, upserted_ids: %{}}
+    |> save_insert(0, pool, coll, insert_docs, opts)
+    |> save_replace(length(insert_docs), pool, coll, replace_docs, opts)
+  end
+
+  defp save_insert(result, _ix, _pool, _coll, [], _opts) do
+    result
+  end
+
+  defp save_insert(result, ix, pool, coll, docs, opts) do
+    docs = Enum.map(docs, &elem(&1, 2))
+
+    case insert_many(pool, coll, docs, opts) do
+      :ok ->
+        :ok
+      {:ok, insert} ->
+        ids = list_ix(insert.inserted_ids, ix)
+              |> Enum.into(result.upserted_ids)
+        %{result | upserted_ids: ids}
+    end
+  end
+
+  defp save_replace(result, ix, pool, coll, docs, opts) do
+    Enum.reduce(docs, {ix, result}, fn {_ix, {:ok, id}, doc}, {ix, result} ->
+      case replace_one(pool, coll, %{_id: id}, doc, opts) do
+        :ok ->
+          {0, :ok}
+        {:ok, replace} ->
+          if replace.upserted_id do
+            ids = Map.put(result.upserted_ids, ix, replace.upserted_id)
+                  |> Enum.into(result.upserted_ids)
+          else
+            ids = result.upserted_ids
+          end
+
+          result =
+            %{result | matched_count: result.matched_count + replace.matched_count,
+                       modified_count: result.modified_count + replace.modified_count,
+                       upserted_ids: ids}
+          {ix+1, result}
+      end
+    end)
+    |> elem(1)
+  end
+
+  defp list_ix(enum, offset) do
+    Enum.map(enum, fn {ix, elem} ->
+      {ix+offset, elem}
+    end)
+  end
+
+  defp docs_id_ix(docs) do
+    Enum.reduce(docs, {0, []}, fn doc, {ix, docs} ->
+      {ix+1, [{ix, get_id(doc), doc} | docs]}
+    end)
+    |> elem(1)
+    |> Enum.reverse
+  end
 
   defp modifier_docs([{key, _}|_], type),
     do: key |> key_to_string |> modifier_key(type)

@@ -243,11 +243,135 @@ defmodule Mongo.Test do
 
     assert {:ok, %Mongo.SaveOneResult{matched_count: 0, modified_count: 1, upserted_id: %BSON.ObjectId{}}} =
            Mongo.save_one(Pool, coll, %{_id: id, foo: 43})
-     assert [_] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
 
     assert {:ok, %Mongo.SaveOneResult{matched_count: 1, modified_count: 1, upserted_id: nil}} =
            Mongo.save_one(Pool, coll, %{_id: id, foo: 44})
     assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
     assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+  end
+
+  test "save_many ordered single" do
+    coll = unique_name
+    id = Mongo.IdServer.new
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 0, upserted_ids: %{0 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{foo: 42}])
+    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 0, upserted_ids: %{0 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{foo: 42}])
+    assert [_, _] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 1, upserted_ids: %{0 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id, foo: 43}])
+    assert [_] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 1, modified_count: 1, upserted_ids: %{}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id, foo: 44}])
+    assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+  end
+
+  test "save_many ordered multi" do
+    coll = unique_name
+    id1 = Mongo.IdServer.new
+    id2 = Mongo.IdServer.new
+    id3 = Mongo.IdServer.new
+    id4 = Mongo.IdServer.new
+    id5 = Mongo.IdServer.new
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 0,
+                                       upserted_ids: %{0 => %BSON.ObjectId{}, 1 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{foo: 42}, %{foo: 43}])
+    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 2,
+                                       upserted_ids: %{0 => %BSON.ObjectId{}, 1 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id1, foo: 44}, %{_id: id2, foo: 45}])
+    assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 45}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 2, modified_count: 2, upserted_ids: %{}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id1, foo: 46}, %{_id: id1, foo: 46}])
+    assert [] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 46}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 1,
+                                       upserted_ids: %{0 => %BSON.ObjectId{}, 1 => %BSON.ObjectId{}, 2 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{foo: 47}, %{_id: id3, foo: 48}, %{foo: 49}], ordered: false)
+    assert [_] = Mongo.find(Pool, coll, %{foo: 47}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 48}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 49}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 2,
+                                       upserted_ids: %{0 => %BSON.ObjectId{}, 1 => %BSON.ObjectId{}, 2 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id4, foo: 50}, %{foo: 51}, %{_id: id5, foo: 52}], ordered: false)
+    assert [_] = Mongo.find(Pool, coll, %{foo: 50}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 51}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 52}) |> Enum.to_list
+  end
+
+  test "save_many unordered single" do
+    coll = unique_name
+    id = Mongo.IdServer.new
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 0, upserted_ids: %{0 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{foo: 42}], ordered: false)
+    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 0, upserted_ids: %{0 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{foo: 42}], ordered: false)
+    assert [_, _] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 1, upserted_ids: %{0 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id, foo: 43}], ordered: false)
+    assert [_] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 1, modified_count: 1, upserted_ids: %{}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id, foo: 44}], ordered: false)
+    assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+  end
+
+  test "save_many unordered multi" do
+    coll = unique_name
+    id1 = Mongo.IdServer.new
+    id2 = Mongo.IdServer.new
+    id3 = Mongo.IdServer.new
+    id4 = Mongo.IdServer.new
+    id5 = Mongo.IdServer.new
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 0,
+                                       upserted_ids: %{0 => %BSON.ObjectId{}, 1 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{foo: 42}, %{foo: 43}], ordered: false)
+    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 2,
+                                       upserted_ids: %{0 => %BSON.ObjectId{}, 1 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id1, foo: 44}, %{_id: id2, foo: 45}], ordered: false)
+    assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 45}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 2, modified_count: 2, upserted_ids: %{}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id1, foo: 46}, %{_id: id1, foo: 46}], ordered: false)
+    assert [] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 46}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 1,
+                                       upserted_ids: %{0 => %BSON.ObjectId{}, 1 => %BSON.ObjectId{}, 2 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{foo: 47}, %{_id: id3, foo: 48}, %{foo: 49}], ordered: false)
+    assert [_] = Mongo.find(Pool, coll, %{foo: 47}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 48}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 49}) |> Enum.to_list
+
+    assert {:ok, %Mongo.SaveManyResult{matched_count: 0, modified_count: 2,
+                                       upserted_ids: %{0 => %BSON.ObjectId{}, 1 => %BSON.ObjectId{}, 2 => %BSON.ObjectId{}}}} =
+           Mongo.save_many(Pool, coll, [%{_id: id4, foo: 50}, %{foo: 51}, %{_id: id5, foo: 52}], ordered: false)
+    assert [_] = Mongo.find(Pool, coll, %{foo: 50}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 51}) |> Enum.to_list
+    assert [_] = Mongo.find(Pool, coll, %{foo: 52}) |> Enum.to_list
   end
 end
