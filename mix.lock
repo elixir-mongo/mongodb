@@ -1,3 +1,3 @@
-%{"connection": {:git, "git://github.com/fishcakez/connection.git", "581729581289de1ba7d9220aa7feacaf7ccef764", []},
+%{"connection": {:hex, :connection, "1.0.0-rc.1"},
   "pbkdf2": {:git, "git://github.com/basho/erlang-pbkdf2.git", "7076584f5377e98600a7e2cb81980b2992fb2f71", []},
   "poolboy": {:hex, :poolboy, "1.5.1"}}
