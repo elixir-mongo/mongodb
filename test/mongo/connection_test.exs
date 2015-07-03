@@ -40,15 +40,6 @@ defmodule Mongo.ConnectionTest do
     end
   end
 
-  test "change default database" do
-    pid = connect()
-
-    assert "mongodb_test" = Connection.database(pid)
-    Connection.database(pid, "mongodb_test2")
-    assert "mongodb_test2" = Connection.database(pid)
-    assert %{"ok" => 1.0} = Connection.find_one(pid, "$cmd", %{ping: 1}, %{})
-  end
-
   test "insert and find_one" do
     pid = connect_auth()
     coll = unique_name

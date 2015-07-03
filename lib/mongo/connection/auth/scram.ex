@@ -6,41 +6,41 @@ defmodule Mongo.Connection.Auth.SCRAM do
 
   @random_length 24
 
-  def auth({database, username, password}, s) do
+  def auth({username, password}, s) do
     # TODO: Wrap and log error
     nonce      = nonce()
     first_bare = first_bare(username, nonce)
     payload    = first_message(first_bare)
     message    = [saslStart: 1, mechanism: "SCRAM-SHA-1", payload: payload]
 
-    case sync_command(-2, database, message, s) do
+    case sync_command(-2, message, s) do
       {:ok, %{"conversationId" => 1, "payload" => server_payload, "done" => false, "ok" => 1.0}} ->
-        conversation_first(server_payload, first_bare, database, username, password, nonce, s)
+        conversation_first(server_payload, first_bare, username, password, nonce, s)
       error ->
         handle_error(error, username)
     end
   end
 
-  defp conversation_first(server_payload, first_bare, database, username, password, nonce, s) do
+  defp conversation_first(server_payload, first_bare, username, password, nonce, s) do
     {signature, payload} = second_message(server_payload, first_bare, username, password, nonce)
     message = [saslContinue: 1, conversationId: 1, payload: payload]
 
-    case sync_command(-3, database, message, s) do
+    case sync_command(-3, message, s) do
       {:ok, %{"conversationId" => 1, "payload" => payload, "done" => false, "ok" => 1.0}} ->
-        conversation_second(payload, signature, username, database, s)
+        conversation_second(payload, signature, username, s)
       error ->
         handle_error(error, username)
     end
   end
 
-  defp conversation_second(payload, signature, username, database, s) do
+  defp conversation_second(payload, signature, username, s) do
     params = parse_payload(payload)
     ^signature = params["v"] |> Base.decode64!
 
     payload = %BSON.Binary{binary: ""}
     message = [saslContinue: 1, conversationId: 1, payload: payload]
 
-    case sync_command(-4, database, message, s) do
+    case sync_command(-4, message, s) do
       {:ok, %{"conversationId" => 1, "payload" => payload, "done" => true, "ok" => 1.0}} ->
         %BSON.Binary{binary: ""} = payload
         :ok

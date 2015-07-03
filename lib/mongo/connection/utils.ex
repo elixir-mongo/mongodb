@@ -2,8 +2,8 @@ defmodule Mongo.Connection.Utils do
   @moduledoc false
   import Mongo.Protocol
 
-  def sync_command(id, database, command, s) do
-    op = op_query(coll: namespace({database, "$cmd"}, s), query: command,
+  def sync_command(id, command, s) do
+    op = op_query(coll: namespace("$cmd", s), query: command,
                   select: nil, num_skip: 0, num_return: 1, flags: [])
     case send(op, id, s) do
       {:ok, s} ->
@@ -47,15 +47,6 @@ defmodule Mongo.Connection.Utils do
     || {:ok, s}
   end
 
-  # TODO: Fix the terrible :override hack
-  def namespace({:override, {database, _}, coll}, _s),
-    do: [database, ?. | coll]
-  def namespace({:override, _, coll}, s),
-    do: [s.database, ?. | coll]
-  def namespace({:override, coll}, _s),
-    do: coll
-  def namespace({database, coll}, _s),
-    do: [database, ?. | coll]
   def namespace(coll, s),
     do: [s.database, ?. | coll]
 

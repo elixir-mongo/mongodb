@@ -119,7 +119,7 @@ defmodule Mongo.AggregationCursor do
 
           case Connection.find(pid, coll, query, projector, opts) do
             {:ok, %ReadResult{cursor_id: 0, docs: [%{"ok" => 1.0, "cursor" => %{"id" => cursor, "ns" => coll, "firstBatch" => docs}}]}} ->
-              state(pool: pool, cursor: cursor, coll: coll, buffer: docs)
+              state(pool: pool, cursor: cursor, coll: only_coll(coll), buffer: docs)
             {:error, error} ->
               raise error
           end
@@ -134,7 +134,7 @@ defmodule Mongo.AggregationCursor do
 
         state(buffer: [], pool: pool, cursor: cursor, coll: coll) = state ->
           pool.transaction(fn pid ->
-            case Connection.get_more(pid, {:override, coll}, cursor, opts) do
+            case Connection.get_more(pid, coll, cursor, opts) do
               {:ok, %ReadResult{cursor_id: cursor, docs: []}} ->
                 {:halt, state(state, cursor: cursor)}
               {:ok, %ReadResult{cursor_id: cursor, docs: docs}} ->
@@ -158,6 +158,11 @@ defmodule Mongo.AggregationCursor do
             Connection.kill_cursors(pid, [cursor])
           end)
       end
+    end
+
+    defp only_coll(coll) do
+      [_db, coll] = String.split(coll, ".", parts: 2)
+      coll
     end
 
     def count(_stream) do

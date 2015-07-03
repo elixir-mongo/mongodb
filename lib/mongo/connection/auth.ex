@@ -2,21 +2,20 @@ defmodule Mongo.Connection.Auth do
   @moduledoc false
 
   def setup(%{auth: nil, opts: opts} = s) do
-    database = Keyword.fetch!(opts, :database)
+    database = opts[:database]
     username = opts[:username]
     password = opts[:password]
     auth     = opts[:auth] || []
 
     auth =
       Enum.map(auth, fn opts ->
-        database = opts[:database]
         username = opts[:username]
         password = opts[:password]
-        {database, username, password}
+        {username, password}
       end)
 
     if username && password do
-      auth = auth ++ [{database, username, password}]
+      auth = auth ++ [{username, password}]
     end
 
     opts = Keyword.drop(opts, ~w(database username password auth)a)

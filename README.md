@@ -5,13 +5,12 @@ Mongodb
 
 ## Immediate Roadmap
 
-  * Remove database override and multi-auth
   * Bang and non-bang `Mongo` functions
   * Documentation
-  * Make sure requests don't go over the 16mb limit
   * Move low-level API to `Connection` and have `Mongo` be the next-gen driver API
     - Split database and collection actions?
   * Move BSON encoding to client process
+    - Make sure requests don't go over the 16mb limit
   * Replica sets
     - Block in client (and timeout) when waiting for new primary selection
   * New 2.6 write queries and bulk writes
