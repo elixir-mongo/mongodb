@@ -27,7 +27,7 @@ defmodule Mongo.PBKDF2Cache do
   end
 
   def handle_info({ref, {key, result}}, s) when is_reference(ref) do
-    Enum.map(s.pending[key], fn from ->
+    Enum.each(s.pending[key], fn from ->
       GenServer.reply(from, result)
     end)
 
@@ -37,7 +37,6 @@ defmodule Mongo.PBKDF2Cache do
   end
 
   def handle_info({:DOWN, _ref, :process, _pid, :normal}, s) do
-    # Just ignore this for now
     {:noreply, s}
   end
 
