@@ -36,4 +36,9 @@ defmodule MongoTest.Case do
     fun.()
     Logger.add_backend(:console, flush: true)
   end
+
+  defmacro unique_name do
+    {function, _arity} = __CALLER__.function
+    "#{__CALLER__.module}.#{function}"
+  end
 end

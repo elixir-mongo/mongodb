@@ -2,8 +2,8 @@ defmodule Mongo.Connection.Utils do
   @moduledoc false
   import Mongo.Protocol
 
-  def sync_command(id, database, command, s) do
-    op = op_query(coll: namespace({database, "$cmd"}, s), query: command,
+  def sync_command(id, command, s) do
+    op = op_query(coll: namespace("$cmd", s), query: command,
                   select: nil, num_skip: 0, num_return: 1, flags: [])
     case send(op, id, s) do
       {:ok, s} ->
@@ -32,26 +32,21 @@ defmodule Mongo.Connection.Utils do
   end
 
   def send(ops, s) do
-    data =
-      Enum.reduce(ops, "", fn {id, op}, acc ->
-        [acc|encode(id, op)]
-      end)
-
-    case :gen_tcp.send(s.socket, data) do
-      :ok ->
-        {:ok, s}
-      {:error, _} = error ->
-        error
-    end
+    # Do a separate :gen_tcp.send/2 for each message because mongosniff
+    # cannot handle more than one message per packet. TCP is a stream
+    # protocol, but no.
+    Enum.find_value(List.wrap(ops), fn {id, op} ->
+      data = encode(id, op)
+      case :gen_tcp.send(s.socket, data) do
+        :ok ->
+          nil
+        {:error, _} = error ->
+          error
+      end
+    end)
+    || {:ok, s}
   end
 
-  # TODO: Fix the terrible :override hack
-  def namespace({:override, {database, _}, coll}, _s),
-    do: [database, ?. | coll]
-  def namespace({:override, _, coll}, s),
-    do: [s.database, ?. | coll]
-  def namespace({database, coll}, _s),
-    do: [database, ?. | coll]
   def namespace(coll, s),
     do: [s.database, ?. | coll]
 
