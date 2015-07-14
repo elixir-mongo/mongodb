@@ -48,6 +48,32 @@ Enum.to_list(cursor)
 |> IO.inspect
 ```
 
+### APIs
+```elixir
+Mongo.find(MongoPool, "test-collection", %{}, limit: 20)
+Mongo.find(MongoPool, "test-collection", %{"field" => %{"$gt" => 0}}, limit: 20, sort: %{"field" => 1})
+
+Mongo.insert_one(MongoPool, "test-collection", %{"field" => 10})
+
+Mongo.insert_many(MongoPool, "test-collection", [%{"field" => 10}, %{"field" => 20}])
+
+Mongo.delete_one(MongoPool, "test-collection", %{"field" => 10})
+
+Mongo.delete_many(MongoPool, "test-collection", %{"field" => 10})
+```
+
+### Pool Transactions
+```elixir
+# Gets a pool process (conn) to run queries on
+MongoPool.transaction(fn (conn) ->
+  # Removes 1 result using the query
+  Mongo.Connection.remove(conn, "test-collection", %{"field" => 1})
+
+  # Removes all results using the query
+  Mongo.Connection.remove(conn, "test-collection", %{"field" => 1, "otherfield" => 1}, multi: true)
+end)
+```
+
 ## License
 
 Copyright 2015 Eric Meadows-Jönsson
