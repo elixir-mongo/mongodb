@@ -28,6 +28,26 @@ Mongodb
     - https://www.mongodb.com/blog/post/server-selection-next-generation-mongodb-drivers
     - http://docs.mongodb.org/manual/reference/read-preference
 
+## Usage
+
+
+### Connection Pools
+
+```elixir
+defmodule MongoPool do
+  use Mongo.Pool, name: __MODULE__, adapter: Mongo.Pool.Poolboy
+end
+
+# Starts a process on the module name MongoPool
+{:ok, _} = MongoPool.start_link(database: "test")
+
+# Gets an enumerable cursor for the results
+cursor = Mongo.find(MongoPool, "test-collection", %{})
+
+Enum.to_list cursor
+|> IO.inspect
+```
+
 ## License
 
 Copyright 2015 Eric Meadows-Jönsson
