@@ -340,7 +340,7 @@ defmodule Mongo.Connection do
     # on new data
     case decode(data) do
       {:ok, id, reply, tail} ->
-        command = s.queue[id][:command]
+        command = s.queue[id].command
         s = %{s | tail: tail}
 
         if :query_failure in op_reply(reply, :flags),
