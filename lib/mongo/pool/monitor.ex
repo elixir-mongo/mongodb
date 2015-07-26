@@ -2,19 +2,35 @@ defmodule Mongo.Pool.Monitor do
   use GenServer
   alias Mongo.Connection
 
-  def start_link(name, opts) do
-    GenServer.start_link(__MODULE__, [name, opts])
+  def start_link(name, ets, opts) do
+    GenServer.start_link(__MODULE__, [ets, opts], name: name)
   end
 
-  def init([name, opts]) do
-    :ets.new(name, [:named_table, read_concurrency: true])
+  def version(name, timeout) do
+    GenServer.call(name, :version, timeout)
+  end
+
+  def init([ets, opts]) do
+    :ets.new(ets, [:named_table, read_concurrency: true])
     {:ok, conn} = Connection.start_link([on_connect: self] ++ opts)
-    {:ok, {name, conn}}
+    state = %{ets: ets, conn: conn, waiting: []}
+    {:ok, state}
   end
 
-  def handle_info({Connection, :on_connect, conn}, {name, conn}) do
+  def handle_call(:version, _from, %{ets: ets, waiting: nil} = state) do
+    [{:wire_version, version}] = :ets.lookup(ets, :wire_version)
+    {:reply, version, state}
+  end
+
+  def handle_call(:version, from, %{waiting: waiting} = state) do
+    {:noreply, %{state | waiting: [from|waiting]}}
+  end
+
+  def handle_info({Connection, :on_connect, conn},
+                  %{ets: ets, conn: conn, waiting: waiting} = state) do
     version = Connection.wire_version(conn)
-    :ets.insert(name, {:wire_version, version})
-    {:noreply, {name, conn}}
+    :ets.insert(ets, {:wire_version, version})
+    Enum.each(waiting, &GenServer.reply(&1, version))
+    {:noreply, %{state | waiting: nil}}
   end
 end

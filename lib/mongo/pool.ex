@@ -1,23 +1,29 @@
 defmodule Mongo.Pool do
   use Behaviour
+  alias Mongo.Pool.Monitor
 
   defmacro __using__(opts) do
     adapter = Keyword.fetch!(opts, :adapter)
 
     quote do
+      # TODO: Customize timeout
+      @timeout  5_000
       @behaviour unquote(__MODULE__)
       @adapter   unquote(adapter)
-      @name      __MODULE__.Adapter
+      @name      __MODULE__
+      @sup       __MODULE__.Sup
+      @monitor   __MODULE__.Monitor
+      @ets       __MODULE__.ETS
 
       def start_link(opts) do
         import Supervisor.Spec, warn: false
 
         children = [
-          worker(Mongo.Pool.Monitor, [@name, opts]),
+          worker(Monitor, [@monitor, @ets, opts]),
           worker(@adapter, [@name, opts])
         ]
 
-        opts = [strategy: :one_for_all, name: __MODULE__]
+        opts = [strategy: :one_for_all, name: @sup]
         Supervisor.start_link(children, opts)
       end
 
@@ -30,34 +36,13 @@ defmodule Mongo.Pool do
         @adapter.transaction(@name, fun)
       end
 
-      @wait_sleep 10
-      @wait_usec 5_000_000
-
       def version do
-        now = now()
-        waiting_version(now, now + @wait_usec)
-      end
-
-      # We use the waiting_version hack to work around the race between the
-      # first clients and Mongo.Pool.Monitor setting the version in the ets
-      # table
-      defp waiting_version(now, stop_at) when now < stop_at do
-        case :ets.lookup(@name, :wire_version) do
+        case :ets.lookup(@ets, :wire_version) do
           [] ->
-            :timer.sleep(@wait_sleep)
-            waiting_version(now(), stop_at)
+            Monitor.version(@monitor, @timeout)
           [{:wire_version, version}] ->
             version
         end
-      end
-
-      defp waiting_version(_now, _stop_at) do
-        raise "version request from #{inspect @name} timed out"
-      end
-
-      defp now do
-        {msec, sec, usec} = :os.timestamp
-        (msec*1_000_000+sec)*1_000_000+usec
       end
     end
   end
