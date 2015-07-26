@@ -37,12 +37,7 @@ defmodule Mongo.Pool do
       end
 
       def version do
-        case :ets.lookup(@ets, :wire_version) do
-          [] ->
-            Monitor.version(@monitor, @timeout)
-          [{:wire_version, version}] ->
-            version
-        end
+        Monitor.version(@monitor, @ets, @timeout)
       end
     end
   end

@@ -6,8 +6,13 @@ defmodule Mongo.Pool.Monitor do
     GenServer.start_link(__MODULE__, [ets, opts], name: name)
   end
 
-  def version(name, timeout) do
-    GenServer.call(name, :version, timeout)
+  def version(name, ets, timeout) do
+    case :ets.lookup(ets, :wire_version) do
+      [] ->
+        GenServer.call(name, :version, timeout)
+      [{:wire_version, version}] ->
+        version
+    end
   end
 
   def init([ets, opts]) do
