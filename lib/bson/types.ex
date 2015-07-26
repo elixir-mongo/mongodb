@@ -33,8 +33,10 @@ end
 defmodule BSON.DateTime do
   defstruct [:utc]
 
+  @epoch :calendar.datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})
+
   def to_datetime(%BSON.DateTime{utc: utc}) do
-    seconds = div(utc, 1000)
+    seconds = div(utc, 1000) + @epoch
     usec = rem(utc, 1000) * 1000
     {date, {hour, min, sec}} = :calendar.gregorian_seconds_to_datetime(seconds)
     {date, {hour, min, sec, usec}}

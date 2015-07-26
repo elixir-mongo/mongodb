@@ -15,8 +15,8 @@ defmodule BSON.TypesTest do
   end
 
   test "inspect BSON.DateTime" do
-    value = %BSON.DateTime{utc: 63602558542000}
-    assert inspect(value) == "#BSON.DateTime<2015-06-26T17:22:22Z>"
+    value = %BSON.DateTime{utc: 1437940203000}
+    assert inspect(value) == "#BSON.DateTime<2015-07-26T19:50:03Z>"
   end
 
   test "inspect BSON.Regex" do
