@@ -48,10 +48,9 @@ defmodule BSON.DateTime do
     str = zero_pad(year, 4) <> "-" <> zero_pad(month, 2) <> "-" <> zero_pad(day, 2) <> "T" <>
           zero_pad(hour, 2) <> ":" <> zero_pad(min, 2) <> ":" <> zero_pad(sec, 2)
 
-    if is_nil(usec) or usec == 0 do
-      str <> "Z"
-    else
-      str <> "." <> zero_pad(usec, 6) <> "Z"
+    case usec do
+      0 -> str <> "Z"
+      _ -> str <> "." <> zero_pad(usec, 6) <> "Z"
     end
   end
 

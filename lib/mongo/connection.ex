@@ -200,7 +200,7 @@ defmodule Mongo.Connection do
         :ok
       {_id, %{from: from}} ->
         error = %Mongo.Error{message: "Mongo tcp error: #{formatted_reason}"}
-        reply(from, {:error, error})
+        reply({:error, error}, from)
     end)
 
     host = s.opts[:hostname]
@@ -305,13 +305,9 @@ defmodule Mongo.Connection do
 
   @doc false
   def handle_info({:tcp, _, data}, %{socket: socket, tail: tail} = s) do
-    case new_data(tail <> data, s) do
-      {:ok, s} ->
-        :inet.setopts(socket, active: :once)
-        {:noreply, s}
-      {:error, error, s} ->
-        {:stop, error, s}
-    end
+    s = new_data(tail <> data, s)
+    :inet.setopts(socket, active: :once)
+    {:noreply, s}
   end
 
   def handle_info({:tcp_closed, _}, s) do
@@ -354,23 +350,23 @@ defmodule Mongo.Connection do
 
   defp message(:find, id, op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num), s) do
     result = %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}
-    {:ok, reply(id, {:ok, result}, s)}
+    reply(id, {:ok, result}, s)
   end
 
   defp message(:get_more, id, op_reply(flags: flags, docs: docs, cursor_id: cursor_id, from: from, num: num), s) do
     if :cursor_not_found in flags do
       reason = %Mongo.Error{message: "cursor not found"}
-      {:ok, reply(id, {:error, reason}, s)}
+      reply(id, {:error, reason}, s)
     else
       result = %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}
-      {:ok, reply(id, {:ok, result}, s)}
+      reply(id, {:ok, result}, s)
     end
   end
 
   defp message(:find_one, id, op_reply(docs: docs), s) do
     case docs do
-      [doc] -> {:ok, reply(id, doc, s)}
-      []    -> {:ok, reply(id, nil, s)}
+      [doc] -> reply(id, doc, s)
+      []    -> reply(id, nil, s)
     end
   end
 
@@ -379,7 +375,7 @@ defmodule Mongo.Connection do
       %{"ok" => 1.0, "err" => nil} ->
         params = s.queue[id].params
         result = write_result(params, doc)
-        s = reply(id, {:ok, result}, s)
+        reply(id, {:ok, result}, s)
 
       %{"ok" => 1.0, "err" => message, "code" => code} ->
         # If a batch insert (OP_INSERT) fails some documents may still have been
@@ -387,13 +383,11 @@ defmodule Mongo.Connection do
         # When we support the 2.6 bulk write API we will get number of inserted
         # documents and should change the return value to be something like:
         # {:error, %WriteResult{}, %Error{}}
-        s = reply(id, {:error, %Mongo.Error{message: message, code: code}}, s)
+        reply(id, {:error, %Mongo.Error{message: message, code: code}}, s)
 
       %{"ok" => 0.0, "errmsg" => message, "code" => code} ->
-        s = reply(id, {:error, %Mongo.Error{message: message, code: code}}, s)
+        reply(id, {:error, %Mongo.Error{message: message, code: code}}, s)
     end
-
-    {:ok, s}
   end
 
   defp write_result(%{type: :insert, n: n}, _doc),
@@ -406,7 +400,7 @@ defmodule Mongo.Connection do
     do: %WriteResult{type: :remove, num_matched: n, num_removed: n}
 
   defp failure(_command, id, op_reply(docs: [%{"$err" => reason, "code" => code }]), s) do
-    {:ok, reply(id, %Mongo.Error{message: reason, code: code}, s)}
+    reply(id, %Mongo.Error{message: reason, code: code}, s)
   end
 
   defp write_concern_op(op, params, opts, from, s) do
