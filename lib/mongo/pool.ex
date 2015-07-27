@@ -23,7 +23,7 @@ defmodule Mongo.Pool do
 
     quote do
       # TODO: Customizable timeout
-      @timeout  5_000
+      @timeout   5_000
       @behaviour unquote(__MODULE__)
       @adapter   unquote(adapter)
       @name      __MODULE__
@@ -36,7 +36,7 @@ defmodule Mongo.Pool do
 
         children = [
           worker(Monitor, [@monitor, @ets, opts]),
-          worker(@adapter, [@name, opts])
+          worker(@adapter, [@name, opts]),
         ]
 
         opts = [strategy: :one_for_all, name: @sup]
@@ -58,6 +58,6 @@ defmodule Mongo.Pool do
     end
   end
 
-  defcallback run((pid -> any)) :: any
+  defcallback run((pid -> return)) :: return when return: var
   defcallback version() :: non_neg_integer
 end
