@@ -1,4 +1,8 @@
 defmodule Mongo.Connection do
+  @moduledoc """
+  A connection process to a MongoDB server.
+  """
+
   import Kernel, except: [send: 2]
   import Mongo.Protocol
   import Mongo.Connection.Utils
@@ -9,36 +13,67 @@ defmodule Mongo.Connection do
 
   @behaviour Connection
   @requestid_max 2147483648
-  @write_concern ~w(w j fsync wtimeout)a
+  @write_concern ~w(w j wtimeout)a
   @insert_flags ~w(continue_on_error)a
   @find_one_flags ~w(slave_ok exhaust partial)a
   @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results)a
   @update_flags ~w(upsert multi)a
 
+  @doc """
+  Starts the connection process.
+
+  ## Options
+
+    * `:hostname` - Server hostname (Default: "localhost")
+    * `:port` - Server port (Default: 27017)
+    * `:database` - Database (required);
+    * `:username` - Username
+    * `:password` - User password
+    * `:backoff` - (Default: 1000)
+    * `:timeout` - (Default: 5000)
+    * `:w` - The number of servers to replicate to before returning from write
+      operators, a 0 value will return immediately, :majority will wait until
+      the operation propagates to a majority of members in the replica set
+      (Default: 1)
+    * `:j` If true, the write operation will only return after it has been
+      committed to journal - (Default: false)
+    * `:wtimeout` - If the write concern is not satisfied in the specified
+      interval, the operation returns an error
+  """
+  @spec start_link(Keyword.t) :: GenServer.on_start
   def start_link(opts) do
     Connection.start_link(__MODULE__, opts)
   end
 
+  @doc """
+  Stops the connection process.
+  """
+  @spec stop(pid) :: :ok
   def stop(conn) do
     Connection.cast(conn, :stop)
   end
 
+  @doc false
   def find(conn, coll, query, select, opts \\ []) do
     GenServer.call(conn, {:find, coll, query, select, opts})
   end
 
+  @doc false
   def get_more(conn, coll, cursor_id, opts \\ []) do
     GenServer.call(conn, {:get_more, coll, cursor_id, opts})
   end
 
+  @doc false
   def kill_cursors(conn, cursor_ids) do
     GenServer.call(conn, {:kill_cursors, List.wrap(cursor_ids)})
   end
 
+  @doc false
   def find_one(conn, coll, query, select, opts \\ []) do
     GenServer.call(conn, {:find_one, coll, query, select, opts})
   end
 
+  @doc false
   def insert(conn, coll, docs, opts \\ []) do
     {ids, docs} = assign_ids(docs)
     case GenServer.call(conn, {:insert, coll, docs, opts}) do
@@ -47,14 +82,17 @@ defmodule Mongo.Connection do
     end
   end
 
+  @doc false
   def update(conn, coll, query, update, opts \\ []) do
     GenServer.call(conn, {:update, coll, query, update, opts})
   end
 
+  @doc false
   def remove(conn, coll, query, opts \\ []) do
     GenServer.call(conn, {:remove , coll, query, opts})
   end
 
+  @doc false
   def wire_version(conn) do
     GenServer.call(conn, :wire_version)
   end

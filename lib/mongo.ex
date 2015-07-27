@@ -1,6 +1,14 @@
 defmodule Mongo do
+  @moduledoc """
+  TODO
+  """
+
   alias Mongo.Connection
   alias Mongo.WriteResult
+  alias Mongo.Pool
+
+  @type collection :: String.t
+  @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
 
   @doc false
   def start(_type, _args) do
@@ -15,6 +23,7 @@ defmodule Mongo do
     Supervisor.start_link(children, opts)
   end
 
+  @spec aggregate(Pool.t, collection, [BSON.document], Keyword.t) :: cursor
   def aggregate(pool, coll, pipeline, opts \\ []) do
     query = [
       aggregate: coll,
@@ -41,6 +50,7 @@ defmodule Mongo do
     end
   end
 
+  @spec count(Pool.t, collection, BSON.document, Keyword.t) :: non_neg_integer
   def count(pool, coll, filter, opts \\ []) do
     query = [
       count: coll,
@@ -57,6 +67,7 @@ defmodule Mongo do
     |> trunc
   end
 
+  @spec distinct(Pool.t, collection, String.t | atom, BSON.document, Keyword.t) :: [BSON.t]
   def distinct(pool, coll, field, filter, opts \\ []) do
     query = [
       distinct: coll,
@@ -70,6 +81,7 @@ defmodule Mongo do
     runCommand(pool, query, opts)["values"]
   end
 
+  @spec find(Pool.t, collection, BSON.document, Keyword.t) :: cursor
   def find(pool, coll, filter, opts \\ []) do
     query = [
       "$comment": opts[:comment],
@@ -97,6 +109,7 @@ defmodule Mongo do
     cursor(pool, coll, query, select, opts)
   end
 
+  @spec runCommand(Pool.t, BSON.document, Keyword.t) :: BSON.document
   def runCommand(pool, query, opts \\ []) do
     result =
       pool.transaction(fn pid ->
@@ -111,6 +124,7 @@ defmodule Mongo do
     end
   end
 
+  @spec insert_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.InsertOneResult.t}
   def insert_one(pool, coll, doc, opts \\ []) do
     single_doc(doc)
 
@@ -126,6 +140,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec insert_many(Pool.t, collection, [BSON.document], Keyword.t) :: :ok | {:ok, Mongo.InsertManyResult.t}
   def insert_many(pool, coll, docs, opts \\ []) do
     many_docs(docs)
 
@@ -147,6 +162,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec delete_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.DeleteResult.t}
   def delete_one(pool, coll, filter, opts \\ []) do
     opts = [multi: false] ++ opts
 
@@ -162,6 +178,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec delete_many(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.DeleteResult.t}
   def delete_many(pool, coll, filter, opts \\ []) do
     opts = [multi: true] ++ opts
 
@@ -177,6 +194,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec replace_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def replace_one(pool, coll, filter, replacement, opts \\ []) do
     modifier_docs(replacement, :replace)
     opts = [multi: false] ++ opts
@@ -193,6 +211,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec update_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def update_one(pool, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
     opts = [multi: false] ++ opts
@@ -209,6 +228,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec update_many(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def update_many(pool, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
     opts = [multi: true] ++ opts
@@ -225,6 +245,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec save_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.SaveOneResult.t}
   def save_one(pool, coll, doc, opts \\ []) do
     case get_id(doc) do
       {:ok, id} ->
@@ -252,6 +273,7 @@ defmodule Mongo do
     |> save_result
   end
 
+  @spec save_many(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.SaveManyResult.t}
   def save_many(pool, coll, docs, opts \\ []) do
     many_docs(docs)
 

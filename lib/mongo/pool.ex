@@ -1,12 +1,28 @@
 defmodule Mongo.Pool do
+  @moduledoc """
+  Defines a pool of MongoDB connections.
+
+  A pool can be defined as:
+
+      defmodule MyPool do
+        use Mongo.Pool,
+          adapter: Mongo.Pool.Poolboy,
+          hostname: "localhost"
+
+  Options will be passed to the pool adapter and to `Mongo.Connection`.
+  """
+
   use Behaviour
   alias Mongo.Pool.Monitor
 
+  @type t :: module
+
+  @doc false
   defmacro __using__(opts) do
     adapter = Keyword.fetch!(opts, :adapter)
 
     quote do
-      # TODO: Customize timeout
+      # TODO: Customizable timeout
       @timeout  5_000
       @behaviour unquote(__MODULE__)
       @adapter   unquote(adapter)

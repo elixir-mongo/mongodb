@@ -1,4 +1,5 @@
 defmodule BSON.Decoder do
+  @moduledoc false
   use BSON.Utils
 
   def decode(binary) do

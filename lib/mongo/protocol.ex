@@ -1,4 +1,6 @@
 defmodule Mongo.Protocol do
+  @moduledoc false
+
   import Record
   import Mongo.BinaryUtils
   alias BSON.Encoder

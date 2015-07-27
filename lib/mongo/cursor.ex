@@ -3,6 +3,8 @@ alias Mongo.Connection
 alias Mongo.ReadResult
 
 defmodule Mongo.Cursor do
+  @moduledoc false
+
   defstruct [:pool, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
@@ -98,6 +100,8 @@ defmodule Mongo.Cursor do
 end
 
 defmodule Mongo.AggregationCursor do
+  @moduledoc false
+
   defstruct [:pool, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
@@ -176,6 +180,8 @@ defmodule Mongo.AggregationCursor do
 end
 
 defmodule Mongo.SinglyCursor do
+  @moduledoc false
+
   defstruct [:pool, :coll, :query, :select, :opts]
 
   defimpl Enumerable do

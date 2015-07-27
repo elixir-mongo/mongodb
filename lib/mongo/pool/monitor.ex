@@ -1,4 +1,5 @@
 defmodule Mongo.Pool.Monitor do
+  @moduledoc false
   use GenServer
   alias Mongo.Connection
 

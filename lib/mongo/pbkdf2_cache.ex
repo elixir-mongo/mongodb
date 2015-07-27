@@ -1,4 +1,5 @@
 defmodule Mongo.PBKDF2Cache do
+  @moduledoc false
   use GenServer
   @name __MODULE__
 

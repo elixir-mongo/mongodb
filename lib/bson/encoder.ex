@@ -1,4 +1,5 @@
 defmodule BSON.Encoder do
+  @moduledoc false
   use BSON.Utils
 
   def encode(true),
