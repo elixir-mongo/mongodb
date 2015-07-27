@@ -5,7 +5,7 @@ defmodule Mongo.InsertOneResult do
     * `:inserted_id` - The id of the inserted document
   """
 
-  @type %__MODULE__{
+  @type t :: %__MODULE__{
     inserted_id: nil | BSON.ObjectId.t
   }
 
@@ -19,7 +19,7 @@ defmodule Mongo.InsertManyResult do
     * `:inserted_ids` - The ids of the inserted documents
   """
 
-  @type %__MODULE__{
+  @type t :: %__MODULE__{
     inserted_ids: [BSON.ObjectId.t]
   }
 
@@ -34,7 +34,7 @@ defmodule Mongo.DeleteResult do
     * `:deleted_count` - Number of deleted documents
   """
 
-  @type %__MODULE__{
+  @type t :: %__MODULE__{
     deleted_count: non_neg_integer
   }
 
@@ -51,7 +51,7 @@ defmodule Mongo.UpdateResult do
     * `:upserted_id` - If the operation was an upsert, the upserted id
   """
 
-  @type %__MODULE__{
+  @type t :: %__MODULE__{
     matched_count: non_neg_integer,
     modified_count: non_neg_integer,
     upserted_id: nil | BSON.ObjectId.t
@@ -69,7 +69,7 @@ defmodule Mongo.SaveOneResult do
     * `:upserted_id` - If the operation was an upsert, the upserted id
   """
 
-  @type %__MODULE__{
+  @type t :: %__MODULE__{
     matched_count: non_neg_integer,
     modified_count: non_neg_integer,
     upserted_id: nil | BSON.ObjectId.t
@@ -84,13 +84,13 @@ defmodule Mongo.SaveManyResult do
 
     * `:matched_count` - Number of matched documents
     * `:modified_count` - Number of modified documents
-    * `:upserted_id` - If the operation was an upsert, the upserted id
+    * `:upserted_ids` - If the operation was an upsert, the upserted ids
   """
 
-  @type %__MODULE__{
+  @type t :: %__MODULE__{
     matched_count: non_neg_integer,
     modified_count: non_neg_integer,
-    upserted_id: nil | BSON.ObjectId.t
+    upserted_ids: nil | BSON.ObjectId.t
   }
 
   defstruct [:matched_count, :modified_count, :upserted_ids]
