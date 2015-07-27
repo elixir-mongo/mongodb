@@ -4,8 +4,8 @@ defmodule Mongo.Pool.Adapter do
   implement the following interface.
 
   An adapter should supervise processes of `Mongo.Connection` and
-  provide the `transaction/2` function to execute an anonymous
-  function with a connection from the pool.
+  provide the `run/2` function to execute an anonymous function with a
+  connection from the pool.
   """
   use Behaviour
 
@@ -20,6 +20,6 @@ defmodule Mongo.Pool.Adapter do
   Runs the function with a checked out connection from the pool,
   after the function returns the pool should reclaim the connection.
   """
-  defcallback transaction(name, (pid -> return)) :: return
+  defcallback run(name, (pid -> return)) :: return
          when return: var
 end

@@ -26,7 +26,7 @@ defmodule Mongo.Pool.Poolboy do
     :poolboy.start_link(pool_opts, worker_opts)
   end
 
-  def transaction(pool, fun) do
+  def run(pool, fun) do
     :poolboy.transaction(pool, fun)
   end
 end

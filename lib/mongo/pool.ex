@@ -48,8 +48,8 @@ defmodule Mongo.Pool do
         |> Process.exit(:shutdown)
       end
 
-      def transaction(fun) do
-        @adapter.transaction(@name, fun)
+      def run(fun) do
+        @adapter.run(@name, fun)
       end
 
       def version do
@@ -58,6 +58,6 @@ defmodule Mongo.Pool do
     end
   end
 
-  defcallback transaction((pid -> any)) :: any
+  defcallback run((pid -> any)) :: any
   defcallback version() :: non_neg_integer
 end

@@ -112,7 +112,7 @@ defmodule Mongo do
   @spec runCommand(Pool.t, BSON.document, Keyword.t) :: BSON.document
   def runCommand(pool, query, opts \\ []) do
     result =
-      pool.transaction(fn pid ->
+      pool.run(fn pid ->
         Connection.find_one(pid, "$cmd", query, [], opts)
       end)
 
@@ -128,7 +128,7 @@ defmodule Mongo do
   def insert_one(pool, coll, doc, opts \\ []) do
     single_doc(doc)
 
-    pool.transaction(fn pid ->
+    pool.run(fn pid ->
       case Connection.insert(pid, coll, doc, opts) do
         :ok ->
           :ok
@@ -148,7 +148,7 @@ defmodule Mongo do
     ordered? = Keyword.get(opts, :ordered, true)
     opts = [continue_on_error: not ordered?] ++ opts
 
-    pool.transaction(fn pid ->
+    pool.run(fn pid ->
       case Connection.insert(pid, coll, docs, opts) do
         :ok ->
           :ok
@@ -166,7 +166,7 @@ defmodule Mongo do
   def delete_one(pool, coll, filter, opts \\ []) do
     opts = [multi: false] ++ opts
 
-    pool.transaction(fn pid ->
+    pool.run(fn pid ->
       case Connection.remove(pid, coll, filter, opts) do
         :ok ->
           :ok
@@ -182,7 +182,7 @@ defmodule Mongo do
   def delete_many(pool, coll, filter, opts \\ []) do
     opts = [multi: true] ++ opts
 
-    pool.transaction(fn pid ->
+    pool.run(fn pid ->
       case Connection.remove(pid, coll, filter, opts) do
         :ok ->
           :ok
@@ -199,7 +199,7 @@ defmodule Mongo do
     modifier_docs(replacement, :replace)
     opts = [multi: false] ++ opts
 
-    pool.transaction(fn pid ->
+    pool.run(fn pid ->
       case Connection.update(pid, coll, filter, replacement, opts) do
         :ok ->
           :ok
@@ -216,7 +216,7 @@ defmodule Mongo do
     modifier_docs(update, :update)
     opts = [multi: false] ++ opts
 
-    pool.transaction(fn pid ->
+    pool.run(fn pid ->
       case Connection.update(pid, coll, filter, update, opts) do
         :ok ->
           :ok
@@ -233,7 +233,7 @@ defmodule Mongo do
     modifier_docs(update, :update)
     opts = [multi: true] ++ opts
 
-    pool.transaction(fn pid ->
+    pool.run(fn pid ->
       case Connection.update(pid, coll, filter, update, opts) do
         :ok ->
           :ok
