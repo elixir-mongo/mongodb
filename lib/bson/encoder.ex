@@ -78,16 +78,16 @@ defmodule BSON.Encoder do
     {_, iodata} =
       Enum.reduce(doc, {:unknown, ""}, fn
         {:__struct__, _value}, {:binary, _acc} ->
-          invalid_doc()
+          invalid_doc(doc)
 
         {:__struct__, _value}, {_, acc} ->
           {:atom, acc}
 
         {key, _value}, {:binary, _acc} when is_atom(key) ->
-          invalid_doc()
+          invalid_doc(doc)
 
         {key, _value}, {:atom, _acc} when is_binary(key) ->
-          invalid_doc()
+          invalid_doc(doc)
 
         {key, value}, {_, acc} ->
           {key_type, key} = key(key)
@@ -111,8 +111,8 @@ defmodule BSON.Encoder do
   defp array([hd|tl], ix) when not is_tuple(hd),
     do: [{Integer.to_string(ix), hd} | array(tl, ix+1)]
 
-  defp invalid_doc do
-    message = "invalid document containing atom and string keys"
+  defp invalid_doc(doc) do
+    message = "invalid document containing atom and string keys: #{inspect doc}"
     raise ArgumentError, message: message
   end
 

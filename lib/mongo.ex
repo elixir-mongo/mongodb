@@ -98,7 +98,7 @@ defmodule Mongo do
       unless List.keymember?(filter, "$query", 0) do
         filter = [{"$query", filter}]
       end
-      query = filter ++ normalize_doc(query)
+      query = filter ++ query
     end
 
     select = opts[:projection]
@@ -434,12 +434,26 @@ defmodule Mongo do
   end
 
   defp normalize_doc(doc) do
-    Enum.map(doc, fn
-      {key, value} when is_binary(key) ->
-        {key, value}
-      {key, value} when is_atom(key) ->
-        {Atom.to_string(key), value}
+    Enum.reduce(doc, {:unknown, []}, fn
+      {key, _value}, {:binary, _acc} when is_atom(key) ->
+        invalid_doc(doc)
+
+      {key, _value}, {:atom, _acc} when is_binary(key) ->
+        invalid_doc(doc)
+
+      {key, value}, {_, acc} when is_atom(key) ->
+        {:atom, [{key, value}|acc]}
+
+      {key, value}, {_, acc} when is_binary(key) ->
+        {:binary, [{key, value}|acc]}
     end)
+    |> elem(1)
+    |> Enum.reverse
+  end
+
+  defp invalid_doc(doc) do
+    message = "invalid document containing atom and string keys: #{inspect doc}"
+    raise ArgumentError, message: message
   end
 
   defp cursor_type(nil),
