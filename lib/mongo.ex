@@ -84,9 +84,9 @@ defmodule Mongo do
   @spec find(Pool.t, collection, BSON.document, Keyword.t) :: cursor
   def find(pool, coll, filter, opts \\ []) do
     query = [
-      "$comment": opts[:comment],
-      "$maxTimeMS": opts[:max_time],
-      "$orderby": opts[:sort]
+      {"$comment", opts[:comment]},
+      {"$maxTimeMS", opts[:max_time]},
+      {"$orderby", opts[:sort]}
     ] ++ Enum.into(opts[:modifiers] || [], [])
 
     query = filter_nils(query)
@@ -98,7 +98,7 @@ defmodule Mongo do
       unless List.keymember?(filter, "$query", 0) do
         filter = [{"$query", filter}]
       end
-      query = filter ++ query
+      query = filter ++ normalize_doc(query)
     end
 
     select = opts[:projection]

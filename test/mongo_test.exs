@@ -94,6 +94,9 @@ defmodule Mongo.Test do
 
     assert [%{"bar" => 1}] =
            Mongo.find(Pool, coll, %{"$query": %{foo: 42}}, projection: %{bar: 1}) |> Enum.to_list
+
+    assert [%{"foo" => 44}, %{"foo" => 43}] =
+      Mongo.find(Pool, coll, %{}, sort: [foo: -1], batch_size: 2, limit: 2) |> Enum.to_list
   end
 
   test "insert_one" do
