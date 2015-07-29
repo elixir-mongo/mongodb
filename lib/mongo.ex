@@ -24,6 +24,11 @@ defmodule Mongo do
       committed to journal - (Default: false)
     * `:wtimeout` - If the write concern is not satisfied in the specified
       interval, the operation returns an error
+
+  ## Logging
+
+  All operations take a boolean `log` option, that determines, whether the
+  pool's `log/5` function will be called.
   """
 
   alias Mongo.Connection
@@ -187,7 +192,7 @@ defmodule Mongo do
   @spec run_command(Pool.t, BSON.document, Keyword.t) :: BSON.document
   def run_command(pool, query, opts \\ []) do
     result =
-      pool.run(fn pid ->
+      Pool.run_with_log(pool, :run_command, [query], opts, fn pid ->
         Connection.find_one(pid, "$cmd", query, [], opts)
       end)
 
@@ -202,17 +207,19 @@ defmodule Mongo do
   @spec insert_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.InsertOneResult.t}
   def insert_one(pool, coll, doc, opts \\ []) do
     single_doc(doc)
+    result =
+      Pool.run_with_log(pool, :insert_one, [coll, doc], opts, fn pid ->
+        Connection.insert(pid, coll, doc, opts)
+      end)
 
-    pool.run(fn pid ->
-      case Connection.insert(pid, coll, doc, opts) do
-        :ok ->
-          :ok
-        {:ok, %WriteResult{inserted_ids: ids}} ->
-          {:ok, %Mongo.InsertOneResult{inserted_id: List.first(ids)}}
-        {:error, error} ->
-          raise error
-      end
-    end)
+    case result do
+      :ok ->
+        :ok
+      {:ok, %WriteResult{inserted_ids: ids}} ->
+        {:ok, %Mongo.InsertOneResult{inserted_id: List.first(ids)}}
+      {:error, error} ->
+        raise error
+    end
   end
 
   @spec insert_many(Pool.t, collection, [BSON.document], Keyword.t) :: :ok | {:ok, Mongo.InsertManyResult.t}
@@ -221,103 +228,121 @@ defmodule Mongo do
 
     # NOTE: Only for 2.4
     ordered? = Keyword.get(opts, :ordered, true)
-    opts = [continue_on_error: not ordered?] ++ opts
+    dbopts = [continue_on_error: not ordered?] ++ opts
 
-    pool.run(fn pid ->
-      case Connection.insert(pid, coll, docs, opts) do
-        :ok ->
-          :ok
-        {:ok, %WriteResult{inserted_ids: ids}} ->
-          ids = Enum.with_index(ids)
-                |> Enum.into(%{}, fn {x, y} -> {y, x} end)
-          {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
-        {:error, error} ->
-          raise error
-      end
-    end)
+    result =
+      Pool.run_with_log(pool, :insert_many, [coll, docs], opts, fn pid ->
+        Connection.insert(pid, coll, docs, dbopts)
+      end)
+
+    case result do
+      :ok ->
+        :ok
+      {:ok, %WriteResult{inserted_ids: ids}} ->
+        ids = Enum.with_index(ids)
+              |> Enum.into(%{}, fn {x, y} -> {y, x} end)
+      {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
+      {:error, error} ->
+        raise error
+    end
   end
 
   @spec delete_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.DeleteResult.t}
   def delete_one(pool, coll, filter, opts \\ []) do
-    opts = [multi: false] ++ opts
+    dbopts = [multi: false] ++ opts
 
-    pool.run(fn pid ->
-      case Connection.remove(pid, coll, filter, opts) do
-        :ok ->
-          :ok
-        {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
-          {:ok, %Mongo.DeleteResult{deleted_count: n}}
-        {:error, error} ->
-          raise error
-      end
-    end)
+    result =
+      Pool.run_with_log(pool, :delete_one, [coll, filter], opts, fn pid ->
+        Connection.remove(pid, coll, filter, dbopts)
+      end)
+
+    case result do
+      :ok ->
+        :ok
+      {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
+        {:ok, %Mongo.DeleteResult{deleted_count: n}}
+      {:error, error} ->
+        raise error
+    end
   end
 
   @spec delete_many(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.DeleteResult.t}
   def delete_many(pool, coll, filter, opts \\ []) do
-    opts = [multi: true] ++ opts
+    dbopts = [multi: true] ++ opts
 
-    pool.run(fn pid ->
-      case Connection.remove(pid, coll, filter, opts) do
-        :ok ->
-          :ok
-        {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
-          {:ok, %Mongo.DeleteResult{deleted_count: n}}
-        {:error, error} ->
-          raise error
-      end
-    end)
+    result =
+      Pool.run_with_log(pool, :delete_many, [coll, filter], opts, fn pid ->
+        Connection.remove(pid, coll, filter, dbopts)
+      end)
+
+    case result do
+      :ok ->
+        :ok
+      {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
+        {:ok, %Mongo.DeleteResult{deleted_count: n}}
+      {:error, error} ->
+        raise error
+    end
   end
 
   @spec replace_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def replace_one(pool, coll, filter, replacement, opts \\ []) do
     modifier_docs(replacement, :replace)
-    opts = [multi: false] ++ opts
+    dbopts = [multi: false] ++ opts
 
-    pool.run(fn pid ->
-      case Connection.update(pid, coll, filter, replacement, opts) do
-        :ok ->
-          :ok
-        {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
-          {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
-        {:error, error} ->
-          raise error
-      end
-    end)
+    result =
+      Pool.run_with_log(pool, :replace_one, [coll, filter, replacement], opts, fn pid ->
+        Connection.update(pid, coll, filter, replacement, dbopts)
+      end)
+
+    case result do
+      :ok ->
+        :ok
+      {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
+        {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
+      {:error, error} ->
+        raise error
+    end
   end
 
   @spec update_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def update_one(pool, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
-    opts = [multi: false] ++ opts
+    dbopts = [multi: false] ++ opts
 
-    pool.run(fn pid ->
-      case Connection.update(pid, coll, filter, update, opts) do
-        :ok ->
-          :ok
-        {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
-          {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
-        {:error, error} ->
-          raise error
-      end
-    end)
+    result =
+      Pool.run_with_log(pool, :update_one, [coll, filter, update], opts, fn pid ->
+        Connection.update(pid, coll, filter, update, dbopts)
+      end)
+
+    case result do
+      :ok ->
+        :ok
+      {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
+        {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
+      {:error, error} ->
+        raise error
+    end
   end
 
   @spec update_many(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def update_many(pool, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
-    opts = [multi: true] ++ opts
+    dbopts = [multi: true] ++ opts
 
-    pool.run(fn pid ->
-      case Connection.update(pid, coll, filter, update, opts) do
-        :ok ->
-          :ok
-        {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
-          {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
-        {:error, error} ->
-          raise error
-      end
-    end)
+    result =
+      Pool.run_with_log(pool, :update_many, [coll, filter, update], opts, fn pid ->
+        Connection.update(pid, coll, filter, update, dbopts)
+      end)
+
+    case result do
+      :ok ->
+        :ok
+      {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
+        {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
+      {:error, error} ->
+        raise error
+    end
   end
 
   @spec save_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.SaveOneResult.t}

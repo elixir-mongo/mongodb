@@ -27,6 +27,14 @@ defmodule Mongo.Pool.Poolboy do
   end
 
   def run(pool, fun) do
-    :poolboy.transaction(pool, fun)
+    {queue_time, pid} = :timer.tc(:poolboy, :checkout, [pool])
+    ret =
+      try do
+        fun.(pid)
+      after
+        :ok = :poolboy.checkin(pool, pid)
+      end
+
+    {queue_time, ret}
   end
 end

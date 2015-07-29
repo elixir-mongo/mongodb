@@ -5,8 +5,18 @@ defmodule Mongo.Test do
     use Mongo.Pool, name: __MODULE__, adapter: Mongo.Pool.Poolboy
   end
 
+  defmodule LoggingPool do
+    use Mongo.Pool, name: __MODULE__, adapter: Mongo.Pool.Poolboy
+
+    def log(return, _queue_time, _query_time, fun, args) do
+      Process.put(:last_log, {fun, args})
+      return
+    end
+  end
+
   setup_all do
     assert {:ok, _} = Pool.start_link(database: "mongodb_test")
+    assert {:ok, _} = LoggingPool.start_link(database: "mongodb_test")
     :ok
   end
 
@@ -376,5 +386,15 @@ defmodule Mongo.Test do
     assert [_] = Mongo.find(Pool, coll, %{foo: 50}) |> Enum.to_list
     assert [_] = Mongo.find(Pool, coll, %{foo: 51}) |> Enum.to_list
     assert [_] = Mongo.find(Pool, coll, %{foo: 52}) |> Enum.to_list
+  end
+
+  test "logging" do
+    coll = unique_name
+
+    Mongo.find(LoggingPool, coll, %{}, log: false) |> Enum.to_list
+    refute Process.get(:last_log)
+
+    Mongo.find(LoggingPool, coll, %{}) |> Enum.to_list
+    assert Process.get(:last_log) == {:find_cursor, [coll, %{}, nil, [batch_size: 1000]]}
   end
 end
