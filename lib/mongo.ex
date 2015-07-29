@@ -485,6 +485,12 @@ defmodule Mongo do
   defp single_doc(doc) when is_map(doc), do: :ok
   defp single_doc([]), do: :ok
   defp single_doc([{_, _} | _]), do: :ok
+  defp single_doc(other) do
+    raise ArgumentError, "expected single document, got: #{inspect other}"
+  end
 
   defp many_docs([first | _]) when not is_tuple(first), do: :ok
+  defp many_docs(other) do
+    raise ArgumentError, "expected list of documents, got: #{inspect other}"
+  end
 end

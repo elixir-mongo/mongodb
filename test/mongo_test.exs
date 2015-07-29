@@ -102,7 +102,7 @@ defmodule Mongo.Test do
   test "insert_one" do
     coll = unique_name
 
-    assert_raise FunctionClauseError, fn ->
+    assert_raise ArgumentError, fn ->
       Mongo.insert_one(Pool, coll, [%{foo: 42, bar: 1}])
     end
 
@@ -117,7 +117,7 @@ defmodule Mongo.Test do
   test "insert_many" do
     coll = unique_name
 
-    assert_raise FunctionClauseError, fn ->
+    assert_raise ArgumentError, fn ->
       Mongo.insert_many(Pool, coll, %{foo: 42, bar: 1})
     end
 
