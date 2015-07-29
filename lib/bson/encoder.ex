@@ -113,7 +113,7 @@ defmodule BSON.Encoder do
 
   defp invalid_doc(doc) do
     message = "invalid document containing atom and string keys: #{inspect doc}"
-    raise ArgumentError, message: message
+    raise ArgumentError, message
   end
 
   defp type(%BSON.Binary{}),                do: @type_binary

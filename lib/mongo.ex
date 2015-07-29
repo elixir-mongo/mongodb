@@ -384,11 +384,11 @@ defmodule Mongo do
     do: Enum.map(list, &modifier_docs(&1, type))
 
   defp modifier_key(<<?$, _::binary>>, :replace),
-    do: raise(ArgumentError, message: "replace does not allow atomic modifiers")
+    do: raise(ArgumentError, "replace does not allow atomic modifiers")
   defp modifier_key(<<?$, _::binary>>, :update),
     do: :ok
   defp modifier_key(<<_, _::binary>>, :update),
-    do: raise(ArgumentError, message: "update only allows atomic modifiers")
+    do: raise(ArgumentError, "update only allows atomic modifiers")
   defp modifier_key(_, _),
     do: :ok
 
@@ -453,7 +453,7 @@ defmodule Mongo do
 
   defp invalid_doc(doc) do
     message = "invalid document containing atom and string keys: #{inspect doc}"
-    raise ArgumentError, message: message
+    raise ArgumentError, message
   end
 
   defp cursor_type(nil),
