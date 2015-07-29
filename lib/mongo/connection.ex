@@ -29,8 +29,9 @@ defmodule Mongo.Connection do
     * `:database` - Database (required);
     * `:username` - Username
     * `:password` - User password
-    * `:backoff` - (Default: 1000)
-    * `:timeout` - (Default: 5000)
+    * `:backoff` - Backoff time for reconnects, the first reconnect is
+      instantaneous (Default: 1000)
+    * `:timeout` - TCP connect and receive timeouts (Default: 5000)
     * `:w` - The number of servers to replicate to before returning from write
       operators, a 0 value will return immediately, :majority will wait until
       the operation propagates to a majority of members in the replica set

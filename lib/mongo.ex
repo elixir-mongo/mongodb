@@ -1,6 +1,29 @@
 defmodule Mongo do
   @moduledoc """
-  TODO
+  The main entry point for doing queries. All functions take a pool to
+  run the query on.
+
+  ## Read options
+
+  All read operations that returns a cursor take the following options
+  for controlling the behaviour of the cursor.
+
+    * `:batch_size` - Number of documents to fetch in each batch
+    * `:limit` - Maximum number of documents to fetch with the cursor
+
+  ## Write options
+
+  All write operations take the following options for controlling the
+  write concern.
+
+    * `:w` - The number of servers to replicate to before returning from write
+      operators, a 0 value will return immediately, :majority will wait until
+      the operation propagates to a majority of members in the replica set
+      (Default: 1)
+    * `:j` If true, the write operation will only return after it has been
+      committed to journal - (Default: false)
+    * `:wtimeout` - If the write concern is not satisfied in the specified
+      interval, the operation returns an error
   """
 
   alias Mongo.Connection
@@ -23,6 +46,15 @@ defmodule Mongo do
     Supervisor.start_link(children, opts)
   end
 
+  @doc """
+  Performs aggregation operation using the aggregation pipeline.
+
+  ## Options
+
+    * `:allow_disk_use` - Enables writing to temporary files (Default: false)
+    * `:max_time` - Specifies a time limit in milliseconds
+    * `:use_cursor` - Use a cursor for a batched response (Default: true)
+  """
   @spec aggregate(Pool.t, collection, [BSON.document], Keyword.t) :: cursor
   def aggregate(pool, coll, pipeline, opts \\ []) do
     query = [
@@ -50,6 +82,15 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Returns the count of documents that would match a `find/4` query.
+
+  ## Options
+
+    * `:limit` - Maximum number of documents to fetch with the cursor
+    * `:skip` - Number of documents to skip before returning the first
+    * `:hint` - Hint which index to use for the query
+  """
   @spec count(Pool.t, collection, BSON.document, Keyword.t) :: non_neg_integer
   def count(pool, coll, filter, opts \\ []) do
     query = [
@@ -63,10 +104,17 @@ defmodule Mongo do
     opts = Keyword.drop(opts, ~w(limit skip hint)a)
 
     # Mongo 2.4 and 2.6 returns a float
-    runCommand(pool, query, opts)["n"]
+    run_command(pool, query, opts)["n"]
     |> trunc
   end
 
+  @doc """
+  Finds the distinct values for a specified field across a collection.
+
+  ## Options
+
+    * `:max_time` - Specifies a time limit in milliseconds
+  """
   @spec distinct(Pool.t, collection, String.t | atom, BSON.document, Keyword.t) :: [BSON.t]
   def distinct(pool, coll, field, filter, opts \\ []) do
     query = [
@@ -78,9 +126,27 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(max_time))
 
-    runCommand(pool, query, opts)["values"]
+    run_command(pool, query, opts)["values"]
   end
 
+  @doc """
+  Selects documents in a collection and returns a cursor for the selected
+  documents.
+
+  ## Options
+
+    * `:comment` - Associates a comment to a query
+    * `:cursor_type` - Set to :tailable or :tailable_await to return a tailable
+      cursor
+    * `:max_time` - Specifies a time limit in milliseconds
+    * `:modifiers` - Meta-operators modifying the output or behavior of a query,
+      see http://docs.mongodb.org/manual/reference/operator/query-modifier/
+    * `:cursor_timeout` - Set to false if cursor should not close after 10
+      minutes (Default: true)
+    * `:order_by` - Sorts the results of a query in ascending or descending order
+    * `:projection` - Limits the fields to return for all matching document
+    * `:skip` - The number of documents to skip before returning (Default: 0)
+  """
   @spec find(Pool.t, collection, BSON.document, Keyword.t) :: cursor
   def find(pool, coll, filter, opts \\ []) do
     query = [
@@ -113,8 +179,13 @@ defmodule Mongo do
     cursor(pool, coll, query, select, opts)
   end
 
-  @spec runCommand(Pool.t, BSON.document, Keyword.t) :: BSON.document
-  def runCommand(pool, query, opts \\ []) do
+  @doc """
+  Issue a database command. If the command has parameters use a keyword
+  list for the document because the "command key" has to be the first
+  in the document.
+  """
+  @spec run_command(Pool.t, BSON.document, Keyword.t) :: BSON.document
+  def run_command(pool, query, opts \\ []) do
     result =
       pool.run(fn pid ->
         Connection.find_one(pid, "$cmd", query, [], opts)
@@ -124,7 +195,7 @@ defmodule Mongo do
       %{"ok" => 1.0} = doc ->
         doc
       %{"ok" => 0.0, "errmsg" => reason, "code" => code} ->
-        raise %Mongo.Error{message: "runCommand failed: #{reason}", code: code}
+        raise %Mongo.Error{message: "run_command failed: #{reason}", code: code}
     end
   end
 
