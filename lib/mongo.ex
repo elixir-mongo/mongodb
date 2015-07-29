@@ -103,8 +103,12 @@ defmodule Mongo do
 
     select = opts[:projection]
 
-    opts = cursor_type(opts[:cursor_type]) ++
-           Keyword.drop(opts, ~w(comment max_time modifiers sort cursor_type projection)a)
+    drop = ~w(comment max_time modifiers sort cursor_type projection skip cursor_timeout)a
+    opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
+
+    unless Keyword.get(opts, :cursor_timeout, true) do
+      opts = [{:no_cursor_timeout, true} | opts]
+    end
 
     cursor(pool, coll, query, select, opts)
   end

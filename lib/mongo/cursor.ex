@@ -12,10 +12,12 @@ defmodule Mongo.Cursor do
 
     def reduce(%{pool: pool, coll: coll, query: query, select: select, opts: opts},
                acc, reduce_fun) do
-      limit = opts[:limit]
+      limit     = opts[:limit]
+      opts      = Keyword.drop(opts, [:limit])
+      next_opts = Keyword.drop(opts, [:skip])
 
       start_fun = start_fun(pool, coll, query, select, limit, opts)
-      next_fun  = next_fun(coll, opts)
+      next_fun  = next_fun(coll, next_opts)
       after_fun = after_fun()
 
       Stream.resource(start_fun, next_fun, after_fun).(acc, reduce_fun)
