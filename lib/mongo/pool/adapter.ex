@@ -20,6 +20,6 @@ defmodule Mongo.Pool.Adapter do
   Runs the function with a checked out connection from the pool,
   after the function returns the pool should reclaim the connection.
   """
-  defcallback run(name, (pid -> return)) :: return
+  defcallback run(name, (pid -> return)) :: {queue_time :: integer, return}
          when return: var
 end
