@@ -181,7 +181,7 @@ defmodule Mongo.Connection do
   def connect(_, %{opts: opts} = s) do
     host = opts[:hostname]
     port = opts[:port]
-    sock_opts = [:binary, active: false, packet: :raw, send_timeout: s.timeout]
+    sock_opts = [:binary, active: false, packet: :raw, send_timeout: s.timeout, nodelay: true]
                 ++ (opts[:socket_options] || [])
 
     case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
