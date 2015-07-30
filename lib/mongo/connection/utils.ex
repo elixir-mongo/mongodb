@@ -31,20 +31,45 @@ defmodule Mongo.Connection.Utils do
     end
   end
 
-  def send(ops, s) do
-    # Do a separate :gen_tcp.send/2 for each message because mongosniff
-    # cannot handle more than one message per packet. TCP is a stream
-    # protocol, but no.
-    Enum.find_value(List.wrap(ops), fn {id, op} ->
-      data = encode(id, op)
+  # Performance regressions of a factor of 1000x have been observed on
+  # linux systems for write operations that do not include the getLastError
+  # command in the same call to :gen_tcp.send/2 so we hide the workaround
+  # for mongosniff behind a flag
+  if Mix.env in [:dev, :test] && System.get_env("MONGO_NO_BATCH_SEND") do
+    def send(ops, s) do
+      # Do a separate :gen_tcp.send/2 for each message because mongosniff
+      # cannot handle more than one message per packet. TCP is a stream
+      # protocol, but no.
+      # https://jira.mongodb.org/browse/TOOLS-821
+      Enum.find_value(List.wrap(ops), fn {id, op} ->
+        data = encode(id, op)
+        case :gen_tcp.send(s.socket, data) do
+          :ok ->
+            nil
+          {:error, _} = error ->
+            error
+        end
+      end)
+      || {:ok, s}
+    end
+
+  else
+
+    def send(ops, s) do
+      ops = List.wrap(ops)
+
+      data =
+        Enum.reduce(ops, "", fn {id, op}, acc ->
+          [acc|encode(id, op)]
+        end)
+
       case :gen_tcp.send(s.socket, data) do
         :ok ->
-          nil
+          {:ok, s}
         {:error, _} = error ->
           error
       end
-    end)
-    || {:ok, s}
+    end
   end
 
   def namespace(coll, s),
