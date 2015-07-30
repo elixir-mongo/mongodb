@@ -30,7 +30,7 @@ defmodule Mongo.Cursor do
 
       fn ->
         result =
-          Pool.run_with_log(pool, :find_cursor, [coll, query, projector], opts, fn pid ->
+          Pool.run_with_log(pool, :find, [coll, query, projector], opts, fn pid ->
             Connection.find(pid, coll, query, projector, opts)
           end)
 
@@ -59,7 +59,7 @@ defmodule Mongo.Cursor do
           opts = batch_size(limit, opts)
 
           result =
-            Pool.run_with_log(pool, :find_batch, [coll, cursor], opts, fn pid ->
+            Pool.run_with_log(pool, :find_rest, [coll, cursor], opts, fn pid ->
               Connection.get_more(pid, coll, cursor, opts)
             end)
 
@@ -133,7 +133,7 @@ defmodule Mongo.AggregationCursor do
 
       fn ->
         result =
-          Pool.run_with_log(pool, :find_cursor, [coll, query, projector], opts, fn pid ->
+          Pool.run_with_log(pool, :find, [coll, query, projector], opts, fn pid ->
             Connection.find(pid, coll, query, projector, opts)
           end)
 
@@ -153,7 +153,7 @@ defmodule Mongo.AggregationCursor do
 
         state(buffer: [], pool: pool, cursor: cursor, coll: coll) = state ->
           result =
-            Pool.run_with_log(pool, :find_batch, [coll, cursor], opts, fn pid ->
+            Pool.run_with_log(pool, :find_rest, [coll, cursor], opts, fn pid ->
               Connection.get_more(pid, coll, cursor, opts)
             end)
 
@@ -218,7 +218,7 @@ defmodule Mongo.SinglyCursor do
     defp start_fun(pool, coll, query, projector, opts) do
       fn ->
         result =
-          Pool.run_with_log(pool, :find_cursor, [coll, query, projector], opts, fn pid ->
+          Pool.run_with_log(pool, :find, [coll, query, projector], opts, fn pid ->
             Connection.find(pid, coll, query, projector, opts)
           end)
 

@@ -395,6 +395,6 @@ defmodule Mongo.Test do
     refute Process.get(:last_log)
 
     Mongo.find(LoggingPool, coll, %{}) |> Enum.to_list
-    assert Process.get(:last_log) == {:find_cursor, [coll, %{}, nil, [batch_size: 1000]]}
+    assert Process.get(:last_log) == {:find, [coll, %{}, nil, [batch_size: 1000]]}
   end
 end

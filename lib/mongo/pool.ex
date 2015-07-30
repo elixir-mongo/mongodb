@@ -16,6 +16,7 @@ defmodule Mongo.Pool do
 
   The pool may define a `log/5` function, that will be called by the
   driver on every call to the database.
+
   Please refer to the callback's documentation for more information.
   """
 
@@ -104,18 +105,19 @@ defmodule Mongo.Pool do
   The fourth argument determines the operation, these can be (listed with the
   arguments passed as the fifth argument to the log function):
 
-    * `:run_command`,  `[query, options]`
-    * `:insert_one`,   `[collection, document, options]`
-    * `:insert_many`,  `[collection, documents, options]`
-    * `:delete_one`,   `[collection, filter, options]`
-    * `:delete_many`,  `[collection, filter, options]`
-    * `:replace_one`,  `[collection, filter, replacement, options]`
-    * `:update_one`,   `[collection, filter, update, options]`
-    * `:update_many`,  `[collection, filter, update, options]`
-    * `:find_cursor`,  `[collection, query, projection, options]`
-    * `:find_batch`,   `[collection, cursor, options]`
-    * `:kill_cursors`, `[cursors, options]`
-
+  Operation       | Arguments
+  :-------------- | :-------------------------------------------
+  `:run_command`  | `[query, options]`
+  `:insert_one`   | `[collection, document, options]`
+  `:insert_many`  | `[collection, documents, options]`
+  `:delete_one`   | `[collection, filter, options]`
+  `:delete_many`  | `[collection, filter, options]`
+  `:replace_one`  | `[collection, filter, replacement, options]`
+  `:update_one`   | `[collection, filter, update, options]`
+  `:update_many`  | `[collection, filter, update, options]`
+  `:find`         | `[collection, query, projection, options]`
+  `:find_rest`    | `[collection, cursor, options]`
+  `:kill_cursors` | `[cursors, options]`
   """
   defcallback log(return, queue_time, query_time, operation, args :: list) ::
     return when return: var, queue_time: time, query_time: time
