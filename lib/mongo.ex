@@ -193,14 +193,17 @@ defmodule Mongo do
   def run_command(pool, query, opts \\ []) do
     result =
       Pool.run_with_log(pool, :run_command, [query], opts, fn pid ->
-        Connection.find_one(pid, "$cmd", query, [], opts)
+        case Connection.find_one(pid, "$cmd", query, [], opts) do
+          %{"ok" => 1.0} = doc ->
+            {:ok, doc}
+          %{"ok" => 0.0, "errmsg" => reason, "code" => code} ->
+            {:error, %Mongo.Error{message: "run_command failed: #{reason}", code: code}}
+        end
       end)
 
     case result do
-      %{"ok" => 1.0} = doc ->
-        doc
-      %{"ok" => 0.0, "errmsg" => reason, "code" => code} ->
-        raise %Mongo.Error{message: "run_command failed: #{reason}", code: code}
+      {:ok, doc}      -> doc
+      {:error, error} -> raise error
     end
   end
 
