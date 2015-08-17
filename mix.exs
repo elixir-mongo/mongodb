@@ -29,6 +29,8 @@ defmodule Mongodb.Mixfile do
   defp deps do
     [{:connection, "1.0.0-rc.1"},
      {:pbkdf2, github: "basho/erlang-pbkdf2"},
-     {:poolboy, "~> 1.5", optional: true}]
+     {:poolboy, "~> 1.5", optional: true},
+     {:inch_ex, only: :docs}
+    ]
   end
 end

@@ -1,3 +1,5 @@
 %{"connection": {:hex, :connection, "1.0.0-rc.1"},
+  "inch_ex": {:hex, :inch_ex, "0.4.0"},
   "pbkdf2": {:git, "git://github.com/basho/erlang-pbkdf2.git", "7076584f5377e98600a7e2cb81980b2992fb2f71", []},
+  "poison": {:hex, :poison, "1.4.0"},
   "poolboy": {:hex, :poolboy, "1.5.1"}}

@@ -13,6 +13,9 @@ env:
     - MONGOVERSION=2.4.14
     - MONGOVERSION=2.6.10
     - MONGOVERSION=3.0.3
+after_script:
+  - mix deps.get --only docs
+  - MIX_ENV=docs mix inch.report
 notifications:
   recipients:
     - eric.meadows.jonsson@gmail.com

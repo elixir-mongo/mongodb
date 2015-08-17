@@ -1,6 +1,9 @@
 Mongodb
 =======
 
+[![Build Status](https://travis-ci.org/ericmj/mongodb.svg?branch=master)](https://travis-ci.org/ericmj/mongodb)
+[![Inline docs](http://inch-ci.org/github/ericmj/mongodb.svg)](http://inch-ci.org/github/ericmj/mongodb)
+
 ## Features
 
 ## Immediate Roadmap
