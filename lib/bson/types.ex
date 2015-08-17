@@ -1,4 +1,8 @@
 defmodule BSON.Binary do
+  @moduledoc """
+  Represents BSON binary type
+  """
+
   defstruct [binary: nil, subtype: :generic]
 
   defimpl Inspect do
@@ -13,8 +17,14 @@ defmodule BSON.Binary do
 end
 
 defmodule BSON.ObjectId do
+  @moduledoc """
+  Represents BSON ObjectId type
+  """
   defstruct [:value]
 
+  @doc """
+  Creates a new ObjectId from the consisting parts
+  """
   def new(machine_id, proc_id, secs, counter) do
     value = <<secs       :: unsigned-big-32,
               machine_id :: unsigned-big-24,
@@ -31,10 +41,18 @@ defmodule BSON.ObjectId do
 end
 
 defmodule BSON.DateTime do
+  @moduledoc """
+  Represents BSON DateTime type
+  """
+
   defstruct [:utc]
 
   @epoch :calendar.datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})
 
+  @doc """
+  Converts `BSON.DateTime` into a `{{year, month, day}, {hour, min, sec, usec}}`
+  tuple.
+  """
   def to_datetime(%BSON.DateTime{utc: utc}) do
     seconds = div(utc, 1000) + @epoch
     usec = rem(utc, 1000) * 1000
@@ -42,6 +60,9 @@ defmodule BSON.DateTime do
     {date, {hour, min, sec, usec}}
   end
 
+  @doc """
+  Converts `BSON.DateTime` to ISO8601 representation
+  """
   def to_iso8601(%BSON.DateTime{} = datetime) do
     {{year, month, day}, {hour, min, sec, usec}} = to_datetime(datetime)
 
@@ -67,6 +88,10 @@ defmodule BSON.DateTime do
 end
 
 defmodule BSON.Regex do
+  @moduledoc """
+  Represents BSON Regex type
+  """
+
   defstruct [:pattern, :options]
 
   defimpl Inspect do
@@ -81,6 +106,10 @@ defmodule BSON.Regex do
 end
 
 defmodule BSON.JavaScript do
+  @moduledoc """
+  Represents BSON JavaScript (with and without scope) types
+  """
+
   defstruct [:code, :scope]
 
   defimpl Inspect do
@@ -95,6 +124,10 @@ defmodule BSON.JavaScript do
 end
 
 defmodule BSON.Timestamp do
+  @moduledoc """
+  Represents BSON Timestamp type
+  """
+
   defstruct [:value]
 
   defimpl Inspect do

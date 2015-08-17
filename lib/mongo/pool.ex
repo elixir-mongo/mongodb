@@ -16,25 +16,7 @@ defmodule Mongo.Pool do
 
   The pool may define a `log/5` function, that will be called by the
   driver on every call to the database.
-
-  The first argument result can be of form: `:ok`, `{:ok, _}` or `{:error, _}`.
-  The second element of the tuples should be considered private, and not used.
-
-  The fourth argument determines the operation, these can be (listed with the
-  arguments passed as the fifth argument to the log function):
-
-    * `:run_command`,  `[query, options]`
-    * `:insert_one`,   `[collection, document, options]`
-    * `:insert_many`,  `[collection, documents, options]`
-    * `:delete_one`,   `[collection, filter, options]`
-    * `:delete_many`,  `[collection, filter, options]`
-    * `:replace_one`,  `[collection, filter, replacement, options]`
-    * `:update_one`,   `[collection, filter, update, options]`
-    * `:update_many`,  `[collection, filter, update, options]`
-    * `:find_cursor`,  `[collection, query, projection, options]`
-    * `:find_batch`,   `[collection, cursor, options]`
-    * `:kill_cursors`, `[cursors, options]`
-
+  Please refer to the callback's documentation for more information.
   """
 
   use Behaviour
@@ -56,6 +38,7 @@ defmodule Mongo.Pool do
       @monitor   __MODULE__.Monitor
       @ets       __MODULE__.ETS
 
+      @doc false
       def start_link(opts) do
         import Supervisor.Spec, warn: false
 
@@ -68,19 +51,23 @@ defmodule Mongo.Pool do
         Supervisor.start_link(children, opts)
       end
 
+      @doc false
       def stop do
         Process.whereis(__MODULE__)
         |> Process.exit(:shutdown)
       end
 
+      @doc false
       def run(fun) do
         @adapter.run(@name, fun)
       end
 
+      @doc false
       def version do
         Monitor.version(@monitor, @ets, @timeout)
       end
 
+      @doc false
       def log(return, queue_time, query_time, _fun, _args) do
         return
       end
@@ -90,12 +77,61 @@ defmodule Mongo.Pool do
   end
 
   @type time :: integer
+  @type operation ::
+    :run_command | :insert_one | :insert_many | :delete_one | :delete_many |
+    :replace_one | :update_one | :update_many | :find_cursor | :find_batch |
+    :kill_cursors
 
+  @doc """
+  Executes given function checking out a connection from pool, and ensuring it
+  will be properely checked in back once finished.
+  """
   defcallback run((pid -> return)) :: {queue_time :: time, return} when return: var
+
+  @doc """
+  Returns the version of the MongoDB wire protocol used for the pool's connections
+  """
   defcallback version() :: non_neg_integer
-  defcallback log(return, queue_time, query_time, fun :: atom, args :: list) ::
+
+  @doc """
+  Called every time when the driver has a logging information to be printed.
+
+  The first argument result can be of form: `:ok`, `{:ok, _}` or `{:error, _}`.
+  The second element of the tuples should be considered private, and not used.
+
+  ## Operations
+
+  The fourth argument determines the operation, these can be (listed with the
+  arguments passed as the fifth argument to the log function):
+
+    * `:run_command`,  `[query, options]`
+    * `:insert_one`,   `[collection, document, options]`
+    * `:insert_many`,  `[collection, documents, options]`
+    * `:delete_one`,   `[collection, filter, options]`
+    * `:delete_many`,  `[collection, filter, options]`
+    * `:replace_one`,  `[collection, filter, replacement, options]`
+    * `:update_one`,   `[collection, filter, update, options]`
+    * `:update_many`,  `[collection, filter, update, options]`
+    * `:find_cursor`,  `[collection, query, projection, options]`
+    * `:find_batch`,   `[collection, cursor, options]`
+    * `:kill_cursors`, `[cursors, options]`
+
+  """
+  defcallback log(return, queue_time, query_time, operation, args :: list) ::
     return when return: var, queue_time: time, query_time: time
 
+
+  @doc """
+  Invokes given pool's `run/1` gathering information necessary for the pools
+  `log/5` function.
+
+  The `opts` argument is appended to the `args` list passed to the pool's
+  log function.
+
+  ## Options
+
+    * `:log` - if `false` the `log/5` function won't be invoked (default: `true`)
+  """
   def run_with_log(pool, log, args, opts, fun) do
     {log?, opts} = Keyword.pop(opts, :log, true)
 

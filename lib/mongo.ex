@@ -207,6 +207,12 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Insert a single document into the collection.
+
+  If the document is missing the `_id` field or it is `nil`, an ObjectId
+  will be generated, inserted into the document, and returned in the result struct.
+  """
   @spec insert_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.InsertOneResult.t}
   def insert_one(pool, coll, doc, opts \\ []) do
     single_doc(doc)
@@ -225,6 +231,19 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Insert multiple documents into the collection.
+
+  If any of the documents is missing the `_id` field or it is `nil`, an ObjectId
+  will be generated, and insertd into the document.
+  Ids of all documents will be returned in the result struct.
+
+  ## Options
+
+    * `:continue_on_error` - even if insert fails for one of the documents
+      continue inserting the remaining ones (default: `false`)
+  """
+  # TODO describe the ordered option
   @spec insert_many(Pool.t, collection, [BSON.document], Keyword.t) :: :ok | {:ok, Mongo.InsertManyResult.t}
   def insert_many(pool, coll, docs, opts \\ []) do
     many_docs(docs)
@@ -250,6 +269,9 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Remove a document matching the filter from the collection.
+  """
   @spec delete_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.DeleteResult.t}
   def delete_one(pool, coll, filter, opts \\ []) do
     dbopts = [multi: false] ++ opts
@@ -269,6 +291,9 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Remove all documents matching the filter from the collection.
+  """
   @spec delete_many(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.DeleteResult.t}
   def delete_many(pool, coll, filter, opts \\ []) do
     dbopts = [multi: true] ++ opts
@@ -288,6 +313,14 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Replace a single document matching the filter with the new document.
+
+  ## Options
+
+    * `:upsert` - if set to `true` creates a new document when no document
+      matches the filter (default: `false`)
+  """
   @spec replace_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def replace_one(pool, coll, filter, replacement, opts \\ []) do
     modifier_docs(replacement, :replace)
@@ -308,6 +341,18 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Update a single document matching the filter.
+
+  Uses MongoDB update operators to specify the updates. For more information
+  please refer to the
+  [MongoDB documentation](http://docs.mongodb.org/manual/reference/operator/update/)
+
+  ## Options
+
+    * `:upsert` - if set to `true` creates a new document when no document
+      matches the filter (default: `false`)
+  """
   @spec update_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def update_one(pool, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
@@ -328,6 +373,18 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Update all documents matching the filter.
+
+  Uses MongoDB update operators to specify the updates. For more information
+  please refer to the
+  [MongoDB documentation](http://docs.mongodb.org/manual/reference/operator/update/)
+
+  ## Options
+
+    * `:upsert` - if set to `true` creates a new document when no document
+      matches the filter (default: `false`)
+  """
   @spec update_many(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
   def update_many(pool, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
@@ -348,6 +405,13 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Updates an existing document or inserts a new one.
+
+  If the document does not contain the `_id` field, then the `insert_one/3`
+  function is used to persist the document, otherwise `replace_one/5` is used,
+  where the filter is the `_id` field, and the `:upsert` option is set to `true`.
+  """
   @spec save_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.SaveOneResult.t}
   def save_one(pool, coll, doc, opts \\ []) do
     case get_id(doc) do
@@ -376,6 +440,20 @@ defmodule Mongo do
     |> save_result
   end
 
+  @doc """
+  Updates documents or inserts them.
+
+  For the documents that does not contain the `_id` field, `insert_many/3`
+  function is used to persist them, for those that do contain the `_id` field,
+  the `replace_one/5` function is invoked for each document separately, where
+  the filter is the `_id` field, and the `:upsert` option is set to `true`.
+
+  ## Options
+
+    * `:ordered` - if set to `false` will group all documents to be inserted
+      together, otherwise it will preserve the order, but it may be slow
+      for large number of documents (default: `false`)
+  """
   @spec save_many(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.SaveManyResult.t}
   def save_many(pool, coll, docs, opts \\ []) do
     many_docs(docs)
