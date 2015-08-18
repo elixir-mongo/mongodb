@@ -8,18 +8,17 @@ Mongodb
 
 ## Immediate Roadmap
 
+  * PBKDF2 with https://github.com/elixir-lang/plug/blob/master/lib/plug/crypto/key_generator.ex
+  * Add timeouts for all calls
   * Bang and non-bang `Mongo` functions
-  * Documentation
-  * Move low-level API to `Connection` and have `Mongo` be the next-gen driver API
-    - Split database and collection actions?
   * Move BSON encoding to client process
     - Make sure requests don't go over the 16mb limit
   * Replica sets
     - Block in client (and timeout) when waiting for new primary selection
   * New 2.6 write queries and bulk writes
-  * Cursors
   * Reconnect backoffs with https://github.com/ferd/backoff
   * Lazy connect
+  ? Drop save_* because it was dropped by driver specs
 
 ## Tentative Roadmap
 
@@ -32,7 +31,6 @@ Mongodb
     - http://docs.mongodb.org/manual/reference/read-preference
 
 ## Usage
-
 
 ### Connection Pools
 

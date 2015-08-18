@@ -343,8 +343,8 @@ defmodule Mongo.Connection do
   end
 
   @doc false
-  def handle_info({:tcp, _, data}, %{socket: socket, tail: tail} = s) do
-    s = new_data(tail <> data, s)
+  def handle_info({:tcp, _, data}, %{socket: socket} = s) do
+    s = new_data(data, s)
     :inet.setopts(socket, active: :once)
     {:noreply, s}
   end
@@ -383,7 +383,7 @@ defmodule Mongo.Connection do
           else: message(command, id, reply, s)
 
       :error ->
-        {:ok, %{s | tail: data}}
+        %{s | tail: data}
     end
   end
 

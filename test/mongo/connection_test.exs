@@ -155,4 +155,17 @@ defmodule Mongo.ConnectionTest do
 
     assert {:ok, %Read{num: 1}} = Connection.find(pid, coll, %{foo: 43}, nil)
   end
+
+  test "big response" do
+    pid    = connect_auth()
+    coll   = unique_name
+    size   = 1024*1024
+    binary = <<0::size(size)>>
+
+    Enum.each(1..10, fn _ ->
+      Connection.insert(pid, coll, %{data: binary}, [w: 0])
+    end)
+
+    assert {:ok, %Read{num: 10}} = Connection.find(pid, coll, %{}, nil, batch_size: 100)
+  end
 end

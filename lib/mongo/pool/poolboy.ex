@@ -18,6 +18,8 @@ defmodule Mongo.Pool.Poolboy do
     {size, opts} = Keyword.pop(opts, :pool_size, 10)
     {pool_opts, worker_opts} = Keyword.split(opts, @poolboy_opts)
 
+    # TODO: Rename size => pool_size
+
     pool_opts = pool_opts
       |> Keyword.put(:name, {:local, name})
       |> Keyword.put(:worker_module, Mongo.Connection)
