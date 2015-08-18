@@ -397,4 +397,10 @@ defmodule Mongo.Test do
     Mongo.find(LoggingPool, coll, %{}) |> Enum.to_list
     assert Process.get(:last_log) == {:find, [coll, %{}, nil, [batch_size: 1000]]}
   end
+
+  # issue #19
+  test "correctly pass options to cursor" do
+    assert %Mongo.Cursor{coll: "coll", opts: [no_cursor_timeout: true, skip: 10]} =
+           Mongo.find(Pool, "coll", %{}, skip: 10, cursor_timeout: false)
+  end
 end
