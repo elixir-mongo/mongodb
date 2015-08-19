@@ -43,7 +43,10 @@ defmodule Mongo.PBKDF2Cache do
 
   defp run_task({password, salt, iterations} = key) do
     Task.async(fn ->
-      {:ok, result} = :pbkdf2.pbkdf2(:sha, password, salt, iterations, 20)
+      result = Mongo.PBKDF2.generate(password, salt,
+                                     iterations: iterations,
+                                     length: 20,
+                                     digest: :sha)
       {key, result}
     end)
   end

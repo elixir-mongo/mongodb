@@ -8,7 +8,6 @@ Mongodb
 
 ## Immediate Roadmap
 
-  * PBKDF2 with https://github.com/elixir-lang/plug/blob/master/lib/plug/crypto/key_generator.ex
   * Add timeouts for all calls
   * Bang and non-bang `Mongo` functions
   * Move BSON encoding to client process
@@ -24,8 +23,6 @@ Mongodb
 
   * SSL
   * Use meta-driver test suite
-  * Smarter pooling
-    - A single connection can serve multiple requests concurrently so traditional pooling (like poolboy) a where single process takes exclusive access of a connection may not fit. Furthermore it is not ideal that long running cursors reserves a connection from the pool for the cursor's full duration. Pooling libraries such as sbroker allows a connection to serve multiple requests, ideally it would be combined with a dispatcher that selects an appropriate connection based on its internal queue.
   * Server selection / Read preference
     - https://www.mongodb.com/blog/post/server-selection-next-generation-mongodb-drivers
     - http://docs.mongodb.org/manual/reference/read-preference

@@ -12,7 +12,7 @@ defmodule Mongodb.Mixfile do
   #
   # Type `mix help compile.app` for more information
   def application do
-    [applications: [:logger, :connection, :pbkdf2],
+    [applications: [:logger, :connection],
      mod: {Mongo, []},
      env: []]
   end
@@ -28,7 +28,6 @@ defmodule Mongodb.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [{:connection, "1.0.0-rc.1"},
-     {:pbkdf2, github: "basho/erlang-pbkdf2"},
      {:poolboy, "~> 1.5", optional: true},
      {:inch_ex, only: :docs}
     ]
