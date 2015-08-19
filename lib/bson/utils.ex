@@ -17,6 +17,7 @@ defmodule BSON.Utils do
       @type_null      0x0A
       @type_regex     0x0B
       @type_js        0x0D
+      @type_symbol    0x0E
       @type_js_scope  0x0F
       @type_int32     0x10
       @type_timestamp 0x11
