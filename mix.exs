@@ -3,33 +3,40 @@ defmodule Mongodb.Mixfile do
 
   def project do
     [app: :mongodb,
-     version: "0.0.1",
+     version: "0.1.0",
      elixir: "~> 1.0",
-     deps: deps]
+     deps: deps,
+     name: "Mongodb",
+     source_url: "https://github.com/ericmj/mongodb",
+     docs: fn ->
+       {ref, 0} = System.cmd("git", ["rev-parse", "--verify", "--quiet", "HEAD"])
+       [source_ref: ref, main: "README", readme: "README.md"]
+     end,
+     description: description,
+     package: package]
   end
 
-  # Configuration for the OTP application
-  #
-  # Type `mix help compile.app` for more information
   def application do
     [applications: [:logger, :connection],
      mod: {Mongo, []},
      env: []]
   end
 
-  # Dependencies can be Hex packages:
-  #
-  #   {:mydep, "~> 0.3.0"}
-  #
-  # Or git/path repositories:
-  #
-  #   {:mydep, git: "https://github.com/elixir-lang/mydep.git", tag: "0.1.0"}
-  #
-  # Type `mix help deps` for more examples and options
   defp deps do
     [{:connection, "1.0.0-rc.1"},
      {:poolboy, "~> 1.5", optional: true},
-     {:inch_ex, only: :docs}
-    ]
+     {:ex_doc, only: :docs},
+     {:earmark, only: :docs},
+     {:inch_ex, only: :docs}]
+  end
+
+  defp description do
+    "MongoDB driver for Elixir."
+  end
+
+  defp package do
+    [contributors: ["Eric Meadows-Jönsson"],
+     licenses: ["Apache 2.0"],
+     links: %{"Github" => "https://github.com/ericmj/mongodb"}]
   end
 end
