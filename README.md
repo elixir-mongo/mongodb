@@ -6,6 +6,14 @@ Mongodb
 
 ## Features
 
+  * Supports MongoDB versions 2.4, 2.6, 3.0
+  * Connection pooling
+  * Streaming cursors
+  * Performant ObjectID generation
+  * Follows driver specification set by 10gen
+  * Safe (by default) and unsafe writes
+  * Aggregation pipeline
+
 ## Immediate Roadmap
 
   * Add timeouts for all calls
