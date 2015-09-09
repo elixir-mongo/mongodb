@@ -132,6 +132,15 @@ defmodule BSONTest do
     assert encode(%{hello: "world"}) == @bin1
   end
 
+  test "encode atom value" do
+    assert encode(%{"hello" => :world}) == @bin1
+  end
+
+  test "decode BSON symbol into string" do
+    encoded = <<22, 0, 0, 0, 14, 104, 101, 108, 108, 111, 0, 6, 0, 0, 0, 119, 111, 114, 108, 100, 0, 0>>
+    assert decode(encoded) == @map1
+  end
+
   defp encode(value) do
     value |> BSON.encode |> IO.iodata_to_binary
   end
