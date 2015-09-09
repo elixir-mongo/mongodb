@@ -60,10 +60,10 @@ Mongo.delete_one(MongoPool, "test-collection", %{"field" => 10})
 Mongo.delete_many(MongoPool, "test-collection", %{"field" => 10})
 ```
 
-### Pool Transactions
+### Run on a single pool connection
 ```elixir
 # Gets a pool process (conn) to run queries on
-MongoPool.transaction(fn (conn) ->
+MongoPool.run(fn (conn) ->
   # Removes 1 result using the query
   Mongo.Connection.remove(conn, "test-collection", %{"field" => 1})
 
