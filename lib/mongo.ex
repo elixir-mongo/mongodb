@@ -189,7 +189,7 @@ defmodule Mongo do
   """
   @spec findOne(Pool.t, collection, BSON.document, Keyword.t) :: BSON.document
   def findOne(pool, coll, filter, opts \\ []) do
-    opts = opts ++ [limit: 1]
+    opts = Dict.put(opts, :limit, 1)
     cursor = find(pool, coll, filter, opts)
     result = Enum.to_list(cursor)
     if result == [] do
