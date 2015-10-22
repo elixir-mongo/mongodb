@@ -4,7 +4,7 @@ otp_release:
 cache: apt
 before_install:
   - npm install -g mongodb-version-manager
-  - m $MONGOVERSION
+  - m use $MONGOVERSION
   - mkdir db
 before_script:
   - mongod --fork --logpath mongo.log --dbpath db
