@@ -35,6 +35,29 @@ Mongodb
     - https://www.mongodb.com/blog/post/server-selection-next-generation-mongodb-drivers
     - http://docs.mongodb.org/manual/reference/read-preference
 
+## Data representation
+
+    BSON             	Elixir
+    ----------        	------
+    double              0.0
+    string              "Elixir"
+    document            [{"key", "value"}] | %{"key" => "value"} *
+    binary              %BSON.Binary{binary: <<42, 43>>, subtype: :generic}
+    object id           %BSON.ObjectId{value: <<...>>}
+    boolean             true | false
+    UTC datetime        %BSON.DateTime{utc: ...}
+    null                nil
+    regex               %BSON.Regex{pattern: "..."}
+    JavaScript          %BSON.JavaScript{code: "..."}
+    integer             42
+    symbol              "foo" **
+    min key             :BSON_min
+    max key             :BSON_max
+
+* Since BSON documents are ordered Elixir maps cannot be used to fully represent them. This driver chose to accept both maps and lists of key-value pairs when encoding but will only decode documents to lists. This has the side-effect that it's impossible to discern empty arrays from empty documents. Additionally the driver will accept both atoms and strings for document keys but will only decode to strings.
+
+** BSON symbols can only be decoded.
+
 ## Usage
 
 ### Connection Pools
