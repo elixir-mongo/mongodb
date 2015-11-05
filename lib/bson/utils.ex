@@ -22,8 +22,8 @@ defmodule BSON.Utils do
       @type_int32     0x10
       @type_timestamp 0x11
       @type_int64     0x12
-      @type_min       0x13
-      @type_max       0x14
+      @type_min       0xFF
+      @type_max       0x7F
     end
   end
 
