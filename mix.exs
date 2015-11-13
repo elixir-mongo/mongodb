@@ -23,7 +23,7 @@ defmodule Mongodb.Mixfile do
   end
 
   defp deps do
-    [{:connection, "1.0.0-rc.1"},
+    [{:connection, "~> 1.0"},
      {:poolboy, "~> 1.5", optional: true},
      {:ex_doc, only: :docs},
      {:earmark, only: :docs},
