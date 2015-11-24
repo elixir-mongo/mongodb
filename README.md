@@ -77,7 +77,7 @@ Enum.to_list(cursor)
 |> IO.inspect
 ```
 
-### APIs
+### Examples
 ```elixir
 Mongo.find(MongoPool, "test-collection", %{}, limit: 20)
 Mongo.find(MongoPool, "test-collection", %{"field" => %{"$gt" => 0}}, limit: 20, sort: %{"field" => 1})
@@ -89,18 +89,6 @@ Mongo.insert_many(MongoPool, "test-collection", [%{"field" => 10}, %{"field" => 
 Mongo.delete_one(MongoPool, "test-collection", %{"field" => 10})
 
 Mongo.delete_many(MongoPool, "test-collection", %{"field" => 10})
-```
-
-### Run on a single pool connection
-```elixir
-# Gets a pool process (conn) to run queries on
-MongoPool.run(fn (conn) ->
-  # Removes 1 result using the query
-  Mongo.Connection.remove(conn, "test-collection", %{"field" => 1})
-
-  # Removes all results using the query
-  Mongo.Connection.remove(conn, "test-collection", %{"field" => 1, "otherfield" => 1}, multi: true)
-end)
 ```
 
 ## License
