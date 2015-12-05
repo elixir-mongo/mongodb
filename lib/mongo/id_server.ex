@@ -22,7 +22,7 @@ defmodule Mongo.IdServer do
   @num_counters 3600
   @reset_timer 60_000
   @counter_max 16777216
-  @gs_epoch :calendar.datetime_to_gregorian_seconds({{2000, 1, 1}, {0, 0, 0}})
+  @gs_epoch :calendar.datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})
 
   def start_link do
     GenServer.start_link(__MODULE__, [], name: @name)
