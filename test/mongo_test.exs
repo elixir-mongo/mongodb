@@ -20,6 +20,12 @@ defmodule Mongo.Test do
     :ok
   end
 
+  test "run_command with an error" do
+    assert_raise Mongo.Error, fn ->
+      Mongo.run_command(Pool, %{ drop: "unexisting-database" })
+    end
+  end
+
   test "aggregate" do
     coll = unique_name
 
