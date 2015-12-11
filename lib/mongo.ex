@@ -196,8 +196,8 @@ defmodule Mongo do
         case Connection.find_one(pid, "$cmd", query, [], opts) do
           %{"ok" => 1.0} = doc ->
             {:ok, doc}
-          %{"ok" => 0.0, "errmsg" => reason, "code" => code} ->
-            {:error, %Mongo.Error{message: "run_command failed: #{reason}", code: code}}
+          %{"ok" => 0.0, "errmsg" => reason} = error ->
+            {:error, %Mongo.Error{message: "run_command failed: #{reason}", code: error["code"]}}
         end
       end)
 
