@@ -524,12 +524,13 @@ defmodule Mongo do
         :ok ->
           {0, :ok}
         {:ok, replace} ->
-          if replace.upserted_id do
-            ids = Map.put(result.upserted_ids, ix, replace.upserted_id)
-                  |> Enum.into(result.upserted_ids)
-          else
-            ids = result.upserted_ids
-          end
+          ids =
+            if replace.upserted_id do
+              Map.put(result.upserted_ids, ix, replace.upserted_id)
+              |> Enum.into(result.upserted_ids)
+            else
+              result.upserted_ids
+            end
 
           result =
             %{result | matched_count: result.matched_count + replace.matched_count,
