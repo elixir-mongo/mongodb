@@ -347,6 +347,15 @@ defmodule Mongo do
   Uses MongoDB update operators to specify the updates. For more information
   please refer to the
   [MongoDB documentation](http://docs.mongodb.org/manual/reference/operator/update/)
+  
+  Example:
+
+  ```
+  Mongo.update_one MongoPool,
+    "my_test_collection",
+    %{ "filter_field": "filter_value" },
+    %{ "$set": %{ "modified_field": "new_value" } }
+  ```
 
   ## Options
 
