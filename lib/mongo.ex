@@ -350,12 +350,10 @@ defmodule Mongo do
   
   Example:
 
-  ```
-  Mongo.update_one MongoPool,
-    "my_test_collection",
-    %{ "filter_field": "filter_value" },
-    %{ "$set": %{ "modified_field": "new_value" } }
-  ```
+      Mongo.update_one(MongoPool,
+        "my_test_collection",
+        %{"filter_field": "filter_value"},
+        %{"$set": %{"modified_field": "new_value"}})
 
   ## Options
 
