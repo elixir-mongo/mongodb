@@ -1,7 +1,10 @@
 language: elixir
 otp_release:
   - 17.4
-cache: apt
+cache:
+  - apt
+  - directories:
+      - ~/.mongodb
 before_install:
   - npm install -g mongodb-version-manager
   - m use $MONGOVERSION
@@ -11,8 +14,9 @@ before_script:
 env:
   matrix:
     - MONGOVERSION=2.4.14
-    - MONGOVERSION=2.6.10
-    - MONGOVERSION=3.0.3
+    - MONGOVERSION=2.6.11
+    - MONGOVERSION=3.0.7
+    - MONGOVERSION=3.2.0
 after_script:
   - mix deps.get --only docs
   - MIX_ENV=docs mix inch.report

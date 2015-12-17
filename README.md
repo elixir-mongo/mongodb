@@ -6,7 +6,7 @@ Mongodb
 
 ## Features
 
-  * Supports MongoDB versions 2.4, 2.6, 3.0
+  * Supports MongoDB versions 2.4, 2.6, 3.0, 3.2
   * Connection pooling
   * Streaming cursors
   * Performant ObjectID generation
