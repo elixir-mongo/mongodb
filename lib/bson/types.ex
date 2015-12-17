@@ -61,7 +61,17 @@ defmodule BSON.DateTime do
   end
 
   @doc """
-  Converts `BSON.DateTime` to ISO8601 representation
+  Converts `{{year, month, day}, {hour, min, sec, usec}}` into a `BSON.DateTime`
+  struct.
+  """
+  def from_datetime({date, {hour, min, sec, usec}}) do
+    greg_secs = :calendar.datetime_to_gregorian_seconds({date, {hour, min, sec}})
+    epoch_secs = greg_secs - @epoch
+    %BSON.DateTime{utc: epoch_secs * 1000 + div(usec, 1000)}
+  end
+
+  @doc """
+  Converts `BSON.DateTime` to its ISO8601 representation
   """
   def to_iso8601(%BSON.DateTime{} = datetime) do
     {{year, month, day}, {hour, min, sec, usec}} = to_datetime(datetime)
