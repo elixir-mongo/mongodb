@@ -3,8 +3,8 @@ defmodule Mongodb.Mixfile do
 
   def project do
     [app: :mongodb,
-     version: "0.1.0",
-     elixir: "~> 1.0",
+     version: "0.1.1",
+     elixir: "~> 1.1",
      deps: deps,
      name: "Mongodb",
      source_url: "https://github.com/ericmj/mongodb",
