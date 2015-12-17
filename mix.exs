@@ -3,7 +3,7 @@ defmodule Mongodb.Mixfile do
 
   def project do
     [app: :mongodb,
-     version: "0.1.0",
+     version: "0.1.1",
      elixir: "~> 1.0",
      deps: deps,
      name: "Mongodb",
@@ -35,7 +35,7 @@ defmodule Mongodb.Mixfile do
   end
 
   defp package do
-    [contributors: ["Eric Meadows-Jönsson"],
+    [maintainers: ["Eric Meadows-Jönsson"],
      licenses: ["Apache 2.0"],
      links: %{"Github" => "https://github.com/ericmj/mongodb"}]
   end
