@@ -60,6 +60,33 @@ Mongodb
 
 ## Usage
 
+### Installation:
+
+Add mongodb to your mix.exs ```:deps``` and ```:applications``` (replace ```>= 0.0.0``` in ```:deps``` if you want a specific version). If you want to use poolboy as adapter also add it to your mix.exs ```:deps``` and ```:applications``` (because poolboy is an optional dep in mongodb):
+
+```elixir
+  def application do
+    [
+      applications:
+      [
+       # ... other deps
+       :mongodb,
+       :poolboy # only needed if you want to use poolboy as adapter
+      ]
+    ]
+  end
+  
+  defp deps do
+    [
+      # ... other deps
+      {:mongodb, ">= 0.0.0"},
+      {:poolboy, ">= 0.0.0"} # only needed if you want to use poolboy as adapter
+    ]
+  end
+```
+
+Then run ```mix deps.get```.
+
 ### Connection Pools
 
 ```elixir
