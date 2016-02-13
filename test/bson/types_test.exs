@@ -9,9 +9,21 @@ defmodule BSON.TypesTest do
     assert inspect(value) == "#BSON.Binary<010203, uuid>"
   end
 
+  @objectid %BSON.ObjectId{value: <<29, 32, 69, 244, 101, 119, 228, 28, 61, 24, 21, 215>>}
+  @string   "1d2045f46577e41c3d1815d7"
+
   test "inspect BSON.ObjectId" do
-    value = %BSON.ObjectId{value: <<29, 32, 69, 244, 101, 119, 228, 28, 61, 24, 21, 215>>}
-    assert inspect(value) == "#BSON.ObjectId<1d2045f46577e41c3d1815d7>"
+    assert inspect(@objectid) == "#BSON.ObjectId<#{@string}>"
+  end
+
+  test "BSON.ObjectId.encode/1" do
+    assert BSON.ObjectId.encode(@objectid) == {:ok, @string}
+    assert BSON.ObjectId.encode("") == :error
+  end
+
+  test "BSON.ObjectId.decode/1" do
+    assert BSON.ObjectId.decode(@string) == {:ok, @objectid}
+    assert BSON.ObjectId.decode("") == :error
   end
 
   test "inspect BSON.DateTime" do
