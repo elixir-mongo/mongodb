@@ -16,14 +16,20 @@ defmodule BSON.TypesTest do
     assert inspect(@objectid) == "#BSON.ObjectId<#{@string}>"
   end
 
-  test "BSON.ObjectId.encode/1" do
-    assert BSON.ObjectId.encode(@objectid) == {:ok, @string}
-    assert BSON.ObjectId.encode("") == :error
+  test "BSON.ObjectId.encode!/1" do
+    assert BSON.ObjectId.encode!(@objectid) == @string
+
+    assert_raise FunctionClauseError, fn ->
+      BSON.ObjectId.encode!("")
+    end
   end
 
-  test "BSON.ObjectId.decode/1" do
-    assert BSON.ObjectId.decode(@string) == {:ok, @objectid}
-    assert BSON.ObjectId.decode("") == :error
+  test "BSON.ObjectId.decode!/1" do
+    assert BSON.ObjectId.decode!(@string) == @objectid
+
+    assert_raise FunctionClauseError, fn ->
+      BSON.ObjectId.decode!("")
+    end
   end
 
   test "inspect BSON.DateTime" do

@@ -36,7 +36,7 @@ defmodule BSON.ObjectId do
   @doc """
   Converts string representation of ObjectId to a BSON.ObjectId struct
   """
-  def decode(<< c0,  c1,  c2,  c3,  c4,  c5,
+  def decode!(<< c0,  c1,  c2,  c3,  c4,  c5,
                 c6,  c7,  c8,  c9,  c10, c11,
                 c12, c13, c14, c15, c16, c17,
                 c18, c19, c20, c21, c22, c23 >>) do
@@ -48,19 +48,16 @@ defmodule BSON.ObjectId do
        d(c20)::4, d(c21)::4, d(c22)::4, d(c23)::4 >>
   catch
     :throw, :error ->
-      :error
+      raise ArgumentError
   else
     value ->
-      {:ok, %BSON.ObjectId{value: value}}
+      %BSON.ObjectId{value: value}
   end
-
-  def decode(_), do: :error
 
   @doc """
   Converts BSON.ObjectId struct to a string representation
   """
-  def encode(%BSON.ObjectId{value: value}), do: do_encode(value)
-  def encode(_), do: :error
+  def encode!(%BSON.ObjectId{value: value}), do: do_encode(value)
 
   def do_encode(<< l0::4, h0::4, l1::4, h1::4,  l2::4,  h2::4,  l3::4,  h3::4,
                    l4::4, h4::4, l5::4, h5::4,  l6::4,  h6::4,  l7::4,  h7::4,
@@ -70,10 +67,10 @@ defmodule BSON.ObjectId do
        e(l8), e(h8), e(l9), e(h9), e(l10), e(h10), e(l11), e(h11) >>
   catch
     :throw, :error ->
-      :error
+      raise ArgumentError
   else
     value ->
-      {:ok, value}
+      value
   end
 
   @compile {:inline, :d, 1}
@@ -96,7 +93,7 @@ defmodule BSON.ObjectId do
 
   defimpl Inspect do
     def inspect(objectid, _opts) do
-      {:ok, encoded} = BSON.ObjectId.encode(objectid)
+      encoded = BSON.ObjectId.encode!(objectid)
       "#BSON.ObjectId<#{encoded}>"
     end
   end

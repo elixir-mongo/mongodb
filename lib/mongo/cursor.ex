@@ -3,6 +3,9 @@ alias Mongo.Connection
 alias Mongo.ReadResult
 alias Mongo.Pool
 
+# TODO: Handle error responses from Connection.find, example:
+# {:ok, %Mongo.ReadResult{cursor_id: 0, docs: [%{"code" => 16436, "errmsg" => "exception: Unrecognized pipeline stage name: '$projection'", "ok" => 0.0}], from: 0, num: 1}}
+
 defmodule Mongo.Cursor do
   @moduledoc false
 
