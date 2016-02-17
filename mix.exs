@@ -10,7 +10,7 @@ defmodule Mongodb.Mixfile do
      source_url: "https://github.com/ericmj/mongodb",
      docs: fn ->
        {ref, 0} = System.cmd("git", ["rev-parse", "--verify", "--quiet", "HEAD"])
-       [source_ref: ref, main: "extra-readme", extras: ["README.md"]]
+       [source_ref: ref, main: "readme", extras: ["README.md"]]
      end,
      description: description,
      package: package]
