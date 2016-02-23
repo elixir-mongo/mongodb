@@ -201,6 +201,17 @@ defmodule Mongo.Connection do
             {:ok, s}
           {:error, reason} ->
             {:stop, reason, s}
+          {:is_secondary, new_host, new_port} ->
+            :gen_tcp.close(socket)
+            Logger.error "#{host}:#{port} is not a master. Switching to #{new_host}:#{new_port}"
+            opts = opts
+            |> Keyword.put(:hostname, new_host)
+            |> Keyword.put(:port, new_port)
+            {:backoff, 1000, %{s | socket: nil, opts: opts}}
+          {:no_master, _} ->
+            :gen_tcp.close(socket)
+            Logger.error "No master is yet selected"
+            {:backoff, s.opts[:backoff], %{s | socket: nil}}
           {:tcp_error, reason} ->
             Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
             {:backoff, s.opts[:backoff], s}
@@ -216,9 +227,17 @@ defmodule Mongo.Connection do
     # wire version
     # https://github.com/mongodb/mongo/blob/master/src/mongo/db/wire_version.h
     case sync_command(-1, [ismaster: 1], s) do
-      {:ok, %{"ok" => 1.0} = reply} ->
+      {:ok, %{"ok" => 1.0, "ismaster" => true} = reply} ->
         s = %{s | wire_version: reply["maxWireVersion"] || 0}
         Auth.run(s)
+      {:ok, %{"ok" => 1.0, "ismaster" => false} = reply} ->
+        primary = reply["primary"]
+        if primary do
+          [host, port] = String.split(primary, ":")
+          {:is_secondary, String.to_char_list(host), String.to_integer(port)}
+        else
+          {:no_master, reply["hosts"]}
+        end
       {:tcp_error, _} = error ->
         error
     end
