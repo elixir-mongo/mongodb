@@ -28,6 +28,9 @@ defmodule BSON.Encoder do
   def encode(%BSON.DateTime{utc: utc}) when is_int64(utc),
     do: <<utc::int64>>
 
+  def encode(%BSON.Regex{pattern: pattern, options: nil}),
+    do: [cstring(pattern) | cstring("")]
+
   def encode(%BSON.Regex{pattern: pattern, options: options}),
     do: [cstring(pattern) | cstring(options)]
 
