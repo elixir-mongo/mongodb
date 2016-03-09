@@ -506,6 +506,8 @@ defmodule Mongo.Connection do
 
   defp format_error(:closed),
     do: "closed"
+  defp format_error(:timeout),
+    do: "timeout"
   defp format_error(error),
     do: :inet.format_error(error)
 
