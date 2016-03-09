@@ -14,10 +14,7 @@ defmodule Mongo.Connection.Auth do
         {username, password}
       end)
 
-    if username && password do
-      auth = auth ++ [{username, password}]
-    end
-
+    auth = if username && password, do: auth ++ [{username, password}], else: auth
     opts = Keyword.drop(opts, ~w(database username password auth)a)
     %{s | auth: auth, opts: opts, database: database}
   end

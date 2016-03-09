@@ -70,17 +70,10 @@ defmodule Mongo do
     ] |> filter_nils
 
     cursor? = pool.version >= 1 and Keyword.get(opts, :use_cursor, true)
-
-    if cursor? do
-      cursor = %{
-        batchSize: opts[:batch_size]
-      }
-      query = query ++ [cursor: filter_nils(cursor)]
-    end
-
     opts = Keyword.drop(opts, ~w(allow_disk_use max_time use_cursor)a)
 
     if cursor? do
+      query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
       aggregation_cursor(pool, "$cmd", query, nil, opts)
     else
       singly_cursor(pool, "$cmd", query, nil, opts)
@@ -162,22 +155,17 @@ defmodule Mongo do
 
     query = filter_nils(query)
 
-    if query == [] do
-      query = filter
-    else
-      filter = normalize_doc(filter)
-      unless List.keymember?(filter, "$query", 0) do
-        filter = [{"$query", filter}]
+    query =
+      if query == [] do
+        filter
+      else
+        filter = normalize_doc(filter)
+        filter = if List.keymember?(filter, "$query", 0), do: filter, else: [{"$query", filter}]
+        filter ++ query
       end
-      query = filter ++ query
-    end
 
     select = opts[:projection]
-
-    unless Keyword.get(opts, :cursor_timeout, true) do
-      opts = [{:no_cursor_timeout, true} | opts]
-    end
-
+    opts = if Keyword.get(opts, :cursor_timeout, true), do: opts, else: [{:no_cursor_timeout, true}|opts]
     drop = ~w(comment max_time modifiers sort cursor_type projection cursor_timeout)a
     opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
 
@@ -347,7 +335,7 @@ defmodule Mongo do
   Uses MongoDB update operators to specify the updates. For more information
   please refer to the
   [MongoDB documentation](http://docs.mongodb.org/manual/reference/operator/update/)
-  
+
   Example:
 
       Mongo.update_one(MongoPool,
