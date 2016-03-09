@@ -169,9 +169,9 @@ defmodule Mongo.Connection do
     {write_concern, opts} = Keyword.split(opts, @write_concern)
     write_concern = Keyword.put_new(write_concern, :w, 1)
 
-    s = %{socket: nil, auth: nil, tail: nil, queue: %{}, request_id: 0, opts: opts,
-          database: nil, timeout: timeout, write_concern: write_concern,
-          wire_version: nil}
+    s = %{socket: nil, auth: nil, tail: nil, header: nil, queue: %{},
+          request_id: 0, opts: opts, database: nil, timeout: timeout,
+          write_concern: write_concern, wire_version: nil}
 
     s = Auth.setup(s)
     {:connect, :init, s}
@@ -343,8 +343,8 @@ defmodule Mongo.Connection do
   end
 
   @doc false
-  def handle_info({:tcp, _, data}, %{socket: socket} = s) do
-    s = new_data(data, s)
+  def handle_info({:tcp, _, data}, %{socket: socket, tail: tail} = s) do
+    s = new_data([tail|data], s)
     :inet.setopts(socket, active: :once)
     {:noreply, s}
   end
@@ -365,26 +365,32 @@ defmodule Mongo.Connection do
     :ok
   end
 
-  defp new_data(data, %{tail: tail} = s) do
-    # NOTE: This can be optimized by building an iolist and only concat to
-    #       a binary when we know we have enough data according to the
-    #       message header.
-    data = tail <> data
-
-    # Also note that this is re-parsing the message header every time
-    # on new data
-    case decode(data) do
-      {:ok, id, reply, tail} ->
-        command = s.queue[id].command
-        s = %{s | tail: tail}
-
-        if :query_failure in op_reply(reply, :flags),
-            do: failure(command, id, reply, s),
-          else: message(command, id, reply, s)
-
+  defp new_data(data, %{header: nil} = s) do
+    case decode_header(data) do
+      {:ok, header, rest} ->
+        new_data(rest, %{s | header: header})
       :error ->
         %{s | tail: data}
     end
+  end
+  defp new_data(data, %{header: header} = s) do
+    case decode_message(header, data) do
+      {:ok, id, reply, tail} ->
+        handle_reply(id, reply, tail, s)
+      :error ->
+        %{s | tail: data}
+    end
+  end
+
+  defp handle_reply(id, reply, tail, s) do
+    command = s.queue[id].command
+
+    s =
+      if :query_failure in op_reply(reply, :flags),
+          do: failure(command, id, reply, s),
+        else: message(command, id, reply, s)
+
+    new_data(tail, %{s | header: nil})
   end
 
   defp message(:find, id, op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num), s) do

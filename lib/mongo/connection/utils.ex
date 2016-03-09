@@ -83,19 +83,29 @@ defmodule Mongo.Connection.Utils do
     |> Base.encode16(case: :lower)
   end
 
-  defp sync_recv(tail \\ "", s) do
-    case :gen_tcp.recv(s.socket, 0, s.timeout) do
-      {:ok, data} ->
-        data = tail <> data
-        case decode(data) do
-          {:ok, id, reply, ""} ->
-            {:ok, id, reply}
-          :error ->
-            sync_recv(data, s)
+  defp sync_recv(s) do
+    sync_recv(nil, "", s)
+  end
+  defp sync_recv(nil, data, s) do
+    case decode_header(data) do
+      {:ok, header, rest} ->
+        sync_recv(header, rest, s)
+      :error ->
+        case :gen_tcp.recv(s.socket, 0, s.timeout) do
+          {:ok, tail}      -> sync_recv(nil, [data|tail], s)
+          {:error, reason} -> {:tcp_error, reason}
         end
-
-      {:error, reason} ->
-        {:tcp_error, reason}
+    end
+  end
+  defp sync_recv(header, data, s) do
+    case decode_message(header, data) do
+      {:ok, id, reply, ""} ->
+        {:ok, id, reply}
+      :error ->
+        case :gen_tcp.recv(s.socket, 0, s.timeout) do
+          {:ok, tail}      -> sync_recv(header, [data|tail], s)
+          {:error, reason} -> {:tcp_error, reason}
+        end
     end
   end
 end
