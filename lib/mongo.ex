@@ -38,6 +38,16 @@ defmodule Mongo do
   @type collection :: String.t
   @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
 
+  defmacrop bangify(result) do
+    quote do
+      case unquote(result) do
+        {:ok, value}    -> value
+        {:error, error} -> raise error
+        :ok             -> nil
+      end
+    end
+  end
+
   @doc false
   def start(_type, _args) do
     import Supervisor.Spec, warn: false
@@ -101,9 +111,17 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(limit skip hint)a)
 
-    # Mongo 2.4 and 2.6 returns a float
-    run_command(pool, query, opts)["n"]
-    |> trunc
+    case run_command(pool, query, opts) do
+      {:ok, value} ->
+        # Mongo 2.4 and 2.6 returns a float
+        {:ok, trunc(value["n"])}
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  def count!(pool, coll, filter, opts \\ []) do
+    bangify(count(pool, coll, filter, opts))
   end
 
   @doc """
@@ -124,7 +142,16 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(max_time))
 
-    run_command(pool, query, opts)["values"]
+    case run_command(pool, query, opts) do
+      {:ok, result} ->
+        {:ok, result["values"]}
+      other ->
+        other
+    end
+  end
+
+  def distinct!(pool, coll, field, filter, opts \\ []) do
+    bangify(distinct(pool, coll, field, filter, opts))
   end
 
   @doc """
@@ -179,20 +206,18 @@ defmodule Mongo do
   """
   @spec run_command(Pool.t, BSON.document, Keyword.t) :: BSON.document
   def run_command(pool, query, opts \\ []) do
-    result =
-      Pool.run_with_log(pool, :run_command, [query], opts, fn pid ->
-        case Connection.find_one(pid, "$cmd", query, [], opts) do
-          %{"ok" => 1.0} = doc ->
-            {:ok, doc}
-          %{"ok" => 0.0, "errmsg" => reason} = error ->
-            {:error, %Mongo.Error{message: "run_command failed: #{reason}", code: error["code"]}}
-        end
-      end)
+    Pool.run_with_log(pool, :run_command, [query], opts, fn pid ->
+      case Connection.find_one(pid, "$cmd", query, [], opts) do
+        %{"ok" => 1.0} = doc ->
+          {:ok, doc}
+        %{"ok" => 0.0, "errmsg" => reason} = error ->
+          {:error, %Mongo.Error{message: "run_command failed: #{reason}", code: error["code"]}}
+      end
+    end)
+  end
 
-    case result do
-      {:ok, doc}      -> doc
-      {:error, error} -> raise error
-    end
+  def run_command!(pool, query, opts \\ []) do
+    bangify(run_command(pool, query, opts))
   end
 
   @doc """
@@ -203,20 +228,22 @@ defmodule Mongo do
   """
   @spec insert_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.InsertOneResult.t}
   def insert_one(pool, coll, doc, opts \\ []) do
-    single_doc(doc)
+    assert_single_doc!(doc)
     result =
       Pool.run_with_log(pool, :insert_one, [coll, doc], opts, fn pid ->
         Connection.insert(pid, coll, doc, opts)
       end)
 
     case result do
-      :ok ->
-        :ok
       {:ok, %WriteResult{inserted_ids: ids}} ->
         {:ok, %Mongo.InsertOneResult{inserted_id: List.first(ids)}}
-      {:error, error} ->
-        raise error
+      other ->
+        other
     end
+  end
+
+  def insert_one!(pool, coll, doc, opts \\ []) do
+    bangify(insert_one(pool, coll, doc, opts))
   end
 
   @doc """
@@ -234,7 +261,7 @@ defmodule Mongo do
   # TODO describe the ordered option
   @spec insert_many(Pool.t, collection, [BSON.document], Keyword.t) :: :ok | {:ok, Mongo.InsertManyResult.t}
   def insert_many(pool, coll, docs, opts \\ []) do
-    many_docs(docs)
+    assert_many_docs!(docs)
 
     # NOTE: Only for 2.4
     ordered? = Keyword.get(opts, :ordered, true)
@@ -251,10 +278,14 @@ defmodule Mongo do
       {:ok, %WriteResult{inserted_ids: ids}} ->
         ids = Enum.with_index(ids)
               |> Enum.into(%{}, fn {x, y} -> {y, x} end)
-      {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
+        {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
       {:error, error} ->
-        raise error
+        {:error, error}
     end
+  end
+
+  def insert_many!(pool, coll, docs, opts \\ []) do
+    bangify(insert_many(pool, coll, docs, opts))
   end
 
   @doc """
@@ -275,8 +306,12 @@ defmodule Mongo do
       {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
         {:ok, %Mongo.DeleteResult{deleted_count: n}}
       {:error, error} ->
-        raise error
+        {:error, error}
     end
+  end
+
+  def delete_one!(pool, coll, filter, opts \\ []) do
+    bangify(delete_one(pool, coll, filter, opts))
   end
 
   @doc """
@@ -297,8 +332,12 @@ defmodule Mongo do
       {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
         {:ok, %Mongo.DeleteResult{deleted_count: n}}
       {:error, error} ->
-        raise error
+        {:error, error}
     end
+  end
+
+  def delete_many!(pool, coll, filter, opts \\ []) do
+    bangify(delete_many(pool, coll, filter, opts))
   end
 
   @doc """
@@ -325,8 +364,12 @@ defmodule Mongo do
       {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
         {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
       {:error, error} ->
-        raise error
+        {:error, error}
     end
+  end
+
+  def replace_one!(pool, coll, filter, replacement, opts \\ []) do
+    bangify(replace_one(pool, coll, filter, replacement, opts))
   end
 
   @doc """
@@ -364,8 +407,12 @@ defmodule Mongo do
       {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
         {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
       {:error, error} ->
-        raise error
+        {:error, error}
     end
+  end
+
+  def update_one!(pool, coll, filter, update, opts \\ []) do
+    bangify(update_one(pool, coll, filter, update, opts))
   end
 
   @doc """
@@ -396,8 +443,12 @@ defmodule Mongo do
       {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
         {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
       {:error, error} ->
-        raise error
+        {:error, error}
     end
+  end
+
+  def update_many!(pool, coll, filter, update, opts \\ []) do
+    bangify(update_many(pool, coll, filter, update, opts))
   end
 
   @doc """
@@ -420,6 +471,8 @@ defmodule Mongo do
               matched_count: result.matched_count,
               modified_count: result.modified_count,
               upserted_id: result.upserted_id}
+          {:error, error} ->
+            {:error, error}
         end
       :error ->
         case insert_one(pool, coll, doc, opts) do
@@ -430,9 +483,15 @@ defmodule Mongo do
               matched_count: 0,
               modified_count: 0,
               upserted_id: result.inserted_id}
+          {:error, error} ->
+            {:error, error}
         end
     end
     |> save_result
+  end
+
+  def save_one!(pool, coll, doc, opts \\ []) do
+    bangify(save_one(pool, coll, doc, opts))
   end
 
   @doc """
@@ -451,7 +510,7 @@ defmodule Mongo do
   """
   @spec save_many(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.SaveManyResult.t}
   def save_many(pool, coll, docs, opts \\ []) do
-    many_docs(docs)
+    assert_many_docs!(docs)
 
     # NOTE: Only for 2.4
     ordered? = Keyword.get(opts, :ordered, true)
@@ -469,6 +528,8 @@ defmodule Mongo do
 
   defp save_result(:ok),
     do: :ok
+  defp save_result({:error, error}),
+    do: {:error, error}
   defp save_result(result),
     do: {:ok, result}
 
@@ -655,15 +716,15 @@ defmodule Mongo do
     end
   end
 
-  defp single_doc(doc) when is_map(doc), do: :ok
-  defp single_doc([]), do: :ok
-  defp single_doc([{_, _} | _]), do: :ok
-  defp single_doc(other) do
+  defp assert_single_doc!(doc) when is_map(doc), do: :ok
+  defp assert_single_doc!([]), do: :ok
+  defp assert_single_doc!([{_, _} | _]), do: :ok
+  defp assert_single_doc!(other) do
     raise ArgumentError, "expected single document, got: #{inspect other}"
   end
 
-  defp many_docs([first | _]) when not is_tuple(first), do: :ok
-  defp many_docs(other) do
+  defp assert_many_docs!([first | _]) when not is_tuple(first), do: :ok
+  defp assert_many_docs!(other) do
     raise ArgumentError, "expected list of documents, got: #{inspect other}"
   end
 end
