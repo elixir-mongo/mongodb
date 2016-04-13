@@ -508,8 +508,8 @@ defmodule Mongo do
       together, otherwise it will preserve the order, but it may be slow
       for large number of documents (default: `false`)
   """
-  @spec save_many(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.SaveManyResult.t}
-  def save_many(pool, coll, docs, opts \\ []) do
+  @spec save_many!(Pool.t, collection, BSON.document, Keyword.t) :: nil | Mongo.SaveManyResult.t
+  def save_many!(pool, coll, docs, opts \\ []) do
     assert_many_docs!(docs)
 
     # NOTE: Only for 2.4
@@ -566,11 +566,13 @@ defmodule Mongo do
 
     case insert_many(pool, coll, docs, opts) do
       :ok ->
-        :ok
+        nil
       {:ok, insert} ->
         ids = list_ix(insert.inserted_ids, ix)
               |> Enum.into(result.upserted_ids)
         %{result | upserted_ids: ids}
+      {:error, error} ->
+        raise error
     end
   end
 
@@ -578,7 +580,7 @@ defmodule Mongo do
     Enum.reduce(docs, {ix, result}, fn {_ix, {:ok, id}, doc}, {ix, result} ->
       case replace_one(pool, coll, %{_id: id}, doc, opts) do
         :ok ->
-          {0, :ok}
+          {0, nil}
         {:ok, replace} ->
           ids =
             if replace.upserted_id do
@@ -593,6 +595,8 @@ defmodule Mongo do
                        modified_count: result.modified_count + replace.modified_count,
                        upserted_ids: ids}
           {ix+1, result}
+        {:error, error} ->
+          raise error
       end
     end)
     |> elem(1)
