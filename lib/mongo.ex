@@ -111,13 +111,9 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(limit skip hint)a)
 
-    case run_command(pool, query, opts) do
-      {:ok, value} ->
-        # Mongo 2.4 and 2.6 returns a float
-        {:ok, trunc(value["n"])}
-      {:error, error} ->
-        {:error, error}
-    end
+    # Mongo 2.4 and 2.6 returns a float
+    run_command(pool, query, opts)
+    |> map_result(&(trunc(&1["n"])))
   end
 
   def count!(pool, coll, filter, opts \\ []) do
@@ -142,12 +138,8 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(max_time))
 
-    case run_command(pool, query, opts) do
-      {:ok, result} ->
-        {:ok, result["values"]}
-      other ->
-        other
-    end
+    run_command(pool, query, opts)
+    |> map_result(&(&1["values"]))
   end
 
   def distinct!(pool, coll, field, filter, opts \\ []) do
@@ -229,17 +221,13 @@ defmodule Mongo do
   @spec insert_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.InsertOneResult.t}
   def insert_one(pool, coll, doc, opts \\ []) do
     assert_single_doc!(doc)
-    result =
-      Pool.run_with_log(pool, :insert_one, [coll, doc], opts, fn pid ->
-        Connection.insert(pid, coll, doc, opts)
-      end)
 
-    case result do
-      {:ok, %WriteResult{inserted_ids: ids}} ->
-        {:ok, %Mongo.InsertOneResult{inserted_id: List.first(ids)}}
-      other ->
-        other
-    end
+    Pool.run_with_log(pool, :insert_one, [coll, doc], opts, fn pid ->
+      Connection.insert(pid, coll, doc, opts)
+    end)
+    |> map_result(fn %WriteResult{inserted_ids: ids} ->
+      %Mongo.InsertOneResult{inserted_id: List.first(ids)}
+    end)
   end
 
   def insert_one!(pool, coll, doc, opts \\ []) do
@@ -267,21 +255,13 @@ defmodule Mongo do
     ordered? = Keyword.get(opts, :ordered, true)
     dbopts = [continue_on_error: not ordered?] ++ opts
 
-    result =
-      Pool.run_with_log(pool, :insert_many, [coll, docs], opts, fn pid ->
-        Connection.insert(pid, coll, docs, dbopts)
-      end)
-
-    case result do
-      :ok ->
-        :ok
-      {:ok, %WriteResult{inserted_ids: ids}} ->
-        ids = Enum.with_index(ids)
-              |> Enum.into(%{}, fn {x, y} -> {y, x} end)
-        {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
-      {:error, error} ->
-        {:error, error}
-    end
+    Pool.run_with_log(pool, :insert_many, [coll, docs], opts, fn pid ->
+      Connection.insert(pid, coll, docs, dbopts)
+    end)
+    |> map_result(fn %WriteResult{inserted_ids: ids} ->
+      ids = Enum.with_index(ids) |> Enum.into(%{}, fn {x, y} -> {y, x} end)
+      %Mongo.InsertManyResult{inserted_ids: ids}
+    end)
   end
 
   def insert_many!(pool, coll, docs, opts \\ []) do
@@ -295,19 +275,12 @@ defmodule Mongo do
   def delete_one(pool, coll, filter, opts \\ []) do
     dbopts = [multi: false] ++ opts
 
-    result =
-      Pool.run_with_log(pool, :delete_one, [coll, filter], opts, fn pid ->
-        Connection.remove(pid, coll, filter, dbopts)
-      end)
-
-    case result do
-      :ok ->
-        :ok
-      {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
-        {:ok, %Mongo.DeleteResult{deleted_count: n}}
-      {:error, error} ->
-        {:error, error}
-    end
+    Pool.run_with_log(pool, :delete_one, [coll, filter], opts, fn pid ->
+      Connection.remove(pid, coll, filter, dbopts)
+    end)
+    |> map_result(fn %WriteResult{num_matched: n, num_removed: n} ->
+      %Mongo.DeleteResult{deleted_count: n}
+    end)
   end
 
   def delete_one!(pool, coll, filter, opts \\ []) do
@@ -321,19 +294,12 @@ defmodule Mongo do
   def delete_many(pool, coll, filter, opts \\ []) do
     dbopts = [multi: true] ++ opts
 
-    result =
-      Pool.run_with_log(pool, :delete_many, [coll, filter], opts, fn pid ->
-        Connection.remove(pid, coll, filter, dbopts)
-      end)
-
-    case result do
-      :ok ->
-        :ok
-      {:ok, %WriteResult{num_matched: n, num_removed: n}} ->
-        {:ok, %Mongo.DeleteResult{deleted_count: n}}
-      {:error, error} ->
-        {:error, error}
-    end
+    Pool.run_with_log(pool, :delete_many, [coll, filter], opts, fn pid ->
+      Connection.remove(pid, coll, filter, dbopts)
+    end)
+    |> map_result(fn %WriteResult{num_matched: n, num_removed: n} ->
+      %Mongo.DeleteResult{deleted_count: n}
+    end)
   end
 
   def delete_many!(pool, coll, filter, opts \\ []) do
@@ -353,19 +319,12 @@ defmodule Mongo do
     modifier_docs(replacement, :replace)
     dbopts = [multi: false] ++ opts
 
-    result =
-      Pool.run_with_log(pool, :replace_one, [coll, filter, replacement], opts, fn pid ->
-        Connection.update(pid, coll, filter, replacement, dbopts)
-      end)
-
-    case result do
-      :ok ->
-        :ok
-      {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
-        {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
-      {:error, error} ->
-        {:error, error}
-    end
+    Pool.run_with_log(pool, :replace_one, [coll, filter, replacement], opts, fn pid ->
+      Connection.update(pid, coll, filter, replacement, dbopts)
+    end)
+    |> map_result(fn %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id} ->
+      %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}
+    end)
   end
 
   def replace_one!(pool, coll, filter, replacement, opts \\ []) do
@@ -396,19 +355,12 @@ defmodule Mongo do
     modifier_docs(update, :update)
     dbopts = [multi: false] ++ opts
 
-    result =
-      Pool.run_with_log(pool, :update_one, [coll, filter, update], opts, fn pid ->
-        Connection.update(pid, coll, filter, update, dbopts)
-      end)
-
-    case result do
-      :ok ->
-        :ok
-      {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
-        {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
-      {:error, error} ->
-        {:error, error}
-    end
+    Pool.run_with_log(pool, :update_one, [coll, filter, update], opts, fn pid ->
+      Connection.update(pid, coll, filter, update, dbopts)
+    end)
+    |> map_result(fn %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id} ->
+      %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}
+    end)
   end
 
   def update_one!(pool, coll, filter, update, opts \\ []) do
@@ -432,19 +384,12 @@ defmodule Mongo do
     modifier_docs(update, :update)
     dbopts = [multi: true] ++ opts
 
-    result =
-      Pool.run_with_log(pool, :update_many, [coll, filter, update], opts, fn pid ->
-        Connection.update(pid, coll, filter, update, dbopts)
-      end)
-
-    case result do
-      :ok ->
-        :ok
-      {:ok, %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id}} ->
-        {:ok, %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}}
-      {:error, error} ->
-        {:error, error}
-    end
+    Pool.run_with_log(pool, :update_many, [coll, filter, update], opts, fn pid ->
+      Connection.update(pid, coll, filter, update, dbopts)
+    end)
+    |> map_result(fn %WriteResult{num_matched: matched, num_modified: modified, upserted_id: id} ->
+      %Mongo.UpdateResult{matched_count: matched, modified_count: modified, upserted_id: id}
+    end)
   end
 
   def update_many!(pool, coll, filter, update, opts \\ []) do
@@ -463,31 +408,22 @@ defmodule Mongo do
     case get_id(doc) do
       {:ok, id} ->
         opts = [upsert: true] ++ opts
-        case replace_one(pool, coll, %{_id: id}, doc, opts) do
-          :ok ->
-            :ok
-          {:ok, result} ->
-            %Mongo.SaveOneResult{
-              matched_count: result.matched_count,
-              modified_count: result.modified_count,
-              upserted_id: result.upserted_id}
-          {:error, error} ->
-            {:error, error}
-        end
+        replace_one(pool, coll, %{_id: id}, doc, opts)
+        |> map_result(fn result ->
+          %Mongo.SaveOneResult{
+            matched_count: result.matched_count,
+            modified_count: result.modified_count,
+            upserted_id: result.upserted_id}
+        end)
       :error ->
-        case insert_one(pool, coll, doc, opts) do
-          :ok ->
-            :ok
-          {:ok, result} ->
-            %Mongo.SaveOneResult{
-              matched_count: 0,
-              modified_count: 0,
-              upserted_id: result.inserted_id}
-          {:error, error} ->
-            {:error, error}
-        end
+        insert_one(pool, coll, doc, opts)
+        |> map_result(fn result ->
+          %Mongo.SaveOneResult{
+            matched_count: 0,
+            modified_count: 0,
+            upserted_id: result.inserted_id}
+        end)
     end
-    |> save_result
   end
 
   def save_one!(pool, coll, doc, opts \\ []) do
@@ -523,15 +459,7 @@ defmodule Mongo do
     else
       save_unordered(pool, coll, docs, opts)
     end
-    |> save_result
   end
-
-  defp save_result(:ok),
-    do: :ok
-  defp save_result({:error, error}),
-    do: {:error, error}
-  defp save_result(result),
-    do: {:ok, result}
 
   defp save_ordered(pool, coll, docs, opts) do
     chunked_docs = Enum.chunk_by(docs, fn {_, id, _} -> id == :error end)
@@ -607,6 +535,10 @@ defmodule Mongo do
       {ix+offset, elem}
     end)
   end
+
+  defp map_result(:ok, _fun),                 do: :ok
+  defp map_result({:ok, value}, fun),         do: {:ok, fun.(value)}
+  defp map_result({:error, _} = error, _fun), do: error
 
   defp docs_id_ix(docs) do
     Enum.reduce(docs, {0, []}, fn doc, {ix, docs} ->
