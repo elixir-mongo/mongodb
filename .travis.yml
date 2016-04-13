@@ -1,7 +1,5 @@
 language: elixir
 elixir:
-  - 1.0.5
-  - 1.1.1
   - 1.2.4
 cache:
   - apt
@@ -16,9 +14,15 @@ before_script:
 env:
   matrix:
     - MONGOVERSION=2.4.14
-    - MONGOVERSION=2.6.11
-    - MONGOVERSION=3.0.7
-    - MONGOVERSION=3.2.0
+    - MONGOVERSION=2.6.12
+    - MONGOVERSION=3.0.11
+    - MONGOVERSION=3.2.4
+matrix:
+  include:
+    - elixir: 1.0.5
+      env: MONGOVERSION=3.2.4
+    - elixir: 1.1.1
+      env: MONGOVERSION=3.2.4
 after_script:
   - mix deps.get --only docs
   - MIX_ENV=docs mix inch.report
