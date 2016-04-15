@@ -118,6 +118,10 @@ defmodule Mongo do
     |> map_result(&(trunc(&1["n"])))
   end
 
+  @doc """
+  Similar to `count/4` but unwraps the result and raises on error.
+  """
+  @spec count!(Pool.t, collection, BSON.document, Keyword.t) :: result!(non_neg_integer)
   def count!(pool, coll, filter, opts \\ []) do
     bangify(count(pool, coll, filter, opts))
   end
@@ -144,6 +148,9 @@ defmodule Mongo do
     |> map_result(&(&1["values"]))
   end
 
+  @doc """
+  Similar to `distinct/5` but unwraps the result and raises on error.
+  """
   @spec distinct!(Pool.t, collection, String.t | atom, BSON.document, Keyword.t) :: result!([BSON.t])
   def distinct!(pool, coll, field, filter, opts \\ []) do
     bangify(distinct(pool, coll, field, filter, opts))
@@ -211,6 +218,9 @@ defmodule Mongo do
     end)
   end
 
+  @doc """
+  Similar to `run_command/3` but unwraps the result and raises on error.
+  """
   @spec run_command!(Pool.t, BSON.document, Keyword.t) :: result!(BSON.document)
   def run_command!(pool, query, opts \\ []) do
     bangify(run_command(pool, query, opts))
@@ -234,6 +244,9 @@ defmodule Mongo do
     end)
   end
 
+  @doc """
+  Similar to `insert_one/4` but unwraps the result and raises on error.
+  """
   @spec insert_one!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.InsertOneResult.t)
   def insert_one!(pool, coll, doc, opts \\ []) do
     bangify(insert_one(pool, coll, doc, opts))
@@ -269,6 +282,9 @@ defmodule Mongo do
     end)
   end
 
+  @doc """
+  Similar to `insert_many/4` but unwraps the result and raises on error.
+  """
   @spec insert_many!(Pool.t, collection, [BSON.document], Keyword.t) :: result!(Mongo.InsertManyResult.t)
   def insert_many!(pool, coll, docs, opts \\ []) do
     bangify(insert_many(pool, coll, docs, opts))
@@ -289,6 +305,9 @@ defmodule Mongo do
     end)
   end
 
+  @doc """
+  Similar to `delete_one/4` but unwraps the result and raises on error.
+  """
   @spec delete_one!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.DeleteResult.t)
   def delete_one!(pool, coll, filter, opts \\ []) do
     bangify(delete_one(pool, coll, filter, opts))
@@ -309,6 +328,9 @@ defmodule Mongo do
     end)
   end
 
+  @doc """
+  Similar to `delete_many/4` but unwraps the result and raises on error.
+  """
   @spec delete_many!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.DeleteResult.t)
   def delete_many!(pool, coll, filter, opts \\ []) do
     bangify(delete_many(pool, coll, filter, opts))
@@ -335,6 +357,9 @@ defmodule Mongo do
     end)
   end
 
+  @doc """
+  Similar to `replace_one/5` but unwraps the result and raises on error.
+  """
   @spec replace_one!(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result!(Mongo.UpdateResult.t)
   def replace_one!(pool, coll, filter, replacement, opts \\ []) do
     bangify(replace_one(pool, coll, filter, replacement, opts))
@@ -372,6 +397,9 @@ defmodule Mongo do
     end)
   end
 
+  @doc """
+  Similar to `update_one/5` but unwraps the result and raises on error.
+  """
   @spec update_one!(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result!(Mongo.UpdateResult.t)
   def update_one!(pool, coll, filter, update, opts \\ []) do
     bangify(update_one(pool, coll, filter, update, opts))
@@ -402,6 +430,9 @@ defmodule Mongo do
     end)
   end
 
+  @doc """
+  Similar to `update_many/5` but unwraps the result and raises on error.
+  """
   @spec update_many!(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result!(Mongo.UpdateResult.t)
   def update_many!(pool, coll, filter, update, opts \\ []) do
     bangify(update_many(pool, coll, filter, update, opts))
@@ -437,6 +468,9 @@ defmodule Mongo do
     end
   end
 
+  @doc """
+  Similar to `save_one/4` but unwraps the result and raises on error.
+  """
   @spec save_one!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.SaveOneResult.t)
   def save_one!(pool, coll, doc, opts \\ []) do
     bangify(save_one(pool, coll, doc, opts))
