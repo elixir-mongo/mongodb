@@ -37,6 +37,8 @@ defmodule Mongo do
 
   @type collection :: String.t
   @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
+  @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t}
+  @type result!(t) :: nil | t | no_return
 
   defmacrop bangify(result) do
     quote do
@@ -99,7 +101,7 @@ defmodule Mongo do
     * `:skip` - Number of documents to skip before returning the first
     * `:hint` - Hint which index to use for the query
   """
-  @spec count(Pool.t, collection, BSON.document, Keyword.t) :: non_neg_integer
+  @spec count(Pool.t, collection, BSON.document, Keyword.t) :: result(non_neg_integer)
   def count(pool, coll, filter, opts \\ []) do
     query = [
       count: coll,
@@ -127,7 +129,7 @@ defmodule Mongo do
 
     * `:max_time` - Specifies a time limit in milliseconds
   """
-  @spec distinct(Pool.t, collection, String.t | atom, BSON.document, Keyword.t) :: [BSON.t]
+  @spec distinct(Pool.t, collection, String.t | atom, BSON.document, Keyword.t) :: result([BSON.t])
   def distinct(pool, coll, field, filter, opts \\ []) do
     query = [
       distinct: coll,
@@ -142,6 +144,7 @@ defmodule Mongo do
     |> map_result(&(&1["values"]))
   end
 
+  @spec distinct!(Pool.t, collection, String.t | atom, BSON.document, Keyword.t) :: result!([BSON.t])
   def distinct!(pool, coll, field, filter, opts \\ []) do
     bangify(distinct(pool, coll, field, filter, opts))
   end
@@ -196,7 +199,7 @@ defmodule Mongo do
   list for the document because the "command key" has to be the first
   in the document.
   """
-  @spec run_command(Pool.t, BSON.document, Keyword.t) :: BSON.document
+  @spec run_command(Pool.t, BSON.document, Keyword.t) :: result(BSON.document)
   def run_command(pool, query, opts \\ []) do
     Pool.run_with_log(pool, :run_command, [query], opts, fn pid ->
       case Connection.find_one(pid, "$cmd", query, [], opts) do
@@ -208,6 +211,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec run_command!(Pool.t, BSON.document, Keyword.t) :: result!(BSON.document)
   def run_command!(pool, query, opts \\ []) do
     bangify(run_command(pool, query, opts))
   end
@@ -218,7 +222,7 @@ defmodule Mongo do
   If the document is missing the `_id` field or it is `nil`, an ObjectId
   will be generated, inserted into the document, and returned in the result struct.
   """
-  @spec insert_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.InsertOneResult.t}
+  @spec insert_one(Pool.t, collection, BSON.document, Keyword.t) :: result(Mongo.InsertOneResult.t)
   def insert_one(pool, coll, doc, opts \\ []) do
     assert_single_doc!(doc)
 
@@ -230,6 +234,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec insert_one!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.InsertOneResult.t)
   def insert_one!(pool, coll, doc, opts \\ []) do
     bangify(insert_one(pool, coll, doc, opts))
   end
@@ -247,7 +252,7 @@ defmodule Mongo do
       continue inserting the remaining ones (default: `false`)
   """
   # TODO describe the ordered option
-  @spec insert_many(Pool.t, collection, [BSON.document], Keyword.t) :: :ok | {:ok, Mongo.InsertManyResult.t}
+  @spec insert_many(Pool.t, collection, [BSON.document], Keyword.t) :: result(Mongo.InsertManyResult.t)
   def insert_many(pool, coll, docs, opts \\ []) do
     assert_many_docs!(docs)
 
@@ -264,6 +269,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec insert_many!(Pool.t, collection, [BSON.document], Keyword.t) :: result!(Mongo.InsertManyResult.t)
   def insert_many!(pool, coll, docs, opts \\ []) do
     bangify(insert_many(pool, coll, docs, opts))
   end
@@ -271,7 +277,7 @@ defmodule Mongo do
   @doc """
   Remove a document matching the filter from the collection.
   """
-  @spec delete_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.DeleteResult.t}
+  @spec delete_one(Pool.t, collection, BSON.document, Keyword.t) :: result(Mongo.DeleteResult.t)
   def delete_one(pool, coll, filter, opts \\ []) do
     dbopts = [multi: false] ++ opts
 
@@ -283,6 +289,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec delete_one!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.DeleteResult.t)
   def delete_one!(pool, coll, filter, opts \\ []) do
     bangify(delete_one(pool, coll, filter, opts))
   end
@@ -290,7 +297,7 @@ defmodule Mongo do
   @doc """
   Remove all documents matching the filter from the collection.
   """
-  @spec delete_many(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.DeleteResult.t}
+  @spec delete_many(Pool.t, collection, BSON.document, Keyword.t) :: result(Mongo.DeleteResult.t)
   def delete_many(pool, coll, filter, opts \\ []) do
     dbopts = [multi: true] ++ opts
 
@@ -302,6 +309,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec delete_many!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.DeleteResult.t)
   def delete_many!(pool, coll, filter, opts \\ []) do
     bangify(delete_many(pool, coll, filter, opts))
   end
@@ -314,7 +322,7 @@ defmodule Mongo do
     * `:upsert` - if set to `true` creates a new document when no document
       matches the filter (default: `false`)
   """
-  @spec replace_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
+  @spec replace_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def replace_one(pool, coll, filter, replacement, opts \\ []) do
     modifier_docs(replacement, :replace)
     dbopts = [multi: false] ++ opts
@@ -327,6 +335,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec replace_one!(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result!(Mongo.UpdateResult.t)
   def replace_one!(pool, coll, filter, replacement, opts \\ []) do
     bangify(replace_one(pool, coll, filter, replacement, opts))
   end
@@ -350,7 +359,7 @@ defmodule Mongo do
     * `:upsert` - if set to `true` creates a new document when no document
       matches the filter (default: `false`)
   """
-  @spec update_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
+  @spec update_one(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def update_one(pool, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
     dbopts = [multi: false] ++ opts
@@ -363,6 +372,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec update_one!(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result!(Mongo.UpdateResult.t)
   def update_one!(pool, coll, filter, update, opts \\ []) do
     bangify(update_one(pool, coll, filter, update, opts))
   end
@@ -379,7 +389,7 @@ defmodule Mongo do
     * `:upsert` - if set to `true` creates a new document when no document
       matches the filter (default: `false`)
   """
-  @spec update_many(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.UpdateResult.t}
+  @spec update_many(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def update_many(pool, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
     dbopts = [multi: true] ++ opts
@@ -392,6 +402,7 @@ defmodule Mongo do
     end)
   end
 
+  @spec update_many!(Pool.t, collection, BSON.document, BSON.document, Keyword.t) :: result!(Mongo.UpdateResult.t)
   def update_many!(pool, coll, filter, update, opts \\ []) do
     bangify(update_many(pool, coll, filter, update, opts))
   end
@@ -403,7 +414,7 @@ defmodule Mongo do
   function is used to persist the document, otherwise `replace_one/5` is used,
   where the filter is the `_id` field, and the `:upsert` option is set to `true`.
   """
-  @spec save_one(Pool.t, collection, BSON.document, Keyword.t) :: :ok | {:ok, Mongo.SaveOneResult.t}
+  @spec save_one(Pool.t, collection, BSON.document, Keyword.t) :: result(Mongo.SaveOneResult.t)
   def save_one(pool, coll, doc, opts \\ []) do
     case get_id(doc) do
       {:ok, id} ->
@@ -426,6 +437,7 @@ defmodule Mongo do
     end
   end
 
+  @spec save_one!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.SaveOneResult.t)
   def save_one!(pool, coll, doc, opts \\ []) do
     bangify(save_one(pool, coll, doc, opts))
   end
@@ -444,7 +456,7 @@ defmodule Mongo do
       together, otherwise it will preserve the order, but it may be slow
       for large number of documents (default: `false`)
   """
-  @spec save_many!(Pool.t, collection, BSON.document, Keyword.t) :: nil | Mongo.SaveManyResult.t
+  @spec save_many!(Pool.t, collection, BSON.document, Keyword.t) :: result!(Mongo.SaveManyResult.t)
   def save_many!(pool, coll, docs, opts \\ []) do
     assert_many_docs!(docs)
 
