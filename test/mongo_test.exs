@@ -75,11 +75,6 @@ defmodule Mongo.Test do
   test "count!" do
     coll = unique_name
 
-    assert 0 = Mongo.count!(Pool, coll, [])
-
-    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42})
-
-    assert 1 = Mongo.count!(Pool, coll, %{})
     assert 0 = Mongo.count!(Pool, coll, %{foo: 43})
   end
 
@@ -100,13 +95,6 @@ defmodule Mongo.Test do
     coll = unique_name
 
     assert [] = Mongo.distinct!(Pool, coll, "foo", %{})
-
-    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42})
-    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42})
-    assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 43})
-
-    assert [42, 43] = Mongo.distinct!(Pool, coll, "foo", %{})
-    assert [42]     = Mongo.distinct!(Pool, coll, "foo", %{foo: 42})
   end
 
   test "find" do
@@ -164,12 +152,12 @@ defmodule Mongo.Test do
   test "insert_one!" do
     coll = unique_name
 
-    result = Mongo.insert_one!(Pool, coll, %{foo: 42})
-    assert %Mongo.InsertOneResult{inserted_id: id} = result
-
-    assert [%{"_id" => ^id, "foo" => 42}] = Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
-
+    assert %Mongo.InsertOneResult{} = Mongo.insert_one!(Pool, coll, %{"_id" => 1})
     assert nil == Mongo.insert_one!(Pool, coll, %{}, w: 0)
+
+    assert_raise Mongo.Error, fn ->
+      Mongo.insert_one!(Pool, coll, %{_id: 1})
+    end
   end
 
   test "insert_many" do
@@ -191,13 +179,14 @@ defmodule Mongo.Test do
   test "insert_many!" do
     coll = unique_name
 
-    result = Mongo.insert_many!(Pool, coll, [%{foo: 42}, %{foo: 43}])
-    assert %Mongo.InsertManyResult{inserted_ids: %{0 => id0, 1 => id1}} = result
-
-    assert [%{"_id" => ^id0, "foo" => 42}] = Mongo.find(Pool, coll, %{_id: id0}) |> Enum.to_list
-    assert [%{"_id" => ^id1, "foo" => 43}] = Mongo.find(Pool, coll, %{_id: id1}) |> Enum.to_list
+    docs = [%{foo: 42}, %{foo: 43}]
+    assert %Mongo.InsertManyResult{} = Mongo.insert_many!(Pool, coll, docs)
 
     assert nil == Mongo.insert_many!(Pool, coll, [%{}], w: 0)
+
+    assert_raise Mongo.Error, fn ->
+      Mongo.insert_many!(Pool, coll, [%{_id: 1}, %{_id: 1}])
+    end
   end
 
   test "delete_one" do
@@ -218,16 +207,9 @@ defmodule Mongo.Test do
   test "delete_one!" do
     coll = unique_name
 
-    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
-
-    assert %Mongo.DeleteResult{deleted_count: 1} = Mongo.delete_one!(Pool, coll, %{foo: 42})
-    assert [%{"foo" => 42}] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
-
-    assert %Mongo.DeleteResult{deleted_count: 1} = Mongo.delete_one!(Pool, coll, %{foo: 42})
-    assert [] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
-
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_one!(Pool, coll, %{foo: 42})
-    assert [%{"foo" => 43}] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+
+    assert nil == Mongo.delete_one!(Pool, coll, %{}, w: 0)
   end
 
   test "delete_many" do
@@ -245,13 +227,9 @@ defmodule Mongo.Test do
   test "delete_many!" do
     coll = unique_name
 
-    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
+    assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_many!(Pool, coll, %{foo: 42})
 
-    assert %Mongo.DeleteResult{deleted_count: 2} = Mongo.delete_many!(Pool, coll, %{foo: 42})
-    assert [] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
-
-    assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_one!(Pool, coll, %{foo: 42})
-    assert [%{"foo" => 43}] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
+    assert nil == Mongo.delete_many!(Pool, coll, %{}, w: 0)
   end
 
   test "replace_one" do
@@ -282,22 +260,16 @@ defmodule Mongo.Test do
   test "replace_one!" do
     coll = unique_name
 
-    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
+    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{_id: 1}])
 
-    assert %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_id: nil} =
-      Mongo.replace_one!(Pool, coll, %{foo: 42}, %{foo: 0})
+    assert %Mongo.UpdateResult{matched_count: 0, modified_count: 0, upserted_id: nil} =
+      Mongo.replace_one!(Pool, coll, %{foo: 43}, %{foo: 0})
 
-    assert [_] = Mongo.find(Pool, coll, %{foo: 0}) |> Enum.to_list
-    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+    assert nil == Mongo.replace_one!(Pool, coll, %{foo: 45}, %{foo: 0}, w: 0)
 
-    assert %Mongo.UpdateResult{matched_count: 0, modified_count: 1, upserted_id: id} =
-      Mongo.replace_one!(Pool, coll, %{foo: 50}, %{foo: 0}, upsert: true)
-    assert [_] = Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
-
-    assert %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_id: nil} =
-      Mongo.replace_one!(Pool, coll, %{foo: 43}, %{foo: 1}, upsert: true)
-    assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
-    assert [_] = Mongo.find(Pool, coll, %{foo: 1}) |> Enum.to_list
+    assert_raise Mongo.Error, fn ->
+      Mongo.replace_one!(Pool, coll, %{foo: 42}, %{_id: 1})
+    end
   end
 
   test "update_one" do
@@ -328,22 +300,16 @@ defmodule Mongo.Test do
   test "update_one!" do
     coll = unique_name
 
-    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
+    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{_id: 1}])
 
     assert %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_id: nil} =
       Mongo.update_one!(Pool, coll, %{foo: 42}, %{"$set": %{foo: 0}})
 
-    assert [_] = Mongo.find(Pool, coll, %{foo: 0}) |> Enum.to_list
-    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+    assert nil == Mongo.update_one!(Pool, coll, %{foo: 42}, %{}, w: 0)
 
-    assert %Mongo.UpdateResult{matched_count: 0, modified_count: 1, upserted_id: id} =
-      Mongo.update_one!(Pool, coll, %{foo: 50}, %{"$set": %{foo: 0}}, upsert: true)
-    assert [_] = Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
-
-    assert %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_id: nil} =
-      Mongo.update_one!(Pool, coll, %{foo: 43}, %{"$set": %{foo: 1}}, upsert: true)
-    assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
-    assert [_] = Mongo.find(Pool, coll, %{foo: 1}) |> Enum.to_list
+    assert_raise Mongo.Error, fn ->
+      Mongo.update_one!(Pool, coll, %{foo: 0}, %{"$set": %{_id: 0}})
+    end
   end
 
   test "update_many" do
@@ -374,22 +340,16 @@ defmodule Mongo.Test do
   test "update_many!" do
     coll = unique_name
 
-    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
+    assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{_id: 1}])
 
     assert %Mongo.UpdateResult{matched_count: 2, modified_count: 2, upserted_id: nil} =
       Mongo.update_many!(Pool, coll, %{foo: 42}, %{"$set": %{foo: 0}})
 
-    assert [_, _] = Mongo.find(Pool, coll, %{foo: 0}) |> Enum.to_list
-    assert [] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
+    assert nil == Mongo.update_many!(Pool, coll, %{foo: 0}, %{}, w: 0)
 
-    assert %Mongo.UpdateResult{matched_count: 0, modified_count: 1, upserted_id: id} =
-      Mongo.update_many!(Pool, coll, %{foo: 50}, %{"$set": %{foo: 0}}, upsert: true)
-    assert [_] = Mongo.find(Pool, coll, %{_id: id}) |> Enum.to_list
-
-    assert %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_id: nil} =
-      Mongo.update_many!(Pool, coll, %{foo: 43}, %{"$set": %{foo: 1}}, upsert: true)
-    assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
-    assert [_] = Mongo.find(Pool, coll, %{foo: 1}) |> Enum.to_list
+    assert_raise Mongo.Error, fn ->
+      Mongo.update_many!(Pool, coll, %{foo: 0}, %{"$set": %{_id: 1}})
+    end
   end
 
   test "save_one" do
@@ -416,24 +376,11 @@ defmodule Mongo.Test do
 
   test "save_one!" do
     coll = unique_name
-    id = Mongo.IdServer.new
 
-    assert %Mongo.SaveOneResult{matched_count: 0, modified_count: 0, upserted_id: %BSON.ObjectId{}} =
+    assert %Mongo.SaveOneResult{matched_count: 0, modified_count: 0, upserted_id: %BSON.ObjectId{} = id} =
       Mongo.save_one!(Pool, coll, %{foo: 42})
-    assert [_] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
 
-    assert %Mongo.SaveOneResult{matched_count: 0, modified_count: 0, upserted_id: %BSON.ObjectId{}} =
-      Mongo.save_one!(Pool, coll, %{foo: 42})
-    assert [_, _] = Mongo.find(Pool, coll, %{foo: 42}) |> Enum.to_list
-
-    assert %Mongo.SaveOneResult{matched_count: 0, modified_count: 1, upserted_id: %BSON.ObjectId{}} =
-      Mongo.save_one!(Pool, coll, %{_id: id, foo: 43})
-    assert [_] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
-
-    assert %Mongo.SaveOneResult{matched_count: 1, modified_count: 1, upserted_id: nil} =
-      Mongo.save_one!(Pool, coll, %{_id: id, foo: 44})
-    assert [] = Mongo.find(Pool, coll, %{foo: 43}) |> Enum.to_list
-    assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
+    assert nil == Mongo.save_one!(Pool, coll, %{_id: id, foo: 43}, w: 0)
   end
 
   test "save_many! ordered single" do
@@ -458,7 +405,7 @@ defmodule Mongo.Test do
     assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
   end
 
-  test "save_many ordered multi" do
+  test "save_many! ordered multi" do
     coll = unique_name
     id1 = Mongo.IdServer.new
     id2 = Mongo.IdServer.new
@@ -498,7 +445,7 @@ defmodule Mongo.Test do
     assert [_] = Mongo.find(Pool, coll, %{foo: 52}) |> Enum.to_list
   end
 
-  test "save_many unordered single" do
+  test "save_many! unordered single" do
     coll = unique_name
     id = Mongo.IdServer.new
 
@@ -520,7 +467,7 @@ defmodule Mongo.Test do
     assert [_] = Mongo.find(Pool, coll, %{foo: 44}) |> Enum.to_list
   end
 
-  test "save_many unordered multi" do
+  test "save_many! unordered multi" do
     coll = unique_name
     id1 = Mongo.IdServer.new
     id2 = Mongo.IdServer.new
