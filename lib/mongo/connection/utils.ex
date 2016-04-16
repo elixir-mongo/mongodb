@@ -16,7 +16,7 @@ defmodule Mongo.Connection.Utils do
           {:tcp_error, _} = error ->
             error
         end
-      {:error, reason} ->
+      {:error, reason, _s} ->
         {:tcp_error, reason}
     end
   end
@@ -26,8 +26,8 @@ defmodule Mongo.Connection.Utils do
     case :gen_tcp.send(s.socket, data) do
       :ok ->
         {:ok, s}
-      {:error, _} = error ->
-        error
+      {:error, reason} ->
+        {:error, reason, s}
     end
   end
 
