@@ -156,7 +156,6 @@ defmodule Mongo.Connection do
 
   @doc false
   def init(opts) do
-    :random.seed(:os.timestamp)
     timeout = opts[:timeout] || 5000
 
     opts = opts

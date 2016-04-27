@@ -29,8 +29,6 @@ defmodule Mongo.IdServer do
   end
 
   def init([]) do
-    :random.seed(:os.timestamp)
-
     :ets.new(@name, [:named_table, :public, write_concurrency: true])
     :ets.insert(@name, [machineprocid: {machine_id(), process_id()}])
     :ets.insert(@name, gen_counters(0..@num_counters))
@@ -60,7 +58,7 @@ defmodule Mongo.IdServer do
 
   defp gen_counters(range) do
     for ix <- range do
-      {ix, :random.uniform(@counter_max)-1}
+      {ix, :rand.uniform(@counter_max)-1}
     end
   end
 
