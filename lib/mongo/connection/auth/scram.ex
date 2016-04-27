@@ -4,8 +4,6 @@ defmodule Mongo.Connection.Auth.SCRAM do
   import Mongo.Connection.Utils
   import Bitwise
 
-  @random_length 24
-
   def auth({username, password}, s) do
     # TODO: Wrap and log error
     nonce      = nonce()
