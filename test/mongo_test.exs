@@ -20,6 +20,10 @@ defmodule Mongo.Test do
     :ok
   end
 
+  test "object_id" do
+    assert %BSON.ObjectId{value: <<_::96>>} = Mongo.object_id
+  end
+
   test "run_command" do
     assert {:ok, %{"ok" => 1.0}} = Mongo.run_command(Pool, %{ping: true})
     assert {:error, %Mongo.Error{}} =
