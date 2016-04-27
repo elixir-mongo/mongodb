@@ -4,7 +4,7 @@ defmodule Mongo.Connection do
   """
 
   import Kernel, except: [send: 2]
-  import Mongo.Protocol
+  import Mongo.Messages
   import Mongo.Connection.Utils
   require Logger
   alias Mongo.Connection.Auth
