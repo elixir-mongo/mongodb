@@ -64,6 +64,14 @@ defmodule Mongo do
   end
 
   @doc """
+  Generates a new `BSON.ObjectId`.
+  """
+  @spec object_id :: BSON.ObjectId.t
+  def object_id do
+    Mongo.IdServer.new
+  end
+
+  @doc """
   Performs aggregation operation using the aggregation pipeline.
 
   ## Options
