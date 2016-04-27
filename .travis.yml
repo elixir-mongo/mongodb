@@ -4,7 +4,7 @@ elixir:
 cache:
   - apt
   - directories:
-      - ~/.mongodb
+    - ~/.mongodb
 before_install:
   - npm install -g mongodb-version-manager
   - m use $MONGOVERSION
@@ -25,9 +25,6 @@ matrix:
     - elixir: 1.1.1
       otp_release: 17.5
       env: MONGOVERSION=3.2.4
-after_script:
-  - mix deps.get --only docs
-  - MIX_ENV=docs mix inch.report
 notifications:
   recipients:
     - eric.meadows.jonsson@gmail.com

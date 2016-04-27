@@ -1,8 +1,6 @@
-Mongodb
-=======
+# Mongodb
 
 [![Build Status](https://travis-ci.org/ericmj/mongodb.svg?branch=master)](https://travis-ci.org/ericmj/mongodb)
-[![Inline docs](http://inch-ci.org/github/ericmj/mongodb.svg)](http://inch-ci.org/github/ericmj/mongodb)
 
 ## Features
 
@@ -17,7 +15,6 @@ Mongodb
 ## Immediate Roadmap
 
   * Add timeouts for all calls
-  * Bang and non-bang `Mongo` functions
   * Move BSON encoding to client process
     - Make sure requests don't go over the 16mb limit
   * Replica sets
@@ -37,11 +34,11 @@ Mongodb
 
 ## Data representation
 
-    BSON             	Elixir
+    BSON                Elixir
     ----------        	------
     double              0.0
     string              "Elixir"
-    document            [{"key", "value"}] | %{"key" => "value"} *
+    document            [{"key", "value"}] | %{"key" => "value"} (1)
     binary              %BSON.Binary{binary: <<42, 43>>, subtype: :generic}
     object id           %BSON.ObjectId{value: <<...>>}
     boolean             true | false
@@ -50,42 +47,32 @@ Mongodb
     regex               %BSON.Regex{pattern: "..."}
     JavaScript          %BSON.JavaScript{code: "..."}
     integer             42
-    symbol              "foo" **
+    symbol              "foo" (2)
     min key             :BSON_min
     max key             :BSON_max
 
-* Since BSON documents are ordered Elixir maps cannot be used to fully represent them. This driver chose to accept both maps and lists of key-value pairs when encoding but will only decode documents to lists. This has the side-effect that it's impossible to discern empty arrays from empty documents. Additionally the driver will accept both atoms and strings for document keys but will only decode to strings.
+1) Since BSON documents are ordered Elixir maps cannot be used to fully represent them. This driver chose to accept both maps and lists of key-value pairs when encoding but will only decode documents to lists. This has the side-effect that it's impossible to discern empty arrays from empty documents. Additionally the driver will accept both atoms and strings for document keys but will only decode to strings.
 
-** BSON symbols can only be decoded.
+2) BSON symbols can only be decoded.
 
 ## Usage
 
 ### Installation:
 
-Add mongodb to your mix.exs `:deps` and `:applications` (replace `>= 0.0.0` in `:deps` if you want a specific version). If you want to use poolboy as adapter also add it to your mix.exs `:deps` and `:applications` (because poolboy is an optional dep in mongodb):
+Add mongodb to your mix.exs `deps` and `:applications` (replace `>= 0.0.0` in `deps` if you want a specific version). If you want to use poolboy as adapter also add it to your mix.exs `deps` and `:applications` (because poolboy is an optional dep in mongodb):
 
 ```elixir
-  def application do
-    [
-      applications:
-      [
-       # ... other deps
-       :mongodb,
-       :poolboy # only needed if you want to use poolboy as adapter
-      ]
-    ]
-  end
-  
-  defp deps do
-    [
-      # ... other deps
-      {:mongodb, ">= 0.0.0"},
-      {:poolboy, ">= 0.0.0"} # only needed if you want to use poolboy as adapter
-    ]
-  end
+def application do
+  [applications: [:mongodb, :poolboy]]
+end
+
+defp deps do
+  [{:mongodb, ">= 0.0.0"},
+   {:poolboy, ">= 0.0.0"}]
+end
 ```
 
-Then run ```mix deps.get```.
+Then run `mix deps.get` to fetch dependencies.
 
 ### Connection Pools
 
@@ -105,6 +92,7 @@ Enum.to_list(cursor)
 ```
 
 ### Examples
+
 ```elixir
 Mongo.find(MongoPool, "test-collection", %{}, limit: 20)
 Mongo.find(MongoPool, "test-collection", %{"field" => %{"$gt" => 0}}, limit: 20, sort: %{"field" => 1})

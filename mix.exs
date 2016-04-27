@@ -26,8 +26,7 @@ defmodule Mongodb.Mixfile do
     [{:connection, "~> 1.0"},
      {:poolboy,    "~> 1.5", optional: true},
      {:ex_doc,     ">= 0.0.0", only: :docs},
-     {:earmark,    ">= 0.0.0", only: :docs},
-     {:inch_ex,    ">= 0.0.0", only: :docs}]
+     {:earmark,    ">= 0.0.0", only: :docs}]
   end
 
   defp description do
