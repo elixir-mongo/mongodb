@@ -22,6 +22,8 @@ defmodule BSON.ObjectId do
   """
   defstruct [:value]
 
+  @type t :: %__MODULE__{value: <<_::96>>}
+
   @doc """
   Creates a new ObjectId from the consisting parts
   """
