@@ -1,4 +1,4 @@
-defmodule Mongo.Connection.Auth.CR do
+defmodule Mongo.Auth.CR do
   @moduledoc false
   import Mongo.Connection.Utils
 

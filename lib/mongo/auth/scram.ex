@@ -1,4 +1,4 @@
-defmodule Mongo.Connection.Auth.SCRAM do
+defmodule Mongo.Auth.SCRAM do
   @moduledoc false
   import Mongo.BinaryUtils
   import Mongo.Connection.Utils
