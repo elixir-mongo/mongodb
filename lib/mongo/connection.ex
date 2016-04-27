@@ -7,7 +7,7 @@ defmodule Mongo.Connection do
   import Mongo.Messages
   import Mongo.Connection.Utils
   require Logger
-  alias Mongo.Connection.Auth
+  alias Mongo.Auth
   alias Mongo.ReadResult
   alias Mongo.WriteResult
 
