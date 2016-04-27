@@ -1,4 +1,4 @@
-defmodule Mongo.Protocol do
+defmodule Mongo.Messages do
   @moduledoc false
 
   import Record

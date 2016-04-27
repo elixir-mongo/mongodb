@@ -1,6 +1,6 @@
 defmodule Mongo.Connection.Utils do
   @moduledoc false
-  import Mongo.Protocol
+  import Mongo.Messages
 
   def sync_command(id, command, s) do
     op = op_query(coll: namespace("$cmd", s), query: command,
