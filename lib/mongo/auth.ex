@@ -1,4 +1,4 @@
-defmodule Mongo.Connection.Auth do
+defmodule Mongo.Auth do
   @moduledoc false
 
   def setup(%{auth: nil, opts: opts} = s) do
@@ -33,7 +33,7 @@ defmodule Mongo.Connection.Auth do
   end
 
   defp mechanism(%{wire_version: version}) when version >= 3,
-    do: Mongo.Connection.Auth.SCRAM
+    do: Mongo.Auth.SCRAM
   defp mechanism(_),
-    do: Mongo.Connection.Auth.CR
+    do: Mongo.Auth.CR
 end
