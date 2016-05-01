@@ -276,9 +276,9 @@ defmodule Mongo do
     Pool.run_with_log(pool, :insert_many, [coll, docs], opts, fn pid ->
       Connection.insert(pid, coll, docs, dbopts)
     end)
-    |> map_result(fn %WriteResult{inserted_ids: ids} ->
+    |> map_result(fn %WriteResult{inserted_ids: ids, num_inserted: count} ->
       ids = Enum.with_index(ids) |> Enum.into(%{}, fn {x, y} -> {y, x} end)
-      %Mongo.InsertManyResult{inserted_ids: ids}
+      %Mongo.InsertManyResult{inserted_ids: ids, inserted_count: count}
     end)
   end
 

@@ -20,10 +20,11 @@ defmodule Mongo.InsertManyResult do
   """
 
   @type t :: %__MODULE__{
-    inserted_ids: [BSON.ObjectId.t]
+    inserted_ids: [BSON.ObjectId.t],
+    inserted_count: non_neg_integer
   }
 
-  defstruct [:inserted_ids]
+  defstruct [:inserted_ids, :inserted_count]
 end
 
 defmodule Mongo.DeleteResult do
