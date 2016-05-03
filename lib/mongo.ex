@@ -3,6 +3,12 @@ defmodule Mongo do
   The main entry point for doing queries. All functions take a pool to
   run the query on.
 
+  ## Generic options
+
+  All operations take these options.
+
+    * `:timeout` - TODO
+
   ## Read options
 
   All read operations that returns a cursor take the following options
@@ -31,10 +37,12 @@ defmodule Mongo do
   pool's `log/5` function will be called.
   """
 
-  alias Mongo.Connection
   alias Mongo.WriteResult
-  alias Mongo.Pool
+  alias Mongo.Query
 
+  @timeout 5000
+
+  @type conn :: DbConnection.Conn
   @type collection :: String.t
   @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
   @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t}
@@ -50,6 +58,11 @@ defmodule Mongo do
     end
   end
 
+  # TODO: docs
+  @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | term}
+  def start_link(opts) do
+    DBConnection.start_link(Mongo.Protocol, opts)
+  end
 
   @doc """
   Generates a new `BSON.ObjectId`.
@@ -68,8 +81,8 @@ defmodule Mongo do
     * `:max_time` - Specifies a time limit in milliseconds
     * `:use_cursor` - Use a cursor for a batched response (Default: true)
   """
-  @spec aggregate(Pool.t, collection, [BSON.document], Keyword.t) :: cursor
-  def aggregate(pool, coll, pipeline, opts \\ []) do
+  @spec aggregate(conn, collection, [BSON.document], Keyword.t) :: cursor
+  def aggregate(conn, coll, pipeline, opts \\ []) do
     query = [
       aggregate: coll,
       pipeline: pipeline,
@@ -77,14 +90,15 @@ defmodule Mongo do
       maxTimeMS: opts[:max_time]
     ] |> filter_nils
 
-    cursor? = pool.version >= 1 and Keyword.get(opts, :use_cursor, true)
+    version = Mongo.Monitor.wire_version(conn)
+    cursor? = version >= 1 and Keyword.get(opts, :use_cursor, true)
     opts = Keyword.drop(opts, ~w(allow_disk_use max_time use_cursor)a)
 
     if cursor? do
       query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
-      aggregation_cursor(pool, "$cmd", query, nil, opts)
+      aggregation_cursor(conn, "$cmd", query, nil, opts)
     else
-      singly_cursor(pool, "$cmd", query, nil, opts)
+      singly_cursor(conn, "$cmd", query, nil, opts)
     end
   end
 
@@ -197,6 +211,22 @@ defmodule Mongo do
     cursor(pool, coll, query, select, opts)
   end
 
+  @doc false
+  def find(conn, coll, query, projector, opts) do
+    query = %Query{action: {:find, coll, query, projector}}
+    DBConnection.query(conn, query, [], defaults(opts))
+  end
+
+  def get_more(conn, coll, cursor, opts) do
+    query = %Query{action: {:get_more, coll, cursor}}
+    DBConnection.query(conn, query, [], defaults(opts))
+  end
+
+  def kill_cursors(conn, cursor_ids, opts) do
+    query = %Query{action: {:kill_cursors, cursor_ids}}
+    DBConnection.query(conn, query, [], defaults(opts))
+  end
+
   @doc """
   Issue a database command. If the command has parameters use a keyword
   list for the document because the "command key" has to be the first
@@ -228,16 +258,15 @@ defmodule Mongo do
   If the document is missing the `_id` field or it is `nil`, an ObjectId
   will be generated, inserted into the document, and returned in the result struct.
   """
-  @spec insert_one(Pool.t, collection, BSON.document, Keyword.t) :: result(Mongo.InsertOneResult.t)
-  def insert_one(pool, coll, doc, opts \\ []) do
+  @spec insert_one(conn, collection, BSON.document, Keyword.t) :: result(Mongo.InsertOneResult.t)
+  def insert_one(conn, coll, doc, opts \\ []) do
     assert_single_doc!(doc)
 
-    Pool.run_with_log(pool, :insert_one, [coll, doc], opts, fn pid ->
-      Connection.insert(pid, coll, doc, opts)
-    end)
-    |> map_result(fn %WriteResult{inserted_ids: ids} ->
-      %Mongo.InsertOneResult{inserted_id: List.first(ids)}
-    end)
+    query = %Query{action: {:insert, coll, [doc]}}
+    with {:ok, result} <- DBConnection.query(conn, query, [], defaults(opts)) do
+      %WriteResult{inserted_ids: [id]} = result
+      %Mongo.InsertOneResult{inserted_id: id}
+    end
   end
 
   @doc """
@@ -613,27 +642,27 @@ defmodule Mongo do
   defp key_to_string(key) when is_binary(key),
     do: key
 
-  defp cursor(pool, coll, query, select, opts) do
+  defp cursor(conn, coll, query, select, opts) do
     %Mongo.Cursor{
-      pool: pool,
+      conn: conn,
       coll: coll,
       query: query,
       select: select,
       opts: opts}
   end
 
-  defp singly_cursor(pool, coll, query, select, opts) do
+  defp singly_cursor(conn, coll, query, select, opts) do
     %Mongo.SinglyCursor{
-      pool: pool,
+      conn: conn,
       coll: coll,
       query: query,
       select: select,
       opts: opts}
   end
 
-  defp aggregation_cursor(pool, coll, query, select, opts) do
+  defp aggregation_cursor(conn, coll, query, select, opts) do
     %Mongo.AggregationCursor{
-      pool: pool,
+      conn: conn,
       coll: coll,
       query: query,
       select: select,
@@ -704,5 +733,9 @@ defmodule Mongo do
   defp assert_many_docs!([first | _]) when not is_tuple(first), do: :ok
   defp assert_many_docs!(other) do
     raise ArgumentError, "expected list of documents, got: #{inspect other}"
+  end
+
+  defp defaults(opts) do
+    Keyword.put_new(opts, :timeout, @timeout)
   end
 end
