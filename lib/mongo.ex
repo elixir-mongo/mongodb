@@ -50,18 +50,6 @@ defmodule Mongo do
     end
   end
 
-  @doc false
-  def start(_type, _args) do
-    import Supervisor.Spec, warn: false
-
-    children = [
-      worker(Mongo.IdServer, []),
-      worker(Mongo.PBKDF2Cache, [])
-    ]
-
-    opts = [strategy: :one_for_one, name: Mongo.Supervisor]
-    Supervisor.start_link(children, opts)
-  end
 
   @doc """
   Generates a new `BSON.ObjectId`.
