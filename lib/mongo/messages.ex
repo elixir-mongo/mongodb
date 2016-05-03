@@ -1,6 +1,16 @@
 defmodule Mongo.Messages do
   @moduledoc false
 
+  defmacro __using__(_opts) do
+    quote do
+      import unquote(__MODULE__)
+      @reply_cursor_not_found   0x1
+      @reply_query_failure      0x2
+      @reply_shard_config_stale 0x4
+      @reply_await_capable      0x8
+    end
+  end
+
   import Record
   import Mongo.BinaryUtils
   alias BSON.Encoder
@@ -134,7 +144,7 @@ defmodule Mongo.Messages do
   defp op_to_code(op_kill_cursors()), do: @op_kill_cursors
 
   defp decode_reply(<<flags::int32, cursor_id::int64, from::int32, num::int32, rest::binary>>) do
-    flags = unblit_flags(flags)
+    # flags = unblit_flags(flags)
     docs = decode_documents(rest, [])
     op_reply(flags: flags, cursor_id: cursor_id, from: from, num: num, docs: docs)
   end
@@ -153,19 +163,22 @@ defmodule Mongo.Messages do
     decode_documents(rest, [doc|acc])
   end
 
-  defp blit_flags(op, flags) do
+  defp blit_flags(op, flags) when is_list(flags) do
     import Bitwise
     Enum.reduce(flags, 0x0, &(flag_to_bit(op, &1) ||| &2))
   end
-
-  defp unblit_flags(bits) do
-    import Bitwise
-    Enum.reduce(@reply_flags, [], fn {flag, bit}, acc ->
-      if (bit &&& bits) == 0,
-          do: acc,
-        else: [flag|acc]
-    end)
+  defp blit_flags(_op, flags) when is_integer(flags) do
+    flags
   end
+
+  # defp unblit_flags(bits) do
+  #   import Bitwise
+  #   Enum.reduce(@reply_flags, [], fn {flag, bit}, acc ->
+  #     if (bit &&& bits) == 0,
+  #         do: acc,
+  #       else: [flag|acc]
+  #   end)
+  # end
 
   Enum.each(@update_flags, fn {flag, bit} ->
     defp flag_to_bit(:update, unquote(flag)), do: unquote(bit)
