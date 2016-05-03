@@ -1,7 +1,21 @@
 defmodule Mongo.Auth do
   @moduledoc false
 
-  def setup(%{auth: nil, opts: opts} = s) do
+  def run(opts, s) do
+    auth = setup(opts)
+    auther = mechanism(s)
+
+    Enum.find_value(auth, fn opts ->
+      case auther.auth(opts, s) do
+        :ok ->
+          nil
+        error ->
+          error
+      end
+    end) || {:ok, s}
+  end
+
+  defp setup(opts) do
     database = opts[:database]
     username = opts[:username]
     password = opts[:password]
@@ -14,22 +28,7 @@ defmodule Mongo.Auth do
         {username, password}
       end)
 
-    auth = if username && password, do: auth ++ [{username, password}], else: auth
-    opts = Keyword.drop(opts, ~w(database username password auth)a)
-    %{s | auth: auth, opts: opts, database: database}
-  end
-
-  def run(%{auth: auth} = s) do
-    auther = mechanism(s)
-
-    Enum.find_value(auth, fn opts ->
-      case auther.auth(opts, s) do
-        :ok ->
-          nil
-        error ->
-          error
-      end
-    end) || {:ok, s}
+    if username && password, do: auth ++ [{username, password}], else: auth
   end
 
   defp mechanism(%{wire_version: version}) when version >= 3,
