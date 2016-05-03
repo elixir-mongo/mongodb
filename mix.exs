@@ -17,8 +17,8 @@ defmodule Mongodb.Mixfile do
   end
 
   def application do
-    [applications: [:logger, :connection],
-     mod: {Mongo, []},
+    [applications: [:logger, :connection, :db_connection],
+     mod: {Mongo.App, []},
      env: []]
   end
 
