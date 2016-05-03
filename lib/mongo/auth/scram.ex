@@ -1,62 +1,34 @@
 defmodule Mongo.Auth.SCRAM do
   @moduledoc false
   import Mongo.BinaryUtils
-  import Mongo.Connection.Utils
+  import Mongo.Protocol.Utils
   import Bitwise
 
   def auth({username, password}, s) do
     # TODO: Wrap and log error
+
     nonce      = nonce()
     first_bare = first_bare(username, nonce)
     payload    = first_message(first_bare)
     message    = [saslStart: 1, mechanism: "SCRAM-SHA-1", payload: payload]
 
-    case sync_command(-2, message, s) do
-      {:ok, %{"conversationId" => 1, "payload" => server_payload, "done" => false, "ok" => 1.0}} ->
-        conversation_first(server_payload, first_bare, username, password, nonce, s)
-      error ->
-        handle_error(error, username)
+    with {:ok, reply} <- command(-2, message, s),
+         {message, signature} = first(reply, first_bare, username, password, nonce),
+         {:ok, reply} <- command(-3, message, s),
+         message = second(reply, signature),
+         {:ok, reply} = command(-4, message, s) do
+      final(reply)
+    else
+      {:ok, %{"ok" => 0.0, "errmsg" => reason, "code" => code}} ->
+        {:error, Mongo.Error.exception(message: "auth failed for user #{username}: #{reason}", code: code)}
+      {:error, _} = error ->
+        error
     end
   end
 
-  defp conversation_first(server_payload, first_bare, username, password, nonce, s) do
-    {signature, payload} = second_message(server_payload, first_bare, username, password, nonce)
-    message = [saslContinue: 1, conversationId: 1, payload: payload]
-
-    case sync_command(-3, message, s) do
-      {:ok, %{"conversationId" => 1, "payload" => payload, "done" => false, "ok" => 1.0}} ->
-        conversation_second(payload, signature, username, s)
-      error ->
-        handle_error(error, username)
-    end
-  end
-
-  defp conversation_second(payload, signature, username, s) do
-    params = parse_payload(payload)
-    ^signature = params["v"] |> Base.decode64!
-
-    payload = %BSON.Binary{binary: ""}
-    message = [saslContinue: 1, conversationId: 1, payload: payload]
-
-    case sync_command(-4, message, s) do
-      {:ok, %{"conversationId" => 1, "payload" => payload, "done" => true, "ok" => 1.0}} ->
-        %BSON.Binary{binary: ""} = payload
-        :ok
-      error ->
-        handle_error(error, username)
-    end
-  end
-
-  defp first_message(first_bare) do
-    %BSON.Binary{binary: "n,,#{first_bare}"}
-  end
-
-  defp first_bare(username, nonce) do
-    "n=#{encode_username(username)},r=#{nonce}"
-  end
-
-  defp second_message(payload, first_bare, username, password, client_nonce) do
-    params          = parse_payload(payload)
+  defp first(%{"conversationId" => 1, "payload" => server_payload, "done" => false, "ok" => 1.0},
+             first_bare, username, password, client_nonce) do
+    params          = parse_payload(server_payload)
     server_nonce    = params["r"]
     salt            = params["s"] |> Base.decode64!
     iter            = params["i"] |> String.to_integer
@@ -66,11 +38,31 @@ defmodule Mongo.Auth.SCRAM do
     <<^client_nonce::binary(24), _::binary>> = server_nonce
 
     client_message       = "c=biws,r=#{server_nonce}"
-    auth_message         = "#{first_bare},#{payload.binary},#{client_message}"
+    auth_message         = "#{first_bare},#{server_payload.binary},#{client_message}"
     server_signature     = generate_signature(salted_password, auth_message)
     proof                = generate_proof(salted_password, auth_message)
     client_final_message = %BSON.Binary{binary: "#{client_message},#{proof}"}
-    {server_signature, client_final_message}
+    message              = [saslContinue: 1, conversationId: 1, payload: client_final_message]
+
+    {server_signature, message}
+  end
+
+  defp second(%{"conversationId" => 1, "payload" => payload, "done" => false, "ok" => 1.0}, signature) do
+    params = parse_payload(payload)
+    ^signature = params["v"] |> Base.decode64!
+    [saslContinue: 1, conversationId: 1, payload: %BSON.Binary{binary: ""}]
+  end
+
+  defp final(%{"conversationId" => 1, "payload" => %BSON.Binary{binary: ""}, "done" => true, "ok" => 1.0}) do
+    :ok
+  end
+
+  defp first_message(first_bare) do
+    %BSON.Binary{binary: "n,,#{first_bare}"}
+  end
+
+  defp first_bare(username, nonce) do
+    "n=#{encode_username(username)},r=#{nonce}"
   end
 
   defp hi(password, salt, iterations) do
@@ -112,9 +104,4 @@ defmodule Mongo.Auth.SCRAM do
     |> String.split(",")
     |> Enum.into(%{}, &List.to_tuple(String.split(&1, "=", parts: 2)))
   end
-
-  defp handle_error({:tcp_error, _} = error, _username),
-    do: error
-  defp handle_error({:ok, %{"ok" => 0.0, "errmsg" => reason, "code" => code}}, username),
-    do: {:error, %Mongo.Error{message: "auth failed for '#{username}': #{reason}", code: code}}
 end
