@@ -114,8 +114,8 @@ defmodule Mongo do
     * `:skip` - Number of documents to skip before returning the first
     * `:hint` - Hint which index to use for the query
   """
-  @spec count(Pool.t, collection, BSON.document, Keyword.t) :: result(non_neg_integer)
-  def count(pool, coll, filter, opts \\ []) do
+  @spec count(conn, collection, BSON.document, Keyword.t) :: result(non_neg_integer)
+  def count(conn, coll, filter, opts \\ []) do
     query = [
       count: coll,
       query: filter,
@@ -127,16 +127,16 @@ defmodule Mongo do
     opts = Keyword.drop(opts, ~w(limit skip hint)a)
 
     # Mongo 2.4 and 2.6 returns a float
-    run_command(pool, query, opts)
+    command(conn, query, opts)
     |> map_result(&(trunc(&1["n"])))
   end
 
   @doc """
   Similar to `count/4` but unwraps the result and raises on error.
   """
-  @spec count!(Pool.t, collection, BSON.document, Keyword.t) :: result!(non_neg_integer)
-  def count!(pool, coll, filter, opts \\ []) do
-    bangify(count(pool, coll, filter, opts))
+  @spec count!(conn, collection, BSON.document, Keyword.t) :: result!(non_neg_integer)
+  def count!(conn, coll, filter, opts \\ []) do
+    bangify(count(conn, coll, filter, opts))
   end
 
   @doc """
@@ -146,8 +146,8 @@ defmodule Mongo do
 
     * `:max_time` - Specifies a time limit in milliseconds
   """
-  @spec distinct(Pool.t, collection, String.t | atom, BSON.document, Keyword.t) :: result([BSON.t])
-  def distinct(pool, coll, field, filter, opts \\ []) do
+  @spec distinct(conn, collection, String.t | atom, BSON.document, Keyword.t) :: result([BSON.t])
+  def distinct(conn, coll, field, filter, opts \\ []) do
     query = [
       distinct: coll,
       key: field,
@@ -157,16 +157,16 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(max_time))
 
-    run_command(pool, query, opts)
+    command(conn, query, opts)
     |> map_result(&(&1["values"]))
   end
 
   @doc """
   Similar to `distinct/5` but unwraps the result and raises on error.
   """
-  @spec distinct!(Pool.t, collection, String.t | atom, BSON.document, Keyword.t) :: result!([BSON.t])
-  def distinct!(pool, coll, field, filter, opts \\ []) do
-    bangify(distinct(pool, coll, field, filter, opts))
+  @spec distinct!(conn, collection, String.t | atom, BSON.document, Keyword.t) :: result!([BSON.t])
+  def distinct!(conn, coll, field, filter, opts \\ []) do
+    bangify(distinct(conn, coll, field, filter, opts))
   end
 
   @doc """
@@ -224,6 +224,7 @@ defmodule Mongo do
          do: {:ok, %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}}
   end
 
+  @doc false
   def get_more(conn, coll, cursor, opts) do
     query = %Query{action: :get_more, extra: {coll, cursor}}
     with {:ok, reply} <- DBConnection.query(conn, query, [], defaults(opts)),
@@ -232,6 +233,7 @@ defmodule Mongo do
          do: {:ok, %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}}
   end
 
+  @doc false
   def kill_cursors(conn, cursor_ids, opts) do
     query = %Query{action: :kill_cursors, extra: cursor_ids}
     DBConnection.query(conn, query, [], defaults(opts))
@@ -242,24 +244,30 @@ defmodule Mongo do
   list for the document because the "command key" has to be the first
   in the document.
   """
-  @spec run_command(Pool.t, BSON.document, Keyword.t) :: result(BSON.document)
-  def run_command(pool, query, opts \\ []) do
-    Pool.run_with_log(pool, :run_command, [query], opts, fn pid ->
-      case Connection.find_one(pid, "$cmd", query, [], opts) do
-        %{"ok" => 1.0} = doc ->
+  @spec command(conn, BSON.document, Keyword.t) :: result(BSON.document)
+  def command(pool, query, opts \\ []) do
+    params = [query]
+    query = %Query{action: :command}
+    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+         :ok <- maybe_failure(reply) do
+      case doc do
+        op_reply(docs: [%{"ok" => 1.0} = doc]) ->
           {:ok, doc}
-        %{"ok" => 0.0, "errmsg" => reason} = error ->
-          {:error, %Mongo.Error{message: "run_command failed: #{reason}", code: error["code"]}}
+        op_reply(docs: [%{"ok" => 0.0, "errmsg" => reason} = error]) ->
+          {:error, %Mongo.Error{message: "command failed: #{reason}", code: error["code"]}}
+        # TODO: Check if needed
+        op_reply(docs: []) ->
+          {:ok, nil}
       end
-    end)
+    end
   end
 
   @doc """
-  Similar to `run_command/3` but unwraps the result and raises on error.
+  Similar to `command/3` but unwraps the result and raises on error.
   """
-  @spec run_command!(Pool.t, BSON.document, Keyword.t) :: result!(BSON.document)
-  def run_command!(pool, query, opts \\ []) do
-    bangify(run_command(pool, query, opts))
+  @spec command!(conn, BSON.document, Keyword.t) :: result!(BSON.document)
+  def command!(pool, query, opts \\ []) do
+    bangify(command(pool, query, opts))
   end
 
   @doc """
