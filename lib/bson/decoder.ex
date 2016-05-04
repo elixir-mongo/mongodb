@@ -23,6 +23,15 @@ defmodule BSON.Decoder do
     {float, rest}
   end
 
+  def documents(binary),
+    do: documents(binary, [])
+  def documents("", acc),
+    do: Enum.reverse(acc)
+  def documents(binary, acc) do
+    {doc, rest} = document(binary)
+    documents(rest, [doc|acc])
+  end
+
   defp type(@type_string, <<size::int32, rest::binary>>) do
     size = size - 1
     <<string::binary(size), 0x00, rest::binary>> = rest

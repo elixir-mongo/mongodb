@@ -26,11 +26,11 @@ defmodule BSON do
   """
   @spec decode(iodata) :: document
   def decode(binary) when is_binary(binary) do
-    BSON.Decoder.decode(binary)
+    BSON.Decoder.document(binary)
   end
 
   def decode(list) when is_list(list) do
     IO.iodata_to_binary(list)
-    |> BSON.Decoder.decode
+    |> BSON.Decoder.document
   end
 end
