@@ -15,12 +15,16 @@ defmodule Mongo.Protocol.Utils do
   end
 
   def command(id, command, s) do
-    op = op_query(coll: namespace("$cmd", s), query: command,
-                  select: nil, num_skip: 0, num_return: 1, flags: [])
+    op = op_query(coll: namespace("$cmd", s), query: BSON.Encoder.document(command),
+                  select: "", num_skip: 0, num_return: 1, flags: [])
     case message(id, op, s) do
-      {:ok, op_reply(docs: [doc])} -> {:ok, doc}
-      {:ok, op_reply(docs: [])}    -> {:ok, nil}
-      {:disconnect, _, _} = error  -> error
+      {:ok, op_reply(docs: docs)} ->
+        case BSON.Decoder.documents(docs) do
+          []    -> {:ok, nil}
+          [doc] -> {:ok, doc}
+        end
+      {:disconnect, _, _} = error ->
+        error
     end
   end
 

@@ -7,6 +7,15 @@ defmodule BSON.Decoder do
     map
   end
 
+  def documents(binary),
+    do: documents(binary, [])
+  def documents("", acc),
+    do: Enum.reverse(acc)
+  def documents(binary, acc) do
+    {doc, rest} = document(binary)
+    documents(rest, [doc|acc])
+  end
+
   defp type(@type_float, <<float::float64, rest::binary>>) do
     {float, rest}
   end
