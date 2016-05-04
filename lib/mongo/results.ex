@@ -108,6 +108,7 @@ defmodule Mongo.ReadResult do
   ]
 end
 
+# TODO: Remove
 defmodule Mongo.WriteResult do
   @moduledoc false
 

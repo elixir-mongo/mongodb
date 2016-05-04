@@ -105,35 +105,46 @@ defmodule Mongo.Messages do
   end
 
   defp encode_op(op_update(coll: coll, flags: flags, query: query, update: update)) do
-    [<<0x00::int32>>, coll, <<0x00, blit_flags(:update, flags)::int32>>,
-     Encoder.document(query), Encoder.document(update)]
+    [<<0x00::int32>>,
+     coll,
+     <<0x00, blit_flags(:update, flags)::int32>>,
+     query,
+     update]
   end
 
   defp encode_op(op_insert(flags: flags, coll: coll, docs: docs)) do
-    [<<blit_flags(:insert, flags)::int32>>, coll, 0x00 |
-     Enum.map(docs, &Encoder.document/1)]
+    [<<blit_flags(:insert, flags)::int32>>,
+     coll,
+     0x00,
+     docs]
   end
 
   defp encode_op(op_query(flags: flags, coll: coll, num_skip: num_skip,
                           num_return: num_return, query: query, select: select)) do
-    [<<blit_flags(:query, flags)::int32>>, coll, <<0x00, num_skip::int32,
-       num_return::int32>>, Encoder.document(query) |
-     maybe(select, &Encoder.document/1)]
+    [<<blit_flags(:query, flags)::int32>>,
+     coll,
+     <<0x00, num_skip::int32, num_return::int32>>,
+     query,
+     select]
   end
 
   defp encode_op(op_get_more(coll: coll, num_return: num_return, cursor_id: cursor_id)) do
-    [<<0x00::int32>>, coll | <<0x00, num_return::int32, cursor_id::int64>>]
+    [<<0x00::int32>>,
+     coll,
+     <<0x00, num_return::int32, cursor_id::int64>>]
   end
 
   defp encode_op(op_delete(coll: coll, flags: flags, query: query)) do
-    [<<0x00::int32>>, coll, <<0x00, blit_flags(:delete, flags)::int32>> |
-     Encoder.document(query)]
+    [<<0x00::int32>>,
+     coll,
+     <<0x00, blit_flags(:delete, flags)::int32>> |
+     query]
   end
 
   defp encode_op(op_kill_cursors(cursor_ids: ids)) do
     binary_ids = for id <- ids, into: "", do: <<id::int64>>
     num = div byte_size(binary_ids), 8
-    [<<0x00::int32, num::int32>> | binary_ids]
+    [<<0x00::int32, num::int32>>, binary_ids]
   end
 
   defp op_to_code(op_update()),       do: @op_update
@@ -145,22 +156,12 @@ defmodule Mongo.Messages do
 
   defp decode_reply(<<flags::int32, cursor_id::int64, from::int32, num::int32, rest::binary>>) do
     # flags = unblit_flags(flags)
-    docs = decode_documents(rest, [])
-    op_reply(flags: flags, cursor_id: cursor_id, from: from, num: num, docs: docs)
+    op_reply(flags: flags, cursor_id: cursor_id, from: from, num: num, docs: rest)
   end
 
   defp encode_header(msg_header(length: length, request_id: request_id,
                                 response_to: response_to, op_code: op_code)) do
     <<length::int32, request_id::int32, response_to::int32, op_code::int32>>
-  end
-
-  defp decode_documents("", acc) do
-    Enum.reverse(acc)
-  end
-
-  defp decode_documents(binary, acc) do
-    {doc, rest} = Decoder.document(binary)
-    decode_documents(rest, [doc|acc])
   end
 
   defp blit_flags(op, flags) when is_list(flags) do

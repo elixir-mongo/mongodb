@@ -37,6 +37,9 @@ defmodule Mongo do
   pool's `log/5` function will be called.
   """
 
+  use Bitwise
+  use Mongo.Messages
+  alias Mongo.ReadResult
   alias Mongo.WriteResult
   alias Mongo.Query
 
@@ -212,18 +215,25 @@ defmodule Mongo do
   end
 
   @doc false
-  def find(conn, coll, query, projector, opts) do
-    query = %Query{action: {:find, coll, query, projector}}
-    DBConnection.query(conn, query, [], defaults(opts))
+  def find(conn, coll, query, select, opts) do
+    params = [query, select]
+    query = %Query{action: :find, extra: coll}
+    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+         :ok <- maybe_failure(reply),
+         op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
+         do: {:ok, %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}}
   end
 
   def get_more(conn, coll, cursor, opts) do
-    query = %Query{action: {:get_more, coll, cursor}}
-    DBConnection.query(conn, query, [], defaults(opts))
+    query = %Query{action: :get_more, extra: {coll, cursor}}
+    with {:ok, reply} <- DBConnection.query(conn, query, [], defaults(opts)),
+         :ok <- maybe_failure(reply),
+         op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
+         do: {:ok, %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}}
   end
 
   def kill_cursors(conn, cursor_ids, opts) do
-    query = %Query{action: {:kill_cursors, cursor_ids}}
+    query = %Query{action: :kill_cursors, extra: cursor_ids}
     DBConnection.query(conn, query, [], defaults(opts))
   end
 
@@ -261,12 +271,14 @@ defmodule Mongo do
   @spec insert_one(conn, collection, BSON.document, Keyword.t) :: result(Mongo.InsertOneResult.t)
   def insert_one(conn, coll, doc, opts \\ []) do
     assert_single_doc!(doc)
+    {[id], [doc]} = assign_ids([doc])
 
-    query = %Query{action: {:insert, coll, [doc]}}
-    with {:ok, result} <- DBConnection.query(conn, query, [], defaults(opts)) do
-      %WriteResult{inserted_ids: [id]} = result
-      %Mongo.InsertOneResult{inserted_id: id}
-    end
+    params = [doc]
+    query = %Query{action: :insert_one, extra: coll}
+    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+         :ok <- maybe_failure(reply),
+         {:ok, _doc} <- get_last_error(reply),
+         do: {:ok, %Mongo.InsertOneResult{inserted_id: id}}
   end
 
   @doc """
@@ -738,4 +750,75 @@ defmodule Mongo do
   defp defaults(opts) do
     Keyword.put_new(opts, :timeout, @timeout)
   end
+
+  defp get_last_error(op_reply(docs: [%{"ok" => 1.0, "err" => nil} = doc])) do
+    {:ok, doc}
+  end
+  defp get_last_error(op_reply(docs: [%{"ok" => 1.0, "err" => message, "code" => code}])) do
+    # If a batch insert (OP_INSERT) fails some documents may still have been
+    # inserted, but mongo always returns {n: 0}
+    # When we support the 2.6 bulk write API we will get number of inserted
+    # documents and should change the return value to be something like:
+    # {:error, %WriteResult{}, %Error{}}
+    {:error, Mongo.Error.exception(message: message, code: code)}
+  end
+  defp get_last_error(op_reply(docs: [%{"ok" => 0.0, "errmsg" => message, "code" => code}])) do
+    {:error, Mongo.Error.exception(message: message, code: code)}
+  end
+
+  defp assign_ids(doc) when is_map(doc) do
+    [assign_id(doc)]
+    |> Enum.unzip
+  end
+
+  defp assign_ids([{_, _} | _] = doc) do
+    [assign_id(doc)]
+    |> Enum.unzip
+  end
+
+  defp assign_ids(list) when is_list(list) do
+    Enum.map(list, &assign_id/1)
+    |> Enum.unzip
+  end
+  defp assign_id(%{_id: id} = map) when id != nil,
+    do: {id, map}
+  defp assign_id(%{"_id" => id} = map) when id != nil,
+    do: {id, map}
+
+  defp assign_id([{_, _} | _] = keyword) do
+    case Keyword.take(keyword, [:_id, "_id"]) do
+      [{_key, id} | _] when id != nil ->
+        {id, keyword}
+      [] ->
+        add_id(keyword)
+    end
+  end
+
+  defp assign_id(map) when is_map(map) do
+    map |> Map.to_list |> add_id
+  end
+
+  defp add_id(doc) do
+    id = Mongo.IdServer.new
+    {id, add_id(doc, id)}
+  end
+  defp add_id([{key, _}|_] = list, id) when is_atom(key) do
+    [{:_id, id}|list]
+  end
+  defp add_id([{key, _}|_] = list, id) when is_binary(key) do
+    [{"_id", id}|list]
+  end
+  defp add_id([], id) do
+    # Why are you inserting empty documents =(
+    [{"_id", id}]
+  end
+
+  defp maybe_failure(op_reply(flags: flags, docs: [%{"$err" => reason, "code" => code}]))
+    when @reply_query_failure &&& flags != 0,
+    do: {:error, Mongo.Error.exception(message: reason, code: code)}
+  defp maybe_failure(op_reply(flags: flags, cursor_id: cursor_id))
+    when @reply_cursor_not_found &&& flags != 0,
+    do: {:error, Mongo.Error.exception(message: "cursor not found: #{inspect cursor_id}")}
+  defp maybe_failure(_reply),
+    do: :ok
 end
