@@ -1,10 +1,7 @@
 defmodule Mongo.Protocol do
   use DBConnection
-  use Bitwise
   use Mongo.Messages
   alias Mongo.Protocol.Utils
-  alias Mongo.ReadResult
-  alias Mongo.WriteResult
 
   @timeout 5000
   @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results)a
@@ -104,62 +101,44 @@ defmodule Mongo.Protocol do
     handle_execute(query, params, opts, s)
   end
 
-  def handle_execute(%Mongo.Query{action: action}, [], opts, s) do
-    handle_execute(action, opts, s)
+  def handle_execute(%Mongo.Query{action: action, extra: extra}, params, opts, s) do
+    handle_execute(action, extra, params, opts, s)
   end
 
-  defp handle_execute({:find, coll, query, select}, opts, s) do
+  defp handle_execute(:find, coll, [query, select], opts, s) do
     flags      = Keyword.take(opts, @find_flags)
     num_skip   = Keyword.get(opts, :skip, 0)
     num_return = Keyword.get(opts, :batch_size, 0)
 
     op_query(coll: Utils.namespace(coll, s), query: query, select: select,
              num_skip: num_skip, num_return: num_return, flags: flags(flags))
-    |> message_reply(s, &find_reply/2)
+    |> message_reply(s)
   end
 
-  defp handle_execute({:get_more, coll, cursor_id}, opts, s) do
+  defp handle_execute(:get_more, {coll, cursor_id}, [], opts, s) do
     num_return = Keyword.get(opts, :batch_size, 0)
 
     op_get_more(coll: Utils.namespace(coll, s), cursor_id: cursor_id,
                 num_return: num_return)
-    |> message_reply(s, &get_more/2)
+    |> message_reply(s)
   end
 
-  defp handle_execute({:kill_cursors, cursor_ids}, _opts, s) do
+  defp handle_execute(:kill_cursors, cursor_ids, [], _opts, s) do
     op = op_kill_cursors(cursor_ids: cursor_ids)
     with :ok <- Utils.send(-10, op, s),
          do: {:ok, :ok, s}
   end
 
-  defp handle_execute({:insert, coll, docs}, opts, s) do
-    {ids, docs} = assign_ids(docs)
+  defp handle_execute(:insert_one, coll, [doc], opts, s) do
     flags  = Keyword.take(opts, @insert_flags)
-    op     = op_insert(coll: Utils.namespace(coll, s), docs: docs, flags: flags(flags))
-    params = %{type: :insert, n: length(docs), ids: ids}
-    message_gle(-11, op, params, opts, s)
+    op     = op_insert(coll: Utils.namespace(coll, s), docs: [doc], flags: flags(flags))
+    message_gle(-11, op, opts, s)
   end
 
-  defp find_reply(op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num), s) do
-    result = %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}
-    {:ok, result, s}
-  end
-
-  def get_more(op_reply(flags: flags, docs: docs, cursor_id: cursor_id, from: from, num: num), s) do
-    if @reply_cursor_not_found &&& flags != 0 do
-      error = Mongo.Error.exception(message: "cursor not found: #{inspect cursor_id}")
-      {:error, error, s}
-    else
-      result = %ReadResult{from: from, num: num, cursor_id: cursor_id, docs: docs}
-      {:ok, result, s}
-    end
-  end
-
-  defp message_reply(op, s, fun) do
+  defp message_reply(op, s) do
     with {:ok, reply} <- Utils.message(s.request_id, op, s),
          s = %{s | request_id: s.request_id + 1},
-         :ok <- maybe_failure(reply, s),
-         do: fun.(reply, s)
+         do: {:ok, reply, s}
   end
 
   defp flags(flags) do
@@ -169,7 +148,7 @@ defmodule Mongo.Protocol do
     end)
   end
 
-  defp message_gle(id, op, params, opts, s) do
+  defp message_gle(id, op, opts, s) do
     write_concern = Keyword.take(opts, @write_concern)
     write_concern = Dict.merge(s.write_concern, write_concern)
 
@@ -177,91 +156,19 @@ defmodule Mongo.Protocol do
       with :ok <- Utils.send(id, op, s),
            do: {:ok, :ok, s}
     else
-      command = [{:getLastError, 1}|write_concern]
+      command = BSON.Encoder.document([{:getLastError, 1}|write_concern])
       gle_op = op_query(coll: Utils.namespace("$cmd", s), query: command,
-                        select: nil, num_skip: 0, num_return: -1, flags: [])
+                        select: "", num_skip: 0, num_return: -1, flags: [])
 
       ops = [{id, op}, {s.request_id, gle_op}]
-      message_reply(ops, s, &get_last_error(&1, params, &2))
+      message_reply(ops, s)
     end
   end
 
-  defp get_last_error(op_reply(docs: [%{"ok" => 1.0, "err" => nil} = doc]), params, s) do
-    result = write_result(params, doc)
-    {:ok, result, s}
-  end
-  defp get_last_error(op_reply(docs: [%{"ok" => 1.0, "err" => message, "code" => code}]), _params, s) do
-    # If a batch insert (OP_INSERT) fails some documents may still have been
-    # inserted, but mongo always returns {n: 0}
-    # When we support the 2.6 bulk write API we will get number of inserted
-    # documents and should change the return value to be something like:
-    # {:error, %WriteResult{}, %Error{}}
-    {:error, Mongo.Error.exception(message: message, code: code), s}
-  end
-  defp get_last_error(op_reply(docs: [%{"ok" => 0.0, "errmsg" => message, "code" => code}]), _params, s) do
-    {:error, Mongo.Error.exception(message: message, code: code), s}
-  end
-
-  defp write_result(%{type: :insert, n: n, ids: ids}, _doc),
-    do: %WriteResult{type: :insert, num_inserted: n, inserted_ids: ids}
-  defp write_result(%{type: :update}, %{"n" => 1, "upserted" => id}),
-    do: %WriteResult{type: :update, num_matched: 0, num_modified: 1, upserted_id: id}
-  defp write_result(%{type: :update}, %{"n" => n}),
-    do: %WriteResult{type: :update, num_matched: n, num_modified: n}
-  defp write_result(%{type: :remove}, %{"n" => n}),
-    do: %WriteResult{type: :remove, num_matched: n, num_removed: n}
-
-  defp maybe_failure(op_reply(flags: flags, docs: [%{"$err" => reason, "code" => code}]), s)
-    when @reply_query_failure &&& flags != 0,
-    do: {:error, Mongo.Error.exception(message: reason, code: code), s}
-  defp maybe_failure(_reply, _s),
-    do: :ok
-
-
-  defp assign_ids(doc) when is_map(doc) do
-    [assign_id(doc)]
-    |> Enum.unzip
-  end
-
-  defp assign_ids([{_, _} | _] = doc) do
-    [assign_id(doc)]
-    |> Enum.unzip
-  end
-
-  defp assign_ids(list) when is_list(list) do
-    Enum.map(list, &assign_id/1)
-    |> Enum.unzip
-  end
-  defp assign_id(%{_id: id} = map) when id != nil,
-    do: {id, map}
-  defp assign_id(%{"_id" => id} = map) when id != nil,
-    do: {id, map}
-
-  defp assign_id([{_, _} | _] = keyword) do
-    case Keyword.take(keyword, [:_id, "_id"]) do
-      [{_key, id} | _] when id != nil ->
-        {id, keyword}
-      [] ->
-        add_id(keyword)
-    end
-  end
-
-  defp assign_id(map) when is_map(map) do
-    map |> Map.to_list |> add_id
-  end
-
-  defp add_id(doc) do
-    id = Mongo.IdServer.new
-    {id, add_id(doc, id)}
-  end
-  defp add_id([{key, _}|_] = list, id) when is_atom(key) do
-    [{:_id, id}|list]
-  end
-  defp add_id([{key, _}|_] = list, id) when is_binary(key) do
-    [{"_id", id}|list]
-  end
-  defp add_id([], id) do
-    # Why are you inserting empty documents =(
-    [{"_id", id}]
+  def ping(%{wire_version: wire_version} = s) do
+    :ok = :inet.setopts(s.socket, [active: false])
+    with {:ok, %{wire_version: ^wire_version}} <- wire_version(s),
+         :ok = :inet.setopts(s.socket, [active: :once]),
+         do: {:ok, s}
   end
 end
