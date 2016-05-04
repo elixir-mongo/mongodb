@@ -5,6 +5,7 @@ defmodule Mongo.Protocol do
 
   @timeout 5000
   @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results)a
+    @find_one_flags ~w(slave_ok exhaust partial)a
   @insert_flags ~w(continue_on_error)a
   @write_concern ~w(w j wtimeout)a
 
@@ -133,6 +134,13 @@ defmodule Mongo.Protocol do
     flags  = Keyword.take(opts, @insert_flags)
     op     = op_insert(coll: Utils.namespace(coll, s), docs: [doc], flags: flags(flags))
     message_gle(-11, op, opts, s)
+  end
+
+  def handle_excute(:command, nil, [query],opts, s) do
+    flags = Keyword.take(opts, @find_one_flags)
+    op = op_query(coll: namespace("$cmd", s), query: query, select: "",
+                  num_skip: 0, num_return: 1, flags: flags(flags))
+    |> message_reply(s)
   end
 
   defp message_reply(op, s) do
