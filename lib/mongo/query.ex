@@ -17,7 +17,8 @@ defimpl DBConnection.Query, for: Mongo.Query do
     end)
   end
 
-  def decode(_query, op_reply(docs: docs) = reply, _opts) do
-    op_reply(reply, docs: BSON.Decoder.documents(docs))
-  end
+  def decode(_query, :ok, _opts),
+    do: :ok
+  def decode(_query, op_reply(docs: docs) = reply, _opts),
+    do: op_reply(reply, docs: BSON.Decoder.documents(docs))
 end

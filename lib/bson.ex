@@ -25,12 +25,8 @@ defmodule BSON do
   Decode `iodata` to a BSON document.
   """
   @spec decode(iodata) :: document
-  def decode(binary) when is_binary(binary) do
-    BSON.Decoder.document(binary)
-  end
-
-  def decode(list) when is_list(list) do
-    IO.iodata_to_binary(list)
-    |> BSON.Decoder.document
+  def decode(iodata) do
+    IO.iodata_to_binary(iodata)
+    |> BSON.Decoder.decode
   end
 end
