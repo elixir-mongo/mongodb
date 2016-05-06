@@ -16,16 +16,14 @@ defmodule Mongo.InsertManyResult do
   @moduledoc """
   The successful result struct of `Mongo.insert_many/4`. Its fields are:
 
-    * `:inserted_ids` - The ids of the inserted documents
-    * `:inserted_count` - The number of inserted documents
+    * `:inserted_ids` - The ids of the inserted documents indexed by their order
   """
 
   @type t :: %__MODULE__{
-    inserted_ids: [BSON.ObjectId.t],
-    inserted_count: non_neg_integer
+    inserted_ids: %{non_neg_integer => BSON.ObjectId.t}
   }
 
-  defstruct [:inserted_ids, :inserted_count]
+  defstruct [:inserted_ids]
 end
 
 defmodule Mongo.DeleteResult do

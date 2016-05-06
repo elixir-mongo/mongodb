@@ -158,7 +158,7 @@ defmodule Mongo.Test do
     end
 
     assert {:ok, result} = Mongo.insert_many(c.pid, coll, [%{foo: 42}, %{foo: 43}])
-    assert %Mongo.InsertManyResult{inserted_ids: [id0, id1]} = result
+    assert %Mongo.InsertManyResult{inserted_ids: %{0 => id0, 1 => id1}} = result
 
     assert [%{"_id" => ^id0, "foo" => 42}] = Mongo.find(c.pid, coll, %{_id: id0}) |> Enum.to_list
     assert [%{"_id" => ^id1, "foo" => 43}] = Mongo.find(c.pid, coll, %{_id: id1}) |> Enum.to_list

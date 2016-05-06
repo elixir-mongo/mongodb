@@ -323,6 +323,7 @@ defmodule Mongo do
     with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          {:ok, _doc} <- get_last_error(reply),
+         ids = index_map(ids, 0, %{}),
          do: {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
   end
 
@@ -662,6 +663,11 @@ end
     # Why are you inserting empty documents =(
     [{"_id", id}]
   end
+
+  defp index_map([], _ix, map),
+    do: map
+  defp index_map([elem|list], ix, map),
+    do: index_map(list, ix+1, Map.put(map, ix, elem))
 
   defp maybe_failure(op_reply(flags: flags, docs: [%{"$err" => reason, "code" => code}]))
     when (@reply_query_failure &&& flags) != 0,
