@@ -12,11 +12,11 @@ defmodule Mongo.Auth.SCRAM do
     payload    = first_message(first_bare)
     message    = [saslStart: 1, mechanism: "SCRAM-SHA-1", payload: payload]
 
-    with {:ok, reply} <- command(-2, message, s),
+    with {:ok, %{"ok" => 1.0} = reply} <- command(-2, message, s),
          {message, signature} = first(reply, first_bare, username, password, nonce),
-         {:ok, reply} <- command(-3, message, s),
+         {:ok, %{"ok" => 1.0} = reply} <- command(-3, message, s),
          message = second(reply, signature),
-         {:ok, reply} = command(-4, message, s) do
+         {:ok, %{"ok" => 1.0} = reply} = command(-4, message, s) do
       final(reply)
     else
       {:ok, %{"ok" => 0.0, "errmsg" => reason, "code" => code}} ->
@@ -26,7 +26,7 @@ defmodule Mongo.Auth.SCRAM do
     end
   end
 
-  defp first(%{"conversationId" => 1, "payload" => server_payload, "done" => false, "ok" => 1.0},
+  defp first(%{"conversationId" => 1, "payload" => server_payload, "done" => false},
              first_bare, username, password, client_nonce) do
     params          = parse_payload(server_payload)
     server_nonce    = params["r"]
@@ -44,16 +44,16 @@ defmodule Mongo.Auth.SCRAM do
     client_final_message = %BSON.Binary{binary: "#{client_message},#{proof}"}
     message              = [saslContinue: 1, conversationId: 1, payload: client_final_message]
 
-    {server_signature, message}
+    {message, server_signature}
   end
 
-  defp second(%{"conversationId" => 1, "payload" => payload, "done" => false, "ok" => 1.0}, signature) do
+  defp second(%{"conversationId" => 1, "payload" => payload, "done" => false}, signature) do
     params = parse_payload(payload)
     ^signature = params["v"] |> Base.decode64!
     [saslContinue: 1, conversationId: 1, payload: %BSON.Binary{binary: ""}]
   end
 
-  defp final(%{"conversationId" => 1, "payload" => %BSON.Binary{binary: ""}, "done" => true, "ok" => 1.0}) do
+  defp final(%{"conversationId" => 1, "payload" => %BSON.Binary{binary: ""}, "done" => true}) do
     :ok
   end
 
