@@ -1,10 +1,9 @@
 import Record, only: [defrecordp: 2]
-alias Mongo.ReadResult
 
 # TODO: Check options to Mongo function
 
-# TODO: Handle error responses from Connection.find, example:
-# {:ok, %Mongo.ReadResult{cursor_id: 0, docs: [%{"code" => 16436, "errmsg" => "exception: Unrecognized pipeline stage name: '$projection'", "ok" => 0.0}], from: 0, num: 1}}
+# TODO: Handle error responses from Mongo.raw_find, example:
+# {:ok, %{cursor_id: 0, docs: [%{"code" => 16436, "errmsg" => "exception: Unrecognized pipeline stage name: '$projection'", "ok" => 0.0}], from: 0, num: 1}}
 
 defmodule Mongo.Cursor do
   @moduledoc false
@@ -32,10 +31,10 @@ defmodule Mongo.Cursor do
       opts = batch_size(limit, opts)
 
       fn ->
-        result = Mongo.find(conn, coll, query, projector, opts)
+        result = Mongo.raw_find(conn, coll, query, projector, opts)
 
         case result do
-          {:ok, %ReadResult{cursor_id: cursor, docs: docs, num: num}} ->
+          {:ok, %{cursor_id: cursor, docs: docs, num: num}} ->
             state(conn: conn, cursor: cursor, buffer: docs, limit: new_limit(limit, num))
           {:error, error} ->
             raise error
@@ -59,9 +58,9 @@ defmodule Mongo.Cursor do
           opts = batch_size(limit, opts)
 
           case Mongo.get_more(conn, coll, cursor, opts) do
-            {:ok, %ReadResult{cursor_id: cursor, docs: []}} ->
+            {:ok, %{cursor_id: cursor, docs: []}} ->
               {:halt, state(state, cursor: cursor)}
-            {:ok, %ReadResult{cursor_id: cursor, docs: docs, num: num}} ->
+            {:ok, %{cursor_id: cursor, docs: docs, num: num}} ->
               {docs, state(state, cursor: cursor, limit: new_limit(limit, num))}
             {:error, error} ->
               raise error
@@ -125,8 +124,8 @@ defmodule Mongo.AggregationCursor do
       opts = Keyword.put(opts, :batch_size, -1)
 
       fn ->
-        case Mongo.find(conn, coll, query, projector, opts) do
-          {:ok, %ReadResult{cursor_id: 0, docs: [%{"ok" => 1.0, "cursor" => %{"id" => cursor, "ns" => coll, "firstBatch" => docs}}]}} ->
+        case Mongo.raw_find(conn, coll, query, projector, opts) do
+          {:ok, %{cursor_id: 0, docs: [%{"ok" => 1.0, "cursor" => %{"id" => cursor, "ns" => coll, "firstBatch" => docs}}]}} ->
             state(conn: conn, cursor: cursor, coll: only_coll(coll), buffer: docs)
           {:error, error} ->
             raise error
@@ -141,9 +140,9 @@ defmodule Mongo.AggregationCursor do
 
         state(buffer: [], conn: conn, cursor: cursor, coll: coll) = state ->
           case Mongo.get_more(conn, coll, cursor, opts) do
-            {:ok, %ReadResult{cursor_id: cursor, docs: []}} ->
+            {:ok, %{cursor_id: cursor, docs: []}} ->
               {:halt, state(state, cursor: cursor)}
-            {:ok, %ReadResult{cursor_id: cursor, docs: docs}} ->
+            {:ok, %{cursor_id: cursor, docs: docs}} ->
               {docs, state(state, cursor: cursor)}
             {:error, error} ->
               raise error
@@ -196,8 +195,8 @@ defmodule Mongo.SinglyCursor do
 
     defp start_fun(conn, coll, query, projector, opts) do
       fn ->
-        case Mongo.find(conn, coll, query, projector, opts) do
-          {:ok, %ReadResult{cursor_id: 0, docs: [%{"ok" => 1.0, "result" => docs}]}} ->
+        case Mongo.raw_find(conn, coll, query, projector, opts) do
+          {:ok, %{cursor_id: 0, docs: [%{"ok" => 1.0, "result" => docs}]}} ->
             docs
           {:error, error} ->
             raise error

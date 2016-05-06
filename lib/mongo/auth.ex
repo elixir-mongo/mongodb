@@ -16,7 +16,6 @@ defmodule Mongo.Auth do
   end
 
   defp setup(opts) do
-    database = opts[:database]
     username = opts[:username]
     password = opts[:password]
     auth     = opts[:auth] || []

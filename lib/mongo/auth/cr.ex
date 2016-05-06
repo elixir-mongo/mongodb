@@ -1,9 +1,9 @@
 defmodule Mongo.Auth.CR do
   @moduledoc false
-  import Mongo.Connection.Utils
+  import Mongo.Protocol.Utils
 
   def auth({username, password}, s) do
-    with {:ok, message} <- sync_command(-2, [getnonce: 1], s),
+    with {:ok, message} <- command(-2, [getnonce: 1], s),
          do: nonce(message, username, password, s)
   end
 
@@ -11,7 +11,7 @@ defmodule Mongo.Auth.CR do
     digest = digest(nonce, username, password)
     command = [authenticate: 1, user: username, nonce: nonce, key: digest]
 
-    case sync_command(-3, command, s) do
+    case command(-3, command, s) do
       {:ok, %{"ok" => 1.0}} ->
         :ok
       {:ok, %{"ok" => 0.0, "errmsg" => reason, "code" => code}} ->
