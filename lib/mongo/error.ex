@@ -2,7 +2,7 @@ defmodule Mongo.Error do
   defexception [:message, :code]
 
   def message(e) do
-    code = if e.code, do: " " <> e.code
+    code = if e.code, do: " #{e.code}"
     "#{e.message}#{code}"
   end
 

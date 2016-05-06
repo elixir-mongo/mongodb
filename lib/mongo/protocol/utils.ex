@@ -9,7 +9,7 @@ defmodule Mongo.Protocol.Utils do
          do: {:ok, reply}
   end
   def message(id, op, s) do
-    with :ok <- send(op, id, s),
+    with :ok <- send(id, op, s),
          {:ok, ^id, reply} <- recv(s),
          do: {:ok, reply}
   end
@@ -28,7 +28,7 @@ defmodule Mongo.Protocol.Utils do
     end
   end
 
-  def send(op, id, s) do
+  def send(id, op, s) do
     case :gen_tcp.send(s.socket, encode(id, op)) do
       :ok              -> :ok
       {:error, reason} -> send_error(reason, s)

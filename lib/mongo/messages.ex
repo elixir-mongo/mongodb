@@ -13,8 +13,6 @@ defmodule Mongo.Messages do
 
   import Record
   import Mongo.BinaryUtils
-  alias BSON.Encoder
-  alias BSON.Decoder
 
   @op_reply            1
   @op_update        2001
@@ -198,7 +196,4 @@ defmodule Mongo.Messages do
   end)
 
   defp flag_to_bit(_op, _flag), do: 0x0
-
-  defp maybe(nil, _fun), do: ""
-  defp maybe(value, fun), do: fun.(value)
 end

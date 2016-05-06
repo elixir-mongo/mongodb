@@ -5,8 +5,9 @@ defmodule Mongo.Protocol do
 
   @timeout 5000
   @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results)a
-    @find_one_flags ~w(slave_ok exhaust partial)a
+  @find_one_flags ~w(slave_ok exhaust partial)a
   @insert_flags ~w(continue_on_error)a
+  @update_flags ~w(upsert)a
   @write_concern ~w(w j wtimeout)a
 
   def connect(opts) do
@@ -131,15 +132,54 @@ defmodule Mongo.Protocol do
   end
 
   defp handle_execute(:insert_one, coll, [doc], opts, s) do
-    flags  = Keyword.take(opts, @insert_flags)
-    op     = op_insert(coll: Utils.namespace(coll, s), docs: [doc], flags: flags(flags))
+    flags  = flags(Keyword.take(opts, @insert_flags))
+    op     = op_insert(coll: Utils.namespace(coll, s), docs: [doc], flags: flags)
     message_gle(-11, op, opts, s)
   end
 
-  def handle_excute(:command, nil, [query],opts, s) do
+  defp handle_execute(:insert_many, coll, docs, opts, s) do
+    flags  = flags(Keyword.take(opts, @insert_flags))
+    op     = op_insert(coll: Utils.namespace(coll, s), docs: docs, flags: flags)
+    message_gle(-12, op, opts, s)
+  end
+
+  defp handle_execute(:delete_one, coll, [query], opts, s) do
+    flags = [:single]
+    op    = op_delete(coll: Utils.namespace(coll, s), query: query, flags: flags)
+    message_gle(-13, op, opts, s)
+  end
+
+  defp handle_execute(:delete_many, coll, [query], opts, s) do
+    flags = []
+    op = op_delete(coll: Utils.namespace(coll, s), query: query, flags: flags)
+    message_gle(-14, op, opts, s)
+  end
+
+  defp handle_execute(:replace_one, coll, [query, replacement], opts, s) do
+    flags  = flags(Keyword.take(opts, @update_flags))
+    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: replacement,
+                       flags: flags)
+    message_gle(-15, op, opts, s)
+  end
+
+  defp handle_execute(:update_one, coll, [query, update], opts, s) do
+    flags  = flags(Keyword.take(opts, @update_flags))
+    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: update,
+                       flags: flags)
+    message_gle(-16, op, opts, s)
+  end
+
+  defp handle_execute(:update_many, coll, [query, update], opts, s) do
+    flags  = [:multi | flags(Keyword.take(opts, @update_flags))]
+    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: update,
+                       flags: flags)
+    message_gle(-17, op, opts, s)
+  end
+
+  defp handle_execute(:command, nil, [query], opts, s) do
     flags = Keyword.take(opts, @find_one_flags)
-    op = op_query(coll: namespace("$cmd", s), query: query, select: "",
-                  num_skip: 0, num_return: 1, flags: flags(flags))
+    op_query(coll: Utils.namespace("$cmd", s), query: query, select: "",
+             num_skip: 0, num_return: 1, flags: flags(flags))
     |> message_reply(s)
   end
 

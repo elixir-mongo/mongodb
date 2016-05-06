@@ -14,15 +14,14 @@
 
 ## Immediate Roadmap
 
-  * Add timeouts for all calls
-  * Move BSON encoding to client process
-    - Make sure requests don't go over the 16mb limit
+  * DBConnection
+    - Add timeouts for all calls
+    - Reconnect backoffs with https://github.com/ferd/backoff
+    - Lazy connect
+  * Make sure requests don't go over the 16mb limit
   * Replica sets
     - Block in client (and timeout) when waiting for new primary selection
   * New 2.6 write queries and bulk writes
-  * Reconnect backoffs with https://github.com/ferd/backoff
-  * Lazy connect
-  ? Drop save_* because it was dropped by driver specs
 
 ## Tentative Roadmap
 
