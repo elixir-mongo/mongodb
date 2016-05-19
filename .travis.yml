@@ -10,7 +10,7 @@ before_install:
   - m use $MONGOVERSION
   - mkdir db
 before_script:
-  - mongod --fork --logpath mongo.log --dbpath db
+  - $(m path)/mongod --fork --logpath mongo.log --dbpath db
 env:
   matrix:
     - MONGOVERSION=2.4.14
