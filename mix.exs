@@ -1,12 +1,12 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.1.2-dev"
+  @version "0.2.0-dev"
 
   def project do
     [app: :mongodb,
      version: @version,
-     elixir: "~> 1.0",
+     elixir: "~> 1.2",
      name: "Mongodb",
      deps: deps(),
      docs: docs(),
