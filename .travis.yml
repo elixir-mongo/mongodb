@@ -1,6 +1,6 @@
 language: elixir
 elixir:
-  - 1.2.4
+  - 1.2.5
 cache:
   - apt
   - directories:
@@ -17,14 +17,6 @@ env:
     - MONGOVERSION=2.6.12
     - MONGOVERSION=3.0.11
     - MONGOVERSION=3.2.4
-matrix:
-  include:
-    - elixir: 1.0.5
-      otp_release: 17.5
-      env: MONGOVERSION=3.2.4
-    - elixir: 1.1.1
-      otp_release: 17.5
-      env: MONGOVERSION=3.2.4
 notifications:
   recipients:
     - eric.meadows.jonsson@gmail.com
