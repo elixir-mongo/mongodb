@@ -25,13 +25,19 @@ defmodule Mongo.Protocol do
   end
 
   defp connect(opts, s) do
-    with {:ok, s} <- tcp_connect(opts, s),
-         {:ok, s} <- wire_version(s),
-         {:ok, s} <- Mongo.Auth.run(opts, s) do
-      :ok = :inet.setopts(s.socket, active: :once)
-      Mongo.Monitor.add_conn(self, opts[:name], s.wire_version)
-      {:ok, s}
-    else
+    # TODO: with/else in elixir 1.3
+    result =
+      with {:ok, s} <- tcp_connect(opts, s),
+           {:ok, s} <- wire_version(s),
+           {:ok, s} <- Mongo.Auth.run(opts, s) do
+        :ok = :inet.setopts(s.socket, active: :once)
+        Mongo.Monitor.add_conn(self, opts[:name], s.wire_version)
+        {:ok, s}
+      end
+
+    case result do
+      {:ok, s} ->
+        {:ok, s}
       {:disconnect, {:tcp_recv, reason}, _s} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
       {:disconnect, {:tcp_send, reason}, _s} ->
@@ -201,8 +207,7 @@ defmodule Mongo.Protocol do
     write_concern = Dict.merge(s.write_concern, write_concern)
 
     if write_concern[:w] == 0 do
-      with :ok <- Utils.send(id, op, s),
-           do: {:ok, :ok, s}
+      with :ok <- Utils.send(id, op, s), do: {:ok, :ok, s}
     else
       command = BSON.Encoder.document([{:getLastError, 1}|write_concern])
       gle_op = op_query(coll: Utils.namespace("$cmd", s), query: command,
