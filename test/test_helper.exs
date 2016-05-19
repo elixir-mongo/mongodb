@@ -3,6 +3,8 @@ ExUnit.start()
 {string, 0} = System.cmd("mongod", ~w'--version')
 ["db version v" <> version, _] = String.split(string, "\n", parts: 2)
 
+IO.puts "[mongod v#{version}]"
+
 version =
   version
   |> String.split(".")
