@@ -74,7 +74,9 @@ defmodule Mongo.Protocol do
     # https://github.com/mongodb/mongo/blob/master/src/mongo/db/wire_version.h
     case Utils.command(-1, [ismaster: 1], s) do
       {:ok, %{"ok" => 1.0, "maxWireVersion" => version}} ->
-        {:ok, %{s | wire_version: version || 0}}
+        {:ok, %{s | wire_version: version}}
+      {:ok, %{"ok" => 1.0}} ->
+        {:ok, %{s | wire_version: 0}}
       {:disconnect, _, _} = error ->
         error
     end
