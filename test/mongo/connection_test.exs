@@ -42,7 +42,7 @@ defmodule Mongo.ConnectionTest do
 
   test "insert and find_one" do
     pid = connect_auth()
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, %Write{type: :insert, num_inserted: 1}} =
            Connection.insert(pid, coll, %{foo: 42, bar: 43})
@@ -52,7 +52,7 @@ defmodule Mongo.ConnectionTest do
 
   test "insert flags" do
     pid = connect_auth()
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} =
            Connection.insert(pid, coll, %{foo: 42}, [continue_on_error: true])
@@ -60,7 +60,7 @@ defmodule Mongo.ConnectionTest do
 
   test "find" do
     pid = connect_auth()
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
@@ -73,7 +73,7 @@ defmodule Mongo.ConnectionTest do
 
   test "find and get_more" do
     pid = connect_auth()
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
@@ -94,7 +94,7 @@ defmodule Mongo.ConnectionTest do
 
   test "kill_cursors" do
     pid = connect_auth()
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
@@ -110,7 +110,7 @@ defmodule Mongo.ConnectionTest do
 
   test "update" do
     pid = connect_auth()
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 43}, [])
@@ -138,7 +138,7 @@ defmodule Mongo.ConnectionTest do
 
   test "remove" do
     pid = connect_auth()
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
     assert {:ok, _} = Connection.insert(pid, coll, %{foo: 42}, [])
@@ -158,7 +158,7 @@ defmodule Mongo.ConnectionTest do
 
   test "big response" do
     pid    = connect_auth()
-    coll   = unique_name
+    coll   = unique_name()
     size   = 1024*1024
     binary = <<0::size(size)>>
 

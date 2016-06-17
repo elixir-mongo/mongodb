@@ -18,7 +18,7 @@ defmodule Mongo.Pool.Monitor do
 
   def init([ets, opts]) do
     :ets.new(ets, [:named_table, read_concurrency: true])
-    {:ok, conn} = Connection.start_link([on_connect: self] ++ opts)
+    {:ok, conn} = Connection.start_link([on_connect: self()] ++ opts)
     state = %{ets: ets, conn: conn, waiting: []}
     {:ok, state}
   end

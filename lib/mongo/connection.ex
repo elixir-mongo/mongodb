@@ -226,7 +226,7 @@ defmodule Mongo.Connection do
 
   defp connect_hook(s) do
     if pid = s.opts[:on_connect] do
-      Kernel.send(pid, {__MODULE__, :on_connect, self})
+      Kernel.send(pid, {__MODULE__, :on_connect, self()})
     end
   end
 

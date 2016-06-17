@@ -5,15 +5,15 @@ defmodule Mongodb.Mixfile do
     [app: :mongodb,
      version: "0.1.2-dev",
      elixir: "~> 1.0",
-     deps: deps,
+     deps: deps(),
      name: "Mongodb",
      source_url: "https://github.com/ericmj/mongodb",
      docs: fn ->
        {ref, 0} = System.cmd("git", ["rev-parse", "--verify", "--quiet", "HEAD"])
        [source_ref: ref, main: "readme", extras: ["README.md"]]
      end,
-     description: description,
-     package: package]
+     description: description(),
+     package: package()]
   end
 
   def application do

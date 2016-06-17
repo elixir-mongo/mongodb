@@ -34,7 +34,7 @@ defmodule Mongo.Test do
   end
 
   test "aggregate" do
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 42})
     assert {:ok, _} = Mongo.insert_one(Pool, coll, %{foo: 43})
@@ -61,7 +61,7 @@ defmodule Mongo.Test do
   end
 
   test "count" do
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, 0} = Mongo.count(Pool, coll, [])
 
@@ -73,13 +73,13 @@ defmodule Mongo.Test do
   end
 
   test "count!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert 0 = Mongo.count!(Pool, coll, %{foo: 43})
   end
 
   test "distinct" do
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, []} = Mongo.distinct(Pool, coll, "foo", %{})
 
@@ -92,13 +92,13 @@ defmodule Mongo.Test do
   end
 
   test "distinct!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert [] = Mongo.distinct!(Pool, coll, "foo", %{})
   end
 
   test "find" do
-    coll = unique_name
+    coll = unique_name()
 
     assert [] = Mongo.find(Pool, coll, %{}) |> Enum.to_list
 
@@ -135,7 +135,7 @@ defmodule Mongo.Test do
   end
 
   test "insert_one" do
-    coll = unique_name
+    coll = unique_name()
 
     assert_raise ArgumentError, fn ->
       Mongo.insert_one(Pool, coll, [%{foo: 42, bar: 1}])
@@ -150,7 +150,7 @@ defmodule Mongo.Test do
   end
 
   test "insert_one!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert %Mongo.InsertOneResult{} = Mongo.insert_one!(Pool, coll, %{"_id" => 1})
     assert nil == Mongo.insert_one!(Pool, coll, %{}, w: 0)
@@ -161,7 +161,7 @@ defmodule Mongo.Test do
   end
 
   test "insert_many" do
-    coll = unique_name
+    coll = unique_name()
 
     assert_raise ArgumentError, fn ->
       Mongo.insert_many(Pool, coll, %{foo: 42, bar: 1})
@@ -178,7 +178,7 @@ defmodule Mongo.Test do
   end
 
   test "insert_many!" do
-    coll = unique_name
+    coll = unique_name()
 
     docs = [%{foo: 42}, %{foo: 43}]
     assert %Mongo.InsertManyResult{} = Mongo.insert_many!(Pool, coll, docs)
@@ -191,7 +191,7 @@ defmodule Mongo.Test do
   end
 
   test "delete_one" do
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
 
@@ -206,7 +206,7 @@ defmodule Mongo.Test do
   end
 
   test "delete_one!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_one!(Pool, coll, %{foo: 42})
 
@@ -214,7 +214,7 @@ defmodule Mongo.Test do
   end
 
   test "delete_many" do
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{foo: 43}])
 
@@ -226,7 +226,7 @@ defmodule Mongo.Test do
   end
 
   test "delete_many!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_many!(Pool, coll, %{foo: 42})
 
@@ -234,7 +234,7 @@ defmodule Mongo.Test do
   end
 
   test "replace_one" do
-    coll = unique_name
+    coll = unique_name()
 
     assert_raise ArgumentError, fn ->
       Mongo.replace_one(Pool, coll, %{foo: 42}, %{"$set": %{foo: 0}})
@@ -259,7 +259,7 @@ defmodule Mongo.Test do
   end
 
   test "replace_one!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{_id: 1}])
 
@@ -274,7 +274,7 @@ defmodule Mongo.Test do
   end
 
   test "update_one" do
-    coll = unique_name
+    coll = unique_name()
 
     assert_raise ArgumentError, fn ->
       Mongo.update_one(Pool, coll, %{foo: 42}, %{foo: 0})
@@ -299,7 +299,7 @@ defmodule Mongo.Test do
   end
 
   test "update_one!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{_id: 1}])
 
@@ -314,7 +314,7 @@ defmodule Mongo.Test do
   end
 
   test "update_many" do
-    coll = unique_name
+    coll = unique_name()
 
     assert_raise ArgumentError, fn ->
       Mongo.update_many(Pool, coll, %{foo: 42}, %{foo: 0})
@@ -339,7 +339,7 @@ defmodule Mongo.Test do
   end
 
   test "update_many!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert {:ok, _} = Mongo.insert_many(Pool, coll, [%{foo: 42}, %{foo: 42}, %{_id: 1}])
 
@@ -354,7 +354,7 @@ defmodule Mongo.Test do
   end
 
   test "save_one" do
-    coll = unique_name
+    coll = unique_name()
     id = Mongo.IdServer.new
 
     assert {:ok, %Mongo.SaveOneResult{matched_count: 0, modified_count: 0, upserted_id: %BSON.ObjectId{}}} =
@@ -376,7 +376,7 @@ defmodule Mongo.Test do
   end
 
   test "save_one!" do
-    coll = unique_name
+    coll = unique_name()
 
     assert %Mongo.SaveOneResult{matched_count: 0, modified_count: 0, upserted_id: %BSON.ObjectId{} = id} =
       Mongo.save_one!(Pool, coll, %{foo: 42})
@@ -385,7 +385,7 @@ defmodule Mongo.Test do
   end
 
   test "save_many! ordered single" do
-    coll = unique_name
+    coll = unique_name()
     id = Mongo.IdServer.new
 
     assert %Mongo.SaveManyResult{matched_count: 0, modified_count: 0, upserted_ids: %{0 => %BSON.ObjectId{}}} =
@@ -407,7 +407,7 @@ defmodule Mongo.Test do
   end
 
   test "save_many! ordered multi" do
-    coll = unique_name
+    coll = unique_name()
     id1 = Mongo.IdServer.new
     id2 = Mongo.IdServer.new
     id3 = Mongo.IdServer.new
@@ -447,7 +447,7 @@ defmodule Mongo.Test do
   end
 
   test "save_many! unordered single" do
-    coll = unique_name
+    coll = unique_name()
     id = Mongo.IdServer.new
 
     assert %Mongo.SaveManyResult{matched_count: 0, modified_count: 0, upserted_ids: %{0 => %BSON.ObjectId{}}} =
@@ -469,7 +469,7 @@ defmodule Mongo.Test do
   end
 
   test "save_many! unordered multi" do
-    coll = unique_name
+    coll = unique_name()
     id1 = Mongo.IdServer.new
     id2 = Mongo.IdServer.new
     id3 = Mongo.IdServer.new
@@ -509,7 +509,7 @@ defmodule Mongo.Test do
   end
 
   test "logging" do
-    coll = unique_name
+    coll = unique_name()
 
     Mongo.find(LoggingPool, coll, %{}, log: false) |> Enum.to_list
     refute Process.get(:last_log)
