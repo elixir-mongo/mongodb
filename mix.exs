@@ -8,10 +8,10 @@ defmodule Mongodb.Mixfile do
      version: @version,
      elixir: "~> 1.2",
      name: "Mongodb",
-     deps: deps,
-     docs: docs,
-     description: description,
-     package: package]
+     deps: deps(),
+     docs: docs(),
+     description: description(),
+     package: package()]
   end
 
   def application do

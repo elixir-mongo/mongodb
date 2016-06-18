@@ -33,7 +33,7 @@ defmodule Mongo.IdServer do
     :ets.insert(@name, [machineprocid: {machine_id(), process_id()}])
     :ets.insert(@name, gen_counters(0..@num_counters))
 
-    Process.send_after(self, :reset_counters, @reset_timer)
+    Process.send_after(self(), :reset_counters, @reset_timer)
 
     {:ok, opposite_on_window(:calendar.universal_time)}
   end
@@ -41,7 +41,7 @@ defmodule Mongo.IdServer do
   def handle_info(:reset_counters, last_reset) do
     new_reset = opposite_on_window(:calendar.universal_time)
     :ets.insert(@name, gen_counters(last_reset+1..new_reset))
-    Process.send_after(self, :reset_counters, @reset_timer)
+    Process.send_after(self(), :reset_counters, @reset_timer)
 
     {:noreply, new_reset}
   end
