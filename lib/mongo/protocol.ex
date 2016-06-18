@@ -31,7 +31,7 @@ defmodule Mongo.Protocol do
            {:ok, s} <- wire_version(s),
            {:ok, s} <- Mongo.Auth.run(opts, s) do
         :ok = :inet.setopts(s.socket, active: :once)
-        Mongo.Monitor.add_conn(self, opts[:name], s.wire_version)
+        Mongo.Monitor.add_conn(self(), opts[:name], s.wire_version)
         {:ok, s}
       end
 
@@ -83,17 +83,17 @@ defmodule Mongo.Protocol do
   end
 
   def handle_info({:tcp, data}, s) do
-    err = Postgrex.Error.exception(message: "unexpected async recv: #{inspect data}")
+    err = Mongo.Error.exception(message: "unexpected async recv: #{inspect data}")
     {:disconnect, err, s}
   end
 
   def handle_info({:tcp_closed, _}, s) do
-    err = Postgrex.Error.exception(tag: :tcp, action: "async recv", reason: :closed)
+    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: :closed)
     {:disconnect, err, s}
   end
 
   def handle_info({:tcp_error, _, reason}, s) do
-    err = Postgrex.Error.exception(tag: :tcp, action: "async recv", reason: reason)
+    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: reason)
     {:disconnect, err, s}
   end
 
