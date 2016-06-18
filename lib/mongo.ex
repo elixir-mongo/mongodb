@@ -66,6 +66,18 @@ defmodule Mongo do
   end
 
   @doc """
+  Create a supervisor child specification for a pool of connections.
+
+  See `Supervisor.Spec` for child options (`child_opts`).
+
+  See `start_link/1` for connection options (`opts`).
+  """
+  @spec child_spec(Keyword.t, Keyword.t) :: Supervisor.Spec.spec
+  def child_spec(opts, child_opts \\ []) do
+    DBConnection.child_spec(Mongo.Protocol, opts, child_opts)
+  end
+
+  @doc """
   Generates a new `BSON.ObjectId`.
   """
   @spec object_id :: BSON.ObjectId.t
