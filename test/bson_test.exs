@@ -174,10 +174,8 @@ defmodule BSONTest do
     assert encode(@mapNegInf) == @binNegInf
   end
 
-
   defp encode(value) do
     value |> BSON.encode |> IO.iodata_to_binary
   end
-
 
 end
