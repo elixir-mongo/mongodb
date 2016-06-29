@@ -59,6 +59,15 @@ defmodule BSON.Encoder do
   def encode(value) when is_map(value),
     do: document(value)
 
+  def encode(:inf),
+    do: <<127, 240, 0, 0, 0, 0, 0, 0>>
+
+  def encode(:"-inf"),
+    do: <<255, 240, 0, 0, 0, 0, 0, 0>>
+
+  def encode(:NaN),
+    do: <<127, 248, 0, 0, 0, 0, 0, 0>>
+
   def encode(value) when is_atom(value),
     do: encode(Atom.to_string(value))
 
@@ -126,6 +135,9 @@ defmodule BSON.Encoder do
   defp type(nil),                           do: @type_null
   defp type(:BSON_min),                     do: @type_min
   defp type(:BSON_max),                     do: @type_max
+  defp type(:inf),                          do: @type_float
+  defp type(:"-inf"),                       do: @type_float
+  defp type(:NaN),                          do: @type_float
   defp type(value) when is_boolean(value),  do: @type_bool
   defp type(value) when is_float(value),    do: @type_float
   defp type(value) when is_atom(value),     do: @type_string
