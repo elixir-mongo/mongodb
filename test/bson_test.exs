@@ -141,7 +141,43 @@ defmodule BSONTest do
     assert decode(encoded) == @map1
   end
 
+  @mapPosInf %{"a" => :inf}
+  @binPosInf <<16, 0, 0, 0, 1, 97, 0, 127, 240, 0, 0, 0, 0, 0, 0, 0>>
+
+  @mapNegInf %{"a" => :"-inf"}
+  @binNegInf <<16, 0, 0, 0, 1, 97, 0, 255, 240, 0, 0, 0, 0, 0, 0, 0>>
+
+  @mapNaN %{"a" => :NaN}
+  @binNaN <<16, 0, 0, 0, 1, 97, 0, 127, 248, 0, 0, 0, 0, 0, 0, 0>>
+
+  test "decode float NaN" do
+    assert decode(@binNaN) == @mapNaN
+  end
+
+  test "encode float NaN" do
+    assert encode(@mapNaN) == @binNaN
+  end
+
+  test "decode float positive Infinity" do
+    assert decode(@binPosInf) == @mapPosInf
+  end
+
+  test "encode float positive Infinity" do
+    assert encode(@mapPosInf) == @binPosInf
+  end
+
+  test "decode float negative Infinity" do
+    assert decode(@binNegInf) == @mapNegInf
+  end
+
+  test "encode float negative Infinity" do
+    assert encode(@mapNegInf) == @binNegInf
+  end
+
+
   defp encode(value) do
     value |> BSON.encode |> IO.iodata_to_binary
   end
+
+
 end
