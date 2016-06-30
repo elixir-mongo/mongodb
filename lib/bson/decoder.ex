@@ -7,6 +7,18 @@ defmodule BSON.Decoder do
     map
   end
 
+  defp type(@type_float, <<127, 240, 0, 0, 0, 0, 0, 0, rest::binary>>) do
+    {:inf, rest}
+  end
+
+  defp type(@type_float, <<255, 240, 0, 0, 0, 0, 0, 0, rest::binary>>) do
+    {:"-inf", rest}
+  end
+
+  defp type(@type_float, <<127, 248, 0, 0, 0, 0, 0, 0, rest::binary>>) do
+    {:NaN, rest}
+  end
+
   defp type(@type_float, <<float::float64, rest::binary>>) do
     {float, rest}
   end
