@@ -2,7 +2,7 @@ defmodule Mongo.Connection.Auth do
   @moduledoc false
 
   def setup(%{auth: nil, opts: opts} = s) do
-    database = opts[:database]
+    database = if opts[:auth_source] != nil do opts[:auth_source]; else opts[:database] end
     username = opts[:username]
     password = opts[:password]
     auth     = opts[:auth] || []

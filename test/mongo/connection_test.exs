@@ -17,6 +17,14 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
+  defp connect_auth_on_db do
+    assert {:ok, pid} =
+           Connection.start_link(hostname: "localhost", database: "mongodb_test",
+                                 username: "mongodb_admin_user", password: "mongodb_admin_user",
+                                 auth_source: "admin_test")
+    pid
+  end
+
   test "connect and ping" do
     pid = connect()
     assert %{"ok" => 1.0} = Connection.find_one(pid, "$cmd", %{ping: 1}, %{})
@@ -28,11 +36,30 @@ defmodule Mongo.ConnectionTest do
     assert %{"ok" => 1.0} = Connection.find_one(pid, "$cmd", %{ping: 1}, %{})
   end
 
+  test "auth on authentication database" do
+    pid = connect_auth_on_db()
+
+    assert %{"ok" => 1.0} = Connection.find_one(pid, "$cmd", %{ping: 1}, %{})
+  end
+
   test "auth wrong" do
     Process.flag(:trap_exit, true)
 
     opts = [hostname: "localhost", database: "mongodb_test",
             username: "mongodb_user", password: "wrong"]
+
+    capture_log fn ->
+      assert {:ok, pid} = Connection.start_link(opts)
+      assert_receive {:EXIT, ^pid, %Mongo.Error{code: 18}}
+    end
+  end
+
+  test "auth wrong on authentication database" do
+    Process.flag(:trap_exit, true)
+
+    opts = [hostname: "localhost", database: "mongodb_test",
+            username: "mongodb_admin_user", password: "wrong",
+            auth_source: "admin_test"]
 
     capture_log fn ->
       assert {:ok, pid} = Connection.start_link(opts)
