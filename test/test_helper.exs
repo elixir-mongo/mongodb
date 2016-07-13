@@ -16,7 +16,7 @@ version =
 if version < {2, 6, 0} do
   {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.addUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]})')
   {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.addUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]})')
-  {_, 0} = System.cmd("mongo", ~w'admin_test --eval db.addUser({user:"mongodb_admin_user",pwd:"mongodb_admin_user",roles:[{role:"readWrite",db:"mongo_test"}]})')
+  {_, 0} = System.cmd("mongo", ~w'admin_test --eval db.addUser({user:"mongodb_admin_user",pwd:"mongodb_admin_user",roles:[], otherDBRoles:{mongo_test: ["readWrite"]}})')
 else
   {_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user")')
   {_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user2")')
