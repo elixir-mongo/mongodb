@@ -29,6 +29,7 @@ defmodule Mongo.Connection do
     * `:database` - Database (required);
     * `:username` - Username
     * `:password` - User password
+    * `:auth_source` - Authentication Database
     * `:backoff` - Backoff time for reconnects, the first reconnect is
       instantaneous (Default: 1000)
     * `:timeout` - TCP connect and receive timeouts (Default: 5000)
@@ -171,7 +172,7 @@ defmodule Mongo.Connection do
 
     s = %{socket: nil, auth: nil, tail: nil, header: nil, queue: %{},
           request_id: 0, opts: opts, database: nil, timeout: timeout,
-          write_concern: write_concern, wire_version: nil}
+          write_concern: write_concern, wire_version: nil, auth_source: nil}
 
     s = Auth.setup(s)
     {:connect, :init, s}
