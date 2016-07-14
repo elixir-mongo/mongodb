@@ -15,6 +15,14 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
+  defp connect_auth_on_db do
+    assert {:ok, pid} =
+           Mongo.start_link(hostname: "localhost", database: "mongodb_test",
+                                 username: "mongodb_admin_user", password: "mongodb_admin_user",
+                                 auth_source: "admin_test")
+    pid
+  end
+
   test "connect and ping" do
     pid = connect()
     assert {:ok, %{docs: [%{"ok" => 1.0}]}} =
@@ -27,12 +35,31 @@ defmodule Mongo.ConnectionTest do
            Mongo.raw_find(pid, "$cmd", %{ping: 1}, %{}, [batch_size: 1])
   end
 
+  test "auth on db" do
+    pid = connect_auth_on_db()
+    assert {:ok, %{docs: [%{"ok" => 1.0}]}} =
+           Mongo.raw_find(pid, "$cmd", %{ping: 1}, %{}, [batch_size: 1])
+  end
+
   test "auth wrong" do
     Process.flag(:trap_exit, true)
 
     opts = [hostname: "localhost", database: "mongodb_test",
             username: "mongodb_user", password: "wrong",
             backoff_type: :stop]
+
+    capture_log fn ->
+      assert {:ok, pid} = Mongo.start_link(opts)
+      assert_receive {:EXIT, ^pid, {%Mongo.Error{code: 18}, _}}
+    end
+  end
+
+  test "auth wrong on db" do
+    Process.flag(:trap_exit, true)
+
+    opts = [hostname: "localhost", database: "mongodb_test",
+            username: "mongodb_admin_user", password: "wrong",
+            backoff_type: :stop, auth_source: "admin_test"]
 
     capture_log fn ->
       assert {:ok, pid} = Mongo.start_link(opts)
