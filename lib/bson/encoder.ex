@@ -60,13 +60,13 @@ defmodule BSON.Encoder do
     do: document(value)
 
   def encode(:inf),
-    do: <<127, 240, 0, 0, 0, 0, 0, 0>>
+    do: <<0, 0, 0, 0, 0, 0, 240::little-integer-size(8), 127::little-integer-size(8)>>
 
   def encode(:"-inf"),
-    do: <<255, 240, 0, 0, 0, 0, 0, 0>>
+    do: <<0, 0, 0, 0, 0, 0, 240::little-integer-size(8), 255::little-integer-size(8)>>
 
   def encode(:NaN),
-    do: <<127, 248, 0, 0, 0, 0, 0, 0>>
+    do: <<0, 0, 0, 0, 0, 0, 248::little-integer-size(8), 127::little-integer-size(8)>>
 
   def encode(value) when is_atom(value),
     do: encode(Atom.to_string(value))
@@ -75,7 +75,7 @@ defmodule BSON.Encoder do
     do: [<<byte_size(value)+1::int32>>, value, 0x00]
 
   def encode(value) when is_float(value),
-    do: <<value::float64>>
+    do: <<value::little-float64>>
 
   def encode(value) when is_int32(value),
     do: <<value::int32>>
