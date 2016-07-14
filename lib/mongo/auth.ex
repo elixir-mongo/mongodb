@@ -5,6 +5,12 @@ defmodule Mongo.Auth do
     auth = setup(opts)
     auther = mechanism(s)
 
+    auth_source = opts[:auth_source]
+    wire_version = s[:wire_version]
+
+    if auth_source != nil && wire_version > 0 do
+      s = Map.put(s, :database, auth_source)
+    end
     Enum.find_value(auth, fn opts ->
       case auther.auth(opts, s) do
         :ok ->
@@ -12,7 +18,7 @@ defmodule Mongo.Auth do
         error ->
           error
       end
-    end) || {:ok, s}
+    end) || {:ok, Map.put(s,:database, opts[:database])}
   end
 
   defp setup(opts) do
