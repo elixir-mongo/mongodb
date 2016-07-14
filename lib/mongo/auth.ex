@@ -6,8 +6,9 @@ defmodule Mongo.Auth do
     auther = mechanism(s)
 
     auth_source = opts[:auth_source]
+    wire_version = s[:wire_version]
 
-    if auth_source != nil do
+    if auth_source != nil && wire_version > 0 do
       s = Map.put(s, :database, auth_source)
     end
     Enum.find_value(auth, fn opts ->
