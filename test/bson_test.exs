@@ -142,13 +142,13 @@ defmodule BSONTest do
   end
 
   @mapPosInf %{"a" => :inf}
-  @binPosInf <<16, 0, 0, 0, 1, 97, 0, 127, 240, 0, 0, 0, 0, 0, 0, 0>>
+  @binPosInf <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 240::little-integer-size(8), 127::little-integer-size(8), 0>>
 
   @mapNegInf %{"a" => :"-inf"}
-  @binNegInf <<16, 0, 0, 0, 1, 97, 0, 255, 240, 0, 0, 0, 0, 0, 0, 0>>
+  @binNegInf <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 240::little-integer-size(8), 255::little-integer-size(8), 0>>
 
   @mapNaN %{"a" => :NaN}
-  @binNaN <<16, 0, 0, 0, 1, 97, 0, 127, 248, 0, 0, 0, 0, 0, 0, 0>>
+  @binNaN <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 248::little-integer-size(8), 127::little-integer-size(8), 0>>
 
   test "decode float NaN" do
     assert decode(@binNaN) == @mapNaN
