@@ -158,6 +158,12 @@ defmodule Mongo.Test do
     assert_raise Mongo.Error, fn ->
       Mongo.insert_one!(Pool, coll, %{_id: 1})
     end
+
+  end
+
+  test "insert_max_min" do
+    coll = unique_name
+    assert {:ok, result} = Mongo.insert_one(Pool, coll, %{foo: :BSON_min, bar: :BSON_max})
   end
 
   test "insert_many" do

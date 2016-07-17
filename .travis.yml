@@ -1,6 +1,9 @@
 language: elixir
 elixir:
   - 1.2.4
+otp_release:
+  - 17.4
+  - 18.0
 cache:
   - apt
   - directories:

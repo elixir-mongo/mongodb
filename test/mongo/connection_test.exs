@@ -17,9 +17,28 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
+  defp connect_slave do
+    assert {:ok, pid} =
+           Connection.start_link(hostname: "localhost", port: 27018, database: "mongodb_test")
+
+    pid
+  end
+
   test "connect and ping" do
     pid = connect()
     assert %{"ok" => 1.0} = Connection.find_one(pid, "$cmd", %{ping: 1}, %{})
+  end
+
+  test "reconnect to primary" do
+    pid = connect_slave()
+    coll = unique_name
+
+    capture_log fn ->
+      insert = &Connection.insert(&1, coll, %{foo: 42}, [])
+      assert {:error, _} = insert.(pid)
+      :timer.sleep(1000) # After the backoff it will automatically connect to master
+      assert {:ok, _} = insert.(pid)
+    end
   end
 
   test "auth" do
