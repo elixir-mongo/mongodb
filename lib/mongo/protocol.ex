@@ -44,6 +44,10 @@ defmodule Mongo.Protocol do
         |> Keyword.put(:hostname, next_host)
         |> Keyword.put(:port, next_port)
         connect(opts, s)
+      {:no_master, hosts, s} ->
+        :gen_tcp.close(s.socket)
+        :timer.sleep(5000)
+        connect(opts, s)
       {:disconnect, {:tcp_recv, reason}, _s} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
       {:disconnect, {:tcp_send, reason}, _s} ->
