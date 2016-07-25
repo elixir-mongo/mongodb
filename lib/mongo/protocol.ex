@@ -38,6 +38,12 @@ defmodule Mongo.Protocol do
     case result do
       {:ok, s} ->
         {:ok, s}
+      {:is_secondary, next_host, next_port, s} ->
+        :gen_tcp.close(s.socket)
+        opts = opts
+        |> Keyword.put(:hostname, next_host)
+        |> Keyword.put(:port, next_port)
+        connect(opts, s)
       {:disconnect, {:tcp_recv, reason}, _s} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
       {:disconnect, {:tcp_send, reason}, _s} ->
@@ -73,10 +79,16 @@ defmodule Mongo.Protocol do
     # wire version
     # https://github.com/mongodb/mongo/blob/master/src/mongo/db/wire_version.h
     case Utils.command(-1, [ismaster: 1], s) do
-      {:ok, %{"ok" => 1.0, "maxWireVersion" => version}} ->
-        {:ok, %{s | wire_version: version}}
-      {:ok, %{"ok" => 1.0}} ->
-        {:ok, %{s | wire_version: 0}}
+      {:ok, %{"ok" => 1.0, "ismaster" => true} = reply} ->
+        {:ok, %{s | wire_version: reply["maxWireVersion"] || 0}}
+      {:ok, %{"ok" => 1.0, "ismaster" => false} = reply} ->
+        case reply["primary"] do
+          nil ->
+            {:no_master, reply["hosts"], s}
+          primary ->
+            [host, port] = String.split(primary, ":")
+            {:is_secondary, String.to_char_list(host), String.to_integer(port), s}
+        end
       {:disconnect, _, _} = error ->
         error
     end
