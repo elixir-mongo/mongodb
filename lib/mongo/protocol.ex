@@ -27,7 +27,7 @@ defmodule Mongo.Protocol do
   defp connect(opts, s) do
     # TODO: with/else in elixir 1.3
     result =
-      with {:ok, s} <- tcp_connect(opts, s),
+      with {:ok, s} <- tcp_connect(opts |> define_host, s),
            {:ok, s} <- wire_version(s),
            {:ok, s} <- Mongo.Auth.run(opts, s) do
         :ok = :inet.setopts(s.socket, active: :once)
@@ -44,9 +44,14 @@ defmodule Mongo.Protocol do
         |> Keyword.put(:hostname, next_host)
         |> Keyword.put(:port, next_port)
         connect(opts, s)
-      {:no_master, hosts, s} ->
+      {:no_master, _hosts, s} ->
         :gen_tcp.close(s.socket)
         :timer.sleep(5000)
+        connect(opts, s)
+      {:econnrefused, next_host, next_port, s} ->
+        opts = opts
+        |> Keyword.put(:hostname, next_host)
+        |> Keyword.put(:port, next_port)
         connect(opts, s)
       {:disconnect, {:tcp_recv, reason}, _s} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
@@ -73,7 +78,11 @@ defmodule Mongo.Protocol do
         :ok = :inet.setopts(socket, buffer: buffer)
 
         {:ok, %{s | socket: socket}}
-
+      {:error, :econnrefused} ->
+        case next_db_server(opts, host, port) do
+          {:ok, next_host, next_port} -> {:econnrefused, next_host, next_port, s} 
+          :not_found -> {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: :econnrefused)}
+        end
       {:error, reason} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: reason)}
     end
@@ -96,6 +105,33 @@ defmodule Mongo.Protocol do
       {:disconnect, _, _} = error ->
         error
     end
+  end
+
+  defp define_host(opts) do
+    case opts[:hosts] do
+      [{host, port} | _] ->
+        opts
+        |> Keyword.put_new(:hostname, host)
+        |> Keyword.put_new(:port, port)
+      _ -> opts
+    end
+  end
+
+  defp next_db_server(opts, host, port) do
+    case opts[:hosts] do
+      nil -> :not_found
+      hosts ->
+        [h | t] = hosts
+        [{next_host, next_port} | _] = t ++ [h]
+        cond do
+          String.to_char_list(next_host) == host and next_port == port -> :not_found
+          true -> {:ok, next_host, next_port}
+        end
+    end
+  end
+
+  def disconnect(_, s) do
+    :gen_tcp.close(s.socket)
   end
 
   def handle_info({:tcp, data}, s) do
