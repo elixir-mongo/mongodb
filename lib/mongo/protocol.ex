@@ -48,7 +48,7 @@ defmodule Mongo.Protocol do
         :gen_tcp.close(s.socket)
         :timer.sleep(5000)
         connect(opts, s)
-      {:econnrefused, next_host, next_port, s} ->
+      {:econnrefused, next_host, next_port, opts, s} ->
         opts = opts
         |> Keyword.put(:hostname, next_host)
         |> Keyword.put(:port, next_port)
@@ -80,7 +80,7 @@ defmodule Mongo.Protocol do
         {:ok, %{s | socket: socket}}
       {:error, :econnrefused} ->
         case next_db_server(opts, host, port) do
-          {:ok, next_host, next_port} -> {:econnrefused, next_host, next_port, s} 
+          {:ok, next_host, next_port} -> {:econnrefused, next_host, next_port, opts, s} 
           :not_found -> {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: :econnrefused)}
         end
       {:error, reason} ->
@@ -109,10 +109,11 @@ defmodule Mongo.Protocol do
 
   defp define_host(opts) do
     case opts[:hosts] do
-      [{host, port} | _] ->
+      [{host, port} | hosts] ->
         opts
         |> Keyword.put_new(:hostname, host)
         |> Keyword.put_new(:port, port)
+        |> Keyword.put(:hosts, hosts ++ [{host, port}])
       _ -> opts
     end
   end
@@ -121,8 +122,7 @@ defmodule Mongo.Protocol do
     case opts[:hosts] do
       nil -> :not_found
       hosts ->
-        [h | t] = hosts
-        [{next_host, next_port} | _] = t ++ [h]
+        [{next_host, next_port} | _] = hosts
         cond do
           String.to_char_list(next_host) == host and next_port == port -> :not_found
           true -> {:ok, next_host, next_port}
