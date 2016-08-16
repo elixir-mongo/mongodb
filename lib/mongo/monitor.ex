@@ -29,7 +29,7 @@ defmodule Mongo.Monitor do
 
     state =
       if pool && :ets.lookup(@ets, pool) == [] do
-        :ets.insert(@ets, {:pool, version})
+        :ets.insert(@ets, {pool, version})
         ref = Process.monitor(pool)
         put_in(state.monitors[ref], pool)
       else
