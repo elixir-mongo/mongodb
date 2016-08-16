@@ -18,7 +18,7 @@ defmodule Mongo.Protocol do
           request_id: 0,
           timeout: opts[:timeout] || @timeout,
           database: Keyword.fetch!(opts, :database),
-          write_concern: write_concern,
+          write_concern: Map.new(write_concern),
           wire_version: nil}
 
     connect(opts, s)
@@ -205,13 +205,13 @@ defmodule Mongo.Protocol do
   end
 
   defp message_gle(id, op, opts, s) do
-    write_concern = Keyword.take(opts, @write_concern)
-    write_concern = Dict.merge(s.write_concern, write_concern)
+    write_concern = Keyword.take(opts, @write_concern) |> Map.new
+    write_concern = Map.merge(s.write_concern, write_concern)
 
-    if write_concern[:w] == 0 do
+    if write_concern.w == 0 do
       with :ok <- Utils.send(id, op, s), do: {:ok, :ok, s}
     else
-      command = BSON.Encoder.document([{:getLastError, 1}|write_concern])
+      command = BSON.Encoder.document([{:getLastError, 1}|Map.to_list(write_concern)])
       gle_op = op_query(coll: Utils.namespace("$cmd", s), query: command,
                         select: "", num_skip: 0, num_return: -1, flags: [])
 
