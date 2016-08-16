@@ -72,6 +72,10 @@ defmodule Mongo.Protocol.Utils do
     recv(nil, "", s)
   end
 
+  # TODO: Optimize to reduce :gen_tcp.recv and decode_message calls
+  #       based on message size in header.
+  #       :gen.tcp.recv(socket, min(size, max_packet))
+  #       where max_packet = 64mb
   defp recv(nil, data, s) do
     case decode_header(data) do
       {:ok, header, rest} ->
