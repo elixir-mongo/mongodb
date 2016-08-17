@@ -27,7 +27,7 @@ defmodule Mongo.Protocol do
   defp connect(opts, s) do
     # TODO: with/else in elixir 1.3
     result =
-      with {:ok, s} <- tcp_connect(opts, s),
+      with {:ok, s} <- tcp_connect(opts |> define_host, s),
            {:ok, s} <- wire_version(s),
            {:ok, s} <- Mongo.Auth.run(opts, s) do
         :ok = :inet.setopts(s.socket, active: :once)
@@ -38,6 +38,21 @@ defmodule Mongo.Protocol do
     case result do
       {:ok, s} ->
         {:ok, s}
+      {:is_secondary, next_host, next_port, s} ->
+        :gen_tcp.close(s.socket)
+        opts = opts
+        |> Keyword.put(:hostname, next_host)
+        |> Keyword.put(:port, next_port)
+        connect(opts, s)
+      {:no_master, _hosts, s} ->
+        :gen_tcp.close(s.socket)
+        :timer.sleep(5000)
+        connect(opts, s)
+      {:econnrefused, next_host, next_port, opts, s} ->
+        opts = opts
+        |> Keyword.put(:hostname, next_host)
+        |> Keyword.put(:port, next_port)
+        connect(opts, s)
       {:disconnect, {:tcp_recv, reason}, _s} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
       {:disconnect, {:tcp_send, reason}, _s} ->
@@ -63,7 +78,11 @@ defmodule Mongo.Protocol do
         :ok = :inet.setopts(socket, buffer: buffer)
 
         {:ok, %{s | socket: socket}}
-
+      {:error, :econnrefused} ->
+        case next_db_server(opts, host, port) do
+          {:ok, next_host, next_port} -> {:econnrefused, next_host, next_port, opts, s} 
+          :not_found -> {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: :econnrefused)}
+        end
       {:error, reason} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: reason)}
     end
@@ -73,13 +92,46 @@ defmodule Mongo.Protocol do
     # wire version
     # https://github.com/mongodb/mongo/blob/master/src/mongo/db/wire_version.h
     case Utils.command(-1, [ismaster: 1], s) do
-      {:ok, %{"ok" => 1.0, "maxWireVersion" => version}} ->
-        {:ok, %{s | wire_version: version}}
-      {:ok, %{"ok" => 1.0}} ->
-        {:ok, %{s | wire_version: 0}}
+      {:ok, %{"ok" => 1.0, "ismaster" => true} = reply} ->
+        {:ok, %{s | wire_version: reply["maxWireVersion"] || 0}}
+      {:ok, %{"ok" => 1.0, "ismaster" => false} = reply} ->
+        case reply["primary"] do
+          nil ->
+            {:no_master, reply["hosts"], s}
+          primary ->
+            [host, port] = String.split(primary, ":")
+            {:is_secondary, String.to_char_list(host), String.to_integer(port), s}
+        end
       {:disconnect, _, _} = error ->
         error
     end
+  end
+
+  defp define_host(opts) do
+    case opts[:hosts] do
+      [{host, port} | hosts] ->
+        opts
+        |> Keyword.put_new(:hostname, host)
+        |> Keyword.put_new(:port, port)
+        |> Keyword.put(:hosts, hosts ++ [{host, port}])
+      _ -> opts
+    end
+  end
+
+  defp next_db_server(opts, host, port) do
+    case opts[:hosts] do
+      nil -> :not_found
+      hosts ->
+        [{next_host, next_port} | _] = hosts
+        cond do
+          String.to_char_list(next_host) == host and next_port == port -> :not_found
+          true -> {:ok, next_host, next_port}
+        end
+    end
+  end
+
+  def disconnect(_, s) do
+    :gen_tcp.close(s.socket)
   end
 
   def handle_info({:tcp, data}, s) do
