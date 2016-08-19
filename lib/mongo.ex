@@ -228,7 +228,7 @@ defmodule Mongo do
   def raw_find(conn, coll, query, select, opts) do
     params = [query, select]
     query = %Query{action: :find, extra: coll}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
          do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
@@ -237,7 +237,7 @@ defmodule Mongo do
   @doc false
   def get_more(conn, coll, cursor, opts) do
     query = %Query{action: :get_more, extra: {coll, cursor}}
-    with {:ok, reply} <- DBConnection.query(conn, query, [], defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, [], defaults(opts)),
          :ok <- maybe_failure(reply),
          op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
          do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
@@ -246,7 +246,7 @@ defmodule Mongo do
   @doc false
   def kill_cursors(conn, cursor_ids, opts) do
     query = %Query{action: :kill_cursors, extra: cursor_ids}
-    with {:ok, :ok} <- DBConnection.query(conn, query, [], defaults(opts)),
+    with {:ok, :ok} <- DBConnection.execute(conn, query, [], defaults(opts)),
          do: :ok
   end
 
@@ -259,7 +259,7 @@ defmodule Mongo do
   def command(conn, query, opts \\ []) do
     params = [query]
     query = %Query{action: :command}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply) do
       case reply do
         op_reply(docs: [%{"ok" => 1.0} = doc]) ->
@@ -294,7 +294,7 @@ defmodule Mongo do
 
     params = [doc]
     query = %Query{action: :insert_one, extra: coll}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          {:ok, _doc} <- get_last_error(reply),
          do: {:ok, %Mongo.InsertOneResult{inserted_id: id}}
@@ -332,7 +332,7 @@ defmodule Mongo do
 
     params = docs
     query = %Query{action: :insert_many, extra: coll}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          {:ok, _doc} <- get_last_error(reply),
          ids = index_map(ids, 0, %{}),
@@ -354,7 +354,7 @@ defmodule Mongo do
   def delete_one(conn, coll, filter, opts \\ []) do
     params = [filter]
     query = %Query{action: :delete_one, extra: coll}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          {:ok, %{"n" => n}} <- get_last_error(reply),
          do: {:ok, %Mongo.DeleteResult{deleted_count: n}}
@@ -375,7 +375,7 @@ defmodule Mongo do
   def delete_many(conn, coll, filter, opts \\ []) do
     params = [filter]
     query = %Query{action: :delete_many, extra: coll}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          {:ok, %{"n" => n}} <- get_last_error(reply),
          do: {:ok, %Mongo.DeleteResult{deleted_count: n}}
@@ -403,7 +403,7 @@ end
 
     params = [filter, replacement]
     query = %Query{action: :replace_one, extra: coll}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          {:ok, doc} <- get_last_error(reply) do
       case doc do
@@ -448,7 +448,7 @@ end
 
     params = [filter, update]
     query = %Query{action: :update_one, extra: coll}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          {:ok, doc} <- get_last_error(reply) do
       case doc do
@@ -486,7 +486,7 @@ end
 
     params = [filter, update]
     query = %Query{action: :update_many, extra: coll}
-    with {:ok, reply} <- DBConnection.query(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          {:ok, doc} <- get_last_error(reply) do
       case doc do
