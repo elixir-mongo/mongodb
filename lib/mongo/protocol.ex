@@ -112,7 +112,9 @@ defmodule Mongo.Protocol do
   end
 
   def handle_execute(%Mongo.Query{action: action, extra: extra}, params, opts, s) do
-    handle_execute(action, extra, params, opts, s)
+    new_s = %{s | database: Keyword.get(opts, :database, s.database)}
+    {:ok, reply, new_s} = handle_execute(action, extra, params, opts, new_s)
+    {:ok, reply, Map.put(new_s, :database, s.database)}
   end
 
   defp handle_execute(:find, coll, [query, select], opts, s) do
