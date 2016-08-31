@@ -98,8 +98,21 @@ defmodule Mongo.Protocol do
   end
 
   def checkout(s) do
-    :ok = :inet.setopts(s.socket, [active: false])
-    {:ok, s}
+    case :inet.setopts(s.socket, [active: :false]) do
+      :ok                       -> recv_buffer(s)
+      {:disconnect, _, _} = dis -> dis
+    end
+  end
+
+  defp recv_buffer(%{socket: sock} = s) do
+    receive do
+      {:tcp, ^sock, _buffer} ->
+        {:ok, s}
+    after
+      0 ->
+        :inet.setopts(sock, buffer: <<>>)
+        {:ok, s}
+    end
   end
 
   def checkin(s) do
@@ -221,9 +234,10 @@ defmodule Mongo.Protocol do
   end
 
   def ping(%{wire_version: wire_version} = s) do
+    {:ok, active} = :inet.getopts(s.socket, [:active])
     :ok = :inet.setopts(s.socket, [active: false])
     with {:ok, %{wire_version: ^wire_version}} <- wire_version(s),
-         :ok = :inet.setopts(s.socket, [active: :once]),
+         :ok = :inet.setopts(s.socket, active),
          do: {:ok, s}
   end
 end
