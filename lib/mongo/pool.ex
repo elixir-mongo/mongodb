@@ -26,8 +26,8 @@ defmodule Mongo.Pool do
   @type t :: module
 
   @doc false
-  defmacro __using__(opts) do
-    adapter = Keyword.fetch!(opts, :adapter)
+  defmacro __using__(options) do
+    adapter = Keyword.fetch!(options, :adapter)
 
     quote do
       # TODO: Customizable timeout
@@ -42,6 +42,8 @@ defmodule Mongo.Pool do
       @doc false
       def start_link(opts) do
         import Supervisor.Spec, warn: false
+
+        opts = Keyword.merge(unquote(options), opts)
 
         children = [
           worker(Monitor, [@monitor, @ets, opts]),
