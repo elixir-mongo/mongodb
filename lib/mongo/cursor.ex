@@ -59,7 +59,11 @@ defmodule Mongo.Cursor do
 
           case Mongo.get_more(conn, coll, cursor, opts) do
             {:ok, %{cursor_id: cursor, docs: []}} ->
-              {:halt, state(state, cursor: cursor)}
+              if opts[:tailable_cursor] == true do
+                {[], state(state, cursor: cursor)}
+              else
+                {:halt, state(state, cursor: cursor)}
+              end
             {:ok, %{cursor_id: cursor, docs: docs, num: num}} ->
               {docs, state(state, cursor: cursor, limit: new_limit(limit, num))}
             {:error, error} ->
