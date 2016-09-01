@@ -125,7 +125,13 @@ defmodule Mongo.Protocol do
   end
 
   def handle_execute(%Mongo.Query{action: action, extra: extra}, params, opts, s) do
-    handle_execute(action, extra, params, opts, s)
+    new_s = %{s | database: Keyword.get(opts, :database, s.database)}
+    :ok = :inet.setopts(new_s.socket, [active: false])
+    with {:ok, reply, new_s} <-
+           handle_execute(action, extra, params, opts, new_s) do
+      :ok = :inet.setopts(s.socket, [active: :once])
+      {:ok, reply, Map.put(new_s, :database, s.database)}
+    end
   end
 
   defp handle_execute(:find, coll, [query, select], opts, s) do
