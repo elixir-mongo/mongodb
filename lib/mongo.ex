@@ -262,6 +262,8 @@ defmodule Mongo do
     with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply) do
       case reply do
+        op_reply(docs: [%{"ok" => 1} = doc]) ->
+          {:ok, doc}
         op_reply(docs: [%{"ok" => 1.0} = doc]) ->
           {:ok, doc}
         op_reply(docs: [%{"ok" => 0.0, "errmsg" => reason} = error]) ->
