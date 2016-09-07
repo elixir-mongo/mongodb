@@ -4,7 +4,7 @@ defmodule Mongo.Pool.Poolboy do
   """
 
   @behaviour Mongo.Pool.Adapter
-  @poolboy_opts ~w(max_overflow)
+  @poolboy_opts ~w(max_overflow)a
 
   @doc """
   Starts the poolboy pool.
