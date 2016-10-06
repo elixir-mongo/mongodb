@@ -29,6 +29,8 @@ defmodule Mongo.Connection do
     * `:database` - Database (required);
     * `:username` - Username
     * `:password` - User password
+    * `:ssl` - Set to `true` if ssl should be used (default: `false`)
+    * `:ssl_opts` - A list of ssl options
     * `:backoff` - Backoff time for reconnects, the first reconnect is
       instantaneous (Default: 1000)
     * `:timeout` - TCP connect and receive timeouts (Default: 5000)
@@ -165,6 +167,8 @@ defmodule Mongo.Connection do
            |> Keyword.put_new(:port, 27017)
            |> Keyword.put_new(:backoff, 1000)
            |> Keyword.delete(:timeout)
+           |> Keyword.put_new(:ssl, false)
+           |> Keyword.put_new(:ssl_opts, [])
 
     {write_concern, opts} = Keyword.split(opts, @write_concern)
     write_concern = Keyword.put_new(write_concern, :w, 1)
@@ -181,34 +185,66 @@ defmodule Mongo.Connection do
   def connect(_, %{opts: opts} = s) do
     host = opts[:hostname]
     port = opts[:port]
+    ssl? = opts[:ssl]
+
     sock_opts = [:binary, active: false, packet: :raw, send_timeout: s.timeout, nodelay: true]
                 ++ (opts[:socket_options] || [])
 
     case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
       {:ok, socket} ->
-        s = %{s | socket: socket, tail: ""}
         # A suitable :buffer is only set if :recbuf is included in
         # :socket_options.
         {:ok, [sndbuf: sndbuf, recbuf: recbuf, buffer: buffer]} =
           :inet.getopts(socket, [:sndbuf, :recbuf, :buffer])
         buffer = buffer |> max(sndbuf) |> max(recbuf)
-        :ok = :inet.setopts(socket, buffer: buffer)
 
-        case init_connection(s) do
-          {:ok, s} ->
-            :ok = :inet.setopts(socket, active: :once)
-            connect_hook(s)
-            {:ok, s}
-          {:error, reason} ->
-            {:stop, reason, s}
-          {:tcp_error, reason} ->
-            Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
-            {:backoff, s.opts[:backoff], s}
+        if ssl? do
+          connect_ssl(socket, s)
+        else
+          :ok = :inet.setopts(socket, buffer: buffer)
+          s = %{s | socket: socket, tail: ""}
+
+          case init_connection(s) do
+            {:ok, s} ->
+              :ok = :inet.setopts(s.socket, active: :once)
+              connect_hook(s)
+              {:ok, s}
+            {:error, reason} ->
+              {:stop, reason, s}
+            {:tcp_error, reason} ->
+              Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
+                {:backoff, s.opts[:backoff], s}
+          end
         end
 
       {:error, reason} ->
         Logger.error "Mongo connect error (#{host}:#{port}): #{format_error(reason)}"
         {:backoff, s.opts[:backoff], s}
+    end
+  end
+
+  defp connect_ssl(socket, %{opts: opts} = s) do
+    ssl_opts = opts[:ssl_opts]
+    host = opts[:hostname]
+    port = opts[:port]
+
+    case :ssl.connect(socket, ssl_opts, s.timeout) do
+      {:ok, ssl_socket} ->
+        s = %{s | socket: ssl_socket, tail: ""}
+        case init_connection(s) do
+          {:ok, s} ->
+            :ok = :ssl.setopts(s.socket, active: :once)
+            connect_hook(s)
+            {:ok, s}
+          {:error, reason} ->
+            {:error, reason, s}
+          {:tcp_error, reason} ->
+            Logger.error "Mongo tcp error (#{host}:#{port}): #{format_error(reason)}"
+            {:backoff, opts[:backoff], s}
+        end
+      {:error, reason} ->
+        Logger.error "Mongo connect error (#{host}:#{port}): #{format_error(reason)}"
+        {:backoff, opts[:backoff], s}
     end
   end
 
@@ -354,6 +390,20 @@ defmodule Mongo.Connection do
   end
 
   def handle_info({:tcp_error, _, reason}, s) do
+    {:disconnect, {:error, reason}, s}
+  end
+
+  def handle_info({:ssl, _, data}, %{socket: socket, tail: tail} = s) do
+    s = new_data([tail|data], s)
+    :ssl.setopts(socket, active: :once)
+    {:noreply, s}
+  end
+
+  def handle_info({:ssl_closed, _}, s) do
+    {:disconnect, {:error, :closed}, s}
+  end
+
+  def handle_info({:ssl_error, _, reason}, s) do
     {:disconnect, {:error, reason}, s}
   end
 
