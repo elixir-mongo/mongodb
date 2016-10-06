@@ -23,7 +23,7 @@ defmodule Mongo.Connection.Utils do
 
   def send(op, id, s) do
     data = encode(id, op)
-    case :gen_tcp.send(s.socket, data) do
+    case do_send(s, data) do
       :ok ->
         {:ok, s}
       {:error, reason} ->
@@ -43,7 +43,7 @@ defmodule Mongo.Connection.Utils do
       # https://jira.mongodb.org/browse/TOOLS-821
       Enum.find_value(List.wrap(ops), fn {id, op} ->
         data = encode(id, op)
-        case :gen_tcp.send(s.socket, data) do
+        case do_send(s, data) do
           :ok ->
             nil
           {:error, _} = error ->
@@ -61,12 +61,21 @@ defmodule Mongo.Connection.Utils do
           [acc|encode(id, op)]
         end)
 
-      case :gen_tcp.send(s.socket, data) do
+      case do_send(s, data) do
         :ok ->
           {:ok, s}
         {:error, _} = error ->
           error
       end
+    end
+  end
+
+  defp do_send(s, data) do
+    case s.socket do
+      {:sslsocket, _, _} ->
+        :ssl.send(s.socket, data)
+      _ ->
+        :gen_tcp.send(s.socket, data)
     end
   end
 
@@ -91,7 +100,7 @@ defmodule Mongo.Connection.Utils do
       {:ok, header, rest} ->
         sync_recv(header, rest, s)
       :error ->
-        case :gen_tcp.recv(s.socket, 0, s.timeout) do
+        case do_recv(s) do
           {:ok, tail}      -> sync_recv(nil, [data|tail], s)
           {:error, reason} -> {:tcp_error, reason}
         end
@@ -102,10 +111,19 @@ defmodule Mongo.Connection.Utils do
       {:ok, id, reply, ""} ->
         {:ok, id, reply}
       :error ->
-        case :gen_tcp.recv(s.socket, 0, s.timeout) do
+        case do_recv(s) do
           {:ok, tail}      -> sync_recv(header, [data|tail], s)
           {:error, reason} -> {:tcp_error, reason}
         end
+    end
+  end
+
+  defp do_recv(s) do
+    case s.socket do
+      {:sslsocket, _, _} ->
+        :ssl.recv(s.socket, 0, s.timeout)
+      _ ->
+        :gen_tcp.recv(s.socket, 0, s.timeout)
     end
   end
 end
