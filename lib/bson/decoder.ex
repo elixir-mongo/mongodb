@@ -7,6 +7,15 @@ defmodule BSON.Decoder do
     map
   end
 
+  def documents(binary),
+    do: documents(binary, [])
+  def documents("", acc),
+    do: Enum.reverse(acc)
+  def documents(binary, acc) do
+    {doc, rest} = document(binary)
+    documents(rest, [doc|acc])
+  end
+
   defp type(@type_float, <<0, 0, 0, 0, 0, 0, 240::little-integer-size(8), 127::little-integer-size(8), rest::binary>>) do
     {:inf, rest}
   end
@@ -21,15 +30,6 @@ defmodule BSON.Decoder do
 
   defp type(@type_float, <<float::little-float64, rest::binary>>) do
     {float, rest}
-  end
-
-  def documents(binary),
-    do: documents(binary, [])
-  def documents("", acc),
-    do: Enum.reverse(acc)
-  def documents(binary, acc) do
-    {doc, rest} = document(binary)
-    documents(rest, [doc|acc])
   end
 
   defp type(@type_string, <<size::int32, rest::binary>>) do

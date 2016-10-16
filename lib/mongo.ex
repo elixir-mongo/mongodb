@@ -515,12 +515,12 @@ end
   defp modifier_docs(list, type) when is_list(list),
     do: Enum.map(list, &modifier_docs(&1, type))
 
-  defp modifier_key(<<?$, _::binary>>, :replace),
-    do: raise(ArgumentError, "replace does not allow atomic modifiers")
+  defp modifier_key(<<?$, _::binary>> = other, :replace),
+    do: raise(ArgumentError, "replace does not allow atomic modifiers, got: #{other}")
   defp modifier_key(<<?$, _::binary>>, :update),
     do: :ok
-  defp modifier_key(<<_, _::binary>>, :update),
-    do: raise(ArgumentError, "update only allows atomic modifiers")
+  defp modifier_key(<<_, _::binary>> = other, :update),
+    do: raise(ArgumentError, "update only allows atomic modifiers, got: #{other}")
   defp modifier_key(_, _),
     do: :ok
 
