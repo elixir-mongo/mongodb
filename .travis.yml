@@ -17,8 +17,8 @@ env:
   matrix:
     - MONGOVERSION=2.4.14
     - MONGOVERSION=2.6.12
-    - MONGOVERSION=3.0.11
-    - MONGOVERSION=3.2.4
+    - MONGOVERSION=3.0.12
+    - MONGOVERSION=3.2.10
 notifications:
   recipients:
     - eric.meadows.jonsson@gmail.com
