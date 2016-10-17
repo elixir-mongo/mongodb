@@ -139,6 +139,132 @@ defmodule Mongo do
   end
 
   @doc """
+  Finds a document and updates it (using atomic modifiers)
+
+  ##Options
+
+    * `:bypass_document_validation` -  Allows the write to opt-out of document level validation
+    * `:max_time` -  The maximum amount of time to allow the query to run (in MS)
+    * `:projection` -  Limits the fields to return for all matching documents.
+    * `:return_document` - Returns the replaced or inserted document rather than the original. Values are :before or :after. (default is :before)
+    * `:sort` - Determines which document the operation modifies if the query selects multiple documents.
+    * `:upsert` -  Create a document if no document matches the query or updates the document.
+  """
+
+  @spec find_one_and_update(conn, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_update(conn, coll, filter, update, opts \\ []) do
+    modifier_docs(update, :update)
+    query = [
+      findAndModify:            coll,
+      query:                    filter,
+      update:                   update,
+      bypassDocumentValidation: opts[:bypass_document_validation],
+      maxTimeMS:                opts[:max_time],
+      fields:                   opts[:projection],
+      new:                      should_return_new(opts[:return_document]),
+      sort:                     opts[:sort],
+      upsert:                   opts[:upsert],
+      collation:                opts[:collation],
+    ] |> filter_nils
+
+    opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation))
+
+    with {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+  end
+
+
+  @doc """
+  Similar to `find_one_and_update/5` but unwraps the result and raises on error.
+  """
+  @spec find_one_and_update!(conn, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_update!(conn, coll, filter, update, opts \\ []) do
+    bangify(find_one_and_update(conn, coll, filter, update, opts))
+  end
+
+
+  @doc """
+  Finds a document and replaces it
+
+  ##Options
+
+    * `:bypass_document_validation` -  Allows the write to opt-out of document level validation
+    * `:max_time` -  The maximum amount of time to allow the query to run (in MS)
+    * `:projection` -  Limits the fields to return for all matching documents.
+    * `:return_document` - Returns the replaced or inserted document rather than the original. Values are :before or :after. (default is :before)
+    * `:sort` - Determines which document the operation modifies if the query selects multiple documents.
+    * `:upsert` -  Create a document if no document matches the query or updates the document.
+    * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and higher.
+  """
+  @spec find_one_and_replace(conn, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_replace(conn, coll, filter, replacement, opts \\ []) do
+    modifier_docs(replacement, :replace)
+    query = [
+      findAndModify:            coll,
+      query:                    filter,
+      update:                   replacement,
+      bypassDocumentValidation: opts[:bypass_document_validation],
+      maxTimeMS:                opts[:max_time],
+      fields:                   opts[:projection],
+      new:                      should_return_new(opts[:return_document]),
+      sort:                     opts[:sort],
+      upsert:                   opts[:upsert],
+      collation:                opts[:collation],
+    ] |> filter_nils
+
+    opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation))
+
+    with {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+  end
+
+
+  @doc """
+  Similar to `find_one_and_replace/5` but unwraps the result and raises on error.
+  """
+  @spec find_one_and_replace!(conn, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_replace!(conn, coll, filter, replace, opts \\ []) do
+    bangify(find_one_and_replace(conn, coll, filter, replace, opts))
+  end
+
+  defp should_return_new(:after), do: true
+  defp should_return_new(:before), do: false
+  defp should_return_new(_), do: false
+
+  @doc """
+  Finds a document and deletes it
+
+  ##Options
+
+    * `:max_time` -  The maximum amount of time to allow the query to run (in MS)
+    * `:projection` -  Limits the fields to return for all matching documents.
+    * `:sort` - Determines which document the operation modifies if the query selects multiple documents.
+    * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and higher.
+  """
+  @spec find_one_and_delete(conn, collection, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_delete(conn, coll, filter, opts \\ []) do
+    query = [
+      findAndModify: coll,
+      query:         filter,
+      remove:        true,
+      maxTimeMS:     opts[:max_time],
+      fields:        opts[:projection],
+      sort:          opts[:sort],
+      collation:     opts[:collation],
+    ] |> filter_nils
+    opts = Keyword.drop(opts, ~w( max_time projection sort collation))
+
+    with {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+  end
+
+  @doc """
+  Similar to `find_one_and_replace/5` but unwraps the result and raises on error.
+  """
+  @spec find_one_and_delete!(conn, collection, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_delete!(conn, coll, filter, opts \\ []) do
+    bangify(find_one_and_delete(conn, coll, filter, opts))
+  end
+
+
+  @doc """
   Returns the count of documents that would match a `find/4` query.
 
   ## Options
