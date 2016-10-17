@@ -7,7 +7,16 @@ defmodule Mongo do
 
   All operations take these options.
 
-    * `:timeout` - TODO
+    * `:timeout` - The maximum time that the caller is allowed the to hold the
+      connection’s state (ignored when using a run/transaction connection,
+      default: `15_000`)
+    * `:pool_timeout` - The maximum time to wait for a reply when making a
+      synchronous call to the pool (default: `5_000`)
+    * `:queue` - Whether to block waiting in an internal queue for the
+      connection's state (boolean, default: `true`)
+    * `:log` - A function to log information about a call, either
+      a 1-arity fun, `{module, function, args}` with `DBConnection.LogEntry.t`
+      prepended to `args` or `nil`. See `DBConnection.LogEntry` (default: `nil`)
 
   ## Read options
 
@@ -30,11 +39,6 @@ defmodule Mongo do
       committed to journal - (Default: false)
     * `:wtimeout` - If the write concern is not satisfied in the specified
       interval, the operation returns an error
-
-  ## Logging
-
-  All operations take a boolean `log` option, that determines, whether the
-  pool's `log/5` function will be called.
   """
 
   use Bitwise
@@ -59,7 +63,26 @@ defmodule Mongo do
     end
   end
 
-  # TODO: docs
+  @doc """
+  Start and link to a database connection process.
+
+  ### Options
+  
+    * `:pool` - The `DBConnection.Pool` module to use, (default:
+      `DBConnection.Connection`)
+    * `:idle` - The idle strategy, `:passive` to avoid checkin when idle and
+      `:active` to checkin when idle (default: `:passive`)
+    * `:idle_timeout` - The idle timeout to ping the database (default:
+      `1_000`)
+    * `:backoff_min` - The minimum backoff interval (default: `1_000`)
+    * `:backoff_max` - The maximum backoff interval (default: `30_000`)
+    * `:backoff_type` - The backoff strategy, `:stop` for no backoff and
+      to stop, `:exp` for exponential, `:rand` for random and `:rand_exp` for
+      random exponential (default: `:rand_exp`)
+    * `:after_connect` - A function to run on connect using `run/3`, either
+      a 1-arity fun, `{module, function, args}` with `DBConnection.t` prepended
+      to `args` or `nil` (default: `nil`)
+  """
   @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | term}
   def start_link(opts) do
     DBConnection.start_link(Mongo.Protocol, opts)
