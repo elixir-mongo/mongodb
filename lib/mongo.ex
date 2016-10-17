@@ -67,7 +67,7 @@ defmodule Mongo do
   Start and link to a database connection process.
 
   ### Options
-  
+
     * `:pool` - The `DBConnection.Pool` module to use, (default:
       `DBConnection.Connection`)
     * `:idle` - The idle strategy, `:passive` to avoid checkin when idle and
@@ -282,6 +282,7 @@ defmodule Mongo do
   def command(conn, query, opts \\ []) do
     params = [query]
     query = %Query{action: :command}
+
     with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply) do
       case reply do
