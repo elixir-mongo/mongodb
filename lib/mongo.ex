@@ -68,6 +68,14 @@ defmodule Mongo do
 
   ### Options
 
+    * `:hostname` - Server hostname
+    * `:port` - Server port
+    * `:database` - Database
+    * `:username` - Username
+    * `:password` - User password
+    * `:auth` - Additionally users to authenticate (list of keyword lists
+      with the keys `:username` and `:password`)
+    * `:auth_source` - Database to authenticate against
     * `:pool` - The `DBConnection.Pool` module to use, (default:
       `DBConnection.Connection`)
     * `:idle` - The idle strategy, `:passive` to avoid checkin when idle and
