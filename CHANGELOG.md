@@ -1,4 +1,4 @@
-## v0.2.0-dev
+## v0.2.0 (2016-11-11)
 
 * Enhancements
   * Add `BSON.ObjectID.encode!/1` and `BSON.ObjectID.decode!/1`

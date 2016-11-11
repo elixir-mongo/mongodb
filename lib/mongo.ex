@@ -594,7 +594,7 @@ end
           {:ok, %Mongo.UpdateResult{matched_count: 0, modified_count: 1, upserted_id: upserted_id}}
         %{"n" => n} ->
           {:ok, %Mongo.UpdateResult{matched_count: n, modified_count: n}}
-        end
+      end
     end
   end
 
