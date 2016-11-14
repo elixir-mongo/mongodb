@@ -1,5 +1,5 @@
 defmodule Mongo.Test do
-  use MongoTest.Case, async: true
+  use MongoTest.Case
 
   setup_all do
     assert {:ok, pid} = Mongo.start_link(database: "mongodb_test")
@@ -458,7 +458,8 @@ defmodule Mongo.Test do
 
   # issue #19
   test "correctly pass options to cursor", c do
-    assert %Mongo.Cursor{coll: "coll", opts: [no_cursor_timeout: true, skip: 10]} =
-           Mongo.find(c.pid, "coll", %{}, skip: 10, cursor_timeout: false)
+    assert %Mongo.Cursor{opts: [slave_ok: true, no_cursor_timeout: true,
+                                skip: 10], coll: "coll"} =
+             Mongo.find(c.pid, "coll", %{}, skip: 10, cursor_timeout: false)
   end
 end
