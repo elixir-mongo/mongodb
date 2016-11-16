@@ -187,7 +187,7 @@ defmodule BSON.JavaScript do
   Represents BSON JavaScript (with and without scope) types
   """
 
-  @type t :: %__MODULE__{code: binary, scope: binary}
+  @type t :: %__MODULE__{code: binary, scope: %{binary => BSON.t}}
   defstruct [:code, :scope]
 
   defimpl Inspect do
