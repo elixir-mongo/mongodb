@@ -3,6 +3,10 @@ defmodule BSON.Binary do
   Represents BSON binary type
   """
 
+  @type t :: %__MODULE__{
+    binary: binary,
+    subtype: :generic | :function | :binary_old | :uuid_old | :uuid | :md5 | 0x80..0xFF
+  }
   defstruct [binary: nil, subtype: :generic]
 
   defimpl Inspect do
@@ -106,6 +110,7 @@ defmodule BSON.DateTime do
   Represents BSON DateTime type
   """
 
+  @type t :: %__MODULE__{utc: integer()}
   defstruct [:utc]
 
   @epoch :calendar.datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})
@@ -163,6 +168,7 @@ defmodule BSON.Regex do
   Represents BSON Regex type
   """
 
+  @type t :: %__MODULE__{pattern: binary, options: binary}
   defstruct [:pattern, :options]
 
   defimpl Inspect do
@@ -181,6 +187,7 @@ defmodule BSON.JavaScript do
   Represents BSON JavaScript (with and without scope) types
   """
 
+  @type t :: %__MODULE__{code: binary, scope: binary}
   defstruct [:code, :scope]
 
   defimpl Inspect do
@@ -199,6 +206,7 @@ defmodule BSON.Timestamp do
   Represents BSON Timestamp type
   """
 
+  @type t :: %__MODULE__{value: integer}
   defstruct [:value]
 
   defimpl Inspect do

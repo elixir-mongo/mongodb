@@ -8,6 +8,13 @@ import Record, only: [defrecordp: 2]
 defmodule Mongo.Cursor do
   @moduledoc false
 
+  @type t :: %__MODULE__{
+    conn: Mongo.conn,
+    coll: Mongo.collection,
+    query: BSON.document,
+    select: BSON.document | nil,
+    opts: Keyword.t
+  }
   defstruct [:conn, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
@@ -104,6 +111,13 @@ end
 defmodule Mongo.AggregationCursor do
   @moduledoc false
 
+  @type t :: %__MODULE__{
+    conn: Mongo.conn,
+    coll: Mongo.collection,
+    query: BSON.document,
+    select: BSON.document | nil,
+    opts: Keyword.t
+  }
   defstruct [:conn, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
@@ -180,6 +194,13 @@ end
 defmodule Mongo.SinglyCursor do
   @moduledoc false
 
+  @type t :: %__MODULE__{
+    conn: Mongo.conn,
+    coll: Mongo.collection,
+    query: BSON.document,
+    select: BSON.document | nil,
+    opts: Keyword.t
+  }
   defstruct [:conn, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
