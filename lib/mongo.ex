@@ -177,7 +177,7 @@ defmodule Mongo do
     opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation))
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+         {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
   @doc """
@@ -217,7 +217,7 @@ defmodule Mongo do
     opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation))
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+         {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
   defp should_return_new(:after), do: true
@@ -248,7 +248,7 @@ defmodule Mongo do
     opts = Keyword.drop(opts, ~w(max_time projection sort collation))
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+         {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
   @doc """
