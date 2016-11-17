@@ -59,6 +59,4 @@ defmodule Mongo.TopologyDescriptionTest do
     assert {:ok, all_hosts, true, false} ==
            TopologyDescription.select_servers(repl_set_no_master, :read, opts)
   end
-
-  # TODO: add shard tests
 end
