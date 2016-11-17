@@ -2,5 +2,5 @@
   "db_connection": {:hex, :db_connection, "1.1.0", "b2b88db6d7d12f99997b584d09fad98e560b817a20dab6a526830e339f54cdb3", [:mix], [{:connection, "~> 1.0.2", [hex: :connection, optional: false]}, {:poolboy, "~> 1.5", [hex: :poolboy, optional: true]}, {:sbroker, "~> 1.0", [hex: :sbroker, optional: true]}]},
   "earmark": {:hex, :earmark, "1.0.3", "89bdbaf2aca8bbb5c97d8b3b55c5dd0cff517ecc78d417e87f1d0982e514557b", [:mix], []},
   "ex_doc": {:hex, :ex_doc, "0.14.3", "e61cec6cf9731d7d23d254266ab06ac1decbb7651c3d1568402ec535d387b6f7", [:mix], [{:earmark, "~> 1.0", [hex: :earmark, optional: false]}]},
-  "mongoman": {:hex, :mongoman, "0.2.1", "1eb8f3f8ba3984231cb05c36337d9bdd8b0764e30114aa47be9edcb045a90ca0", [:mix], [{:poison, "~> 3.0", [hex: :poison, optional: false]}]},
+  "mongoman": {:hex, :mongoman, "0.3.0", "0ad586de512eb07dda26ded3b53888cee2cbc8d7b7a0bbc60dd71b2a38f8d6ed", [:mix], [{:poison, "~> 3.0", [hex: :poison, optional: false]}]},
   "poison": {:hex, :poison, "3.0.0", "625ebd64d33ae2e65201c2c14d6c85c27cc8b68f2d0dd37828fde9c6920dd131", [:mix], []}}

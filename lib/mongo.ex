@@ -158,8 +158,8 @@ defmodule Mongo do
     * `:upsert` -  Create a document if no document matches the query or updates
       the document.
   """
-  @spec find_one_and_update(conn, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
-  def find_one_and_update(conn, coll, filter, update, opts \\ []) do
+  @spec find_one_and_update(pid, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_update(topology_pid, coll, filter, update, opts \\ []) do
     modifier_docs(update, :update)
     query = [
       findAndModify:            coll,
@@ -176,7 +176,8 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation))
 
-    with {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+         {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
   @doc """
@@ -197,8 +198,8 @@ defmodule Mongo do
     * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
       higher.
   """
-  @spec find_one_and_replace(conn, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
-  def find_one_and_replace(conn, coll, filter, replacement, opts \\ []) do
+  @spec find_one_and_replace(pid, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_replace(topology_pid, coll, filter, replacement, opts \\ []) do
     modifier_docs(replacement, :replace)
     query = [
       findAndModify:            coll,
@@ -215,7 +216,8 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation))
 
-    with {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+         {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
   defp should_return_new(:after), do: true
@@ -232,8 +234,8 @@ defmodule Mongo do
     * `:sort` - Determines which document the operation modifies if the query selects multiple documents.
     * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and higher.
   """
-  @spec find_one_and_delete(conn, collection, BSON.document, Keyword.t) :: result(BSON.document)
-  def find_one_and_delete(conn, coll, filter, opts \\ []) do
+  @spec find_one_and_delete(pid, collection, BSON.document, Keyword.t) :: result(BSON.document)
+  def find_one_and_delete(topology_pid, coll, filter, opts \\ []) do
     query = [
       findAndModify: coll,
       query:         filter,
@@ -245,7 +247,8 @@ defmodule Mongo do
     ] |> filter_nils
     opts = Keyword.drop(opts, ~w(max_time projection sort collation))
 
-    with {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
+    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+         {:ok, doc} <- command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
   @doc """

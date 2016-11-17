@@ -1,16 +1,13 @@
 defmodule Mongo.TopologyTest do
   use MongoTest.Case # DO NOT MAKE ASYNCHRONOUS
+  alias Mongoman.{ReplicaSet, ReplicaSetConfig}
 
   @replset "thetestset"
 
   setup_all do
-    {:ok, rs_pid} = Mongoman.LocalReplicaSet.start_link(@replset, 3)
-    {:ok, nodes} = Mongoman.LocalReplicaSet.get_nodes(rs_pid)
+    {:ok, rs_pid} = ReplicaSet.start_link(ReplicaSetConfig.make(@replset, 3))
+    nodes = ReplicaSet.nodes(rs_pid)
     {:ok, mongo_pid} = Mongo.start_link(database: "test", seeds: nodes)
-
-    on_exit fn ->
-      {:ok, _} = File.rm_rf(@replset)
-    end
 
     %{pid: mongo_pid}
   end
