@@ -701,13 +701,20 @@ defmodule Mongo do
         if delta_ms >= @sel_timeout do
           {:ok, [], slave_ok, mongos?}
         else
-          evt =
+          try do
             GenEvent.stream(Mongo.Events, timeout: @sel_timeout - delta_ms)
             |> Stream.filter(fn
               %TopologyDescriptionChangedEvent{} -> true
               _ -> false
-            end) |> Enum.at(0)
-          _select_servers(evt.new_description, type, opts, start_time)
+            end)
+            |> Enum.at(0)
+          catch
+            :exit, {:timeout, _} ->
+              {:error, :selection_timeout}
+          else
+            evt ->
+              _select_servers(evt.new_description, type, opts, start_time)
+          end
         end
       else
         {:ok, servers, slave_ok, mongos?}
