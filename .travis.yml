@@ -15,10 +15,10 @@ before_script:
   - mongod --fork --logpath mongo.log --dbpath db
 env:
   matrix:
-    - MONGOVERSION=2.4.14
-    - MONGOVERSION=2.6.12
-    - MONGOVERSION=3.0.12
-    - MONGOVERSION=3.2.10
+    - MONGOVERSION=2.4.14 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=2.6.12 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.0.12 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.2.10 TRAVIS_NODE_VERSION=4
 notifications:
   recipients:
     - eric.meadows.jonsson@gmail.com
