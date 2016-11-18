@@ -8,6 +8,11 @@ cache:
   - apt
   - directories:
     - ~/.mongodb
+addons:
+  apt:
+    sources:
+    - sourceline: 'deb https://apt.dockerproject.org/repo ubuntu-xenial main'
+      key_url: 'hkp://ha.pool.sks-keyservers.net:80'
 before_install:
   - rm -rf ~/.nvm
   - curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.32.1/install.sh | bash
@@ -16,9 +21,13 @@ before_install:
   - npm install -g mongodb-version-manager
   - m use $MONGOVERSION
   - mkdir db
+  - docker ps -a
+  - which docker
+  - echo $PATH
 before_script:
   - sudo service mongodb stop
   - export PATH=$(m path):$PATH
+  - echo $PATH
   - mongod --fork --logpath mongo.log --dbpath db
 env:
   matrix:
