@@ -32,7 +32,7 @@ defmodule Mongodb.Mixfile do
      {:db_connection, "~> 1.0"},
      {:ex_doc,        ">= 0.0.0", only: :dev},
      {:earmark,       ">= 0.0.0", only: :dev},
-     {:mongoman,      "~> 0.3.3", only: [:dev, :test]}]
+     {:mongoman,      "~> 0.3.4", only: [:dev, :test]}]
   end
 
   defp docs do
