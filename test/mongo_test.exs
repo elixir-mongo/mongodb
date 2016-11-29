@@ -12,6 +12,9 @@ defmodule Mongo.Test do
     assert {:ok, rs_pid} = ReplicaSet.start_link(config)
     on_exit fn -> ReplicaSet.delete_config(config) end
 
+    Process.sleep(15000)
+    IO.puts "creating users"
+
     {:ok, _} =
       create_user(rs_pid, "mongodb_test", "mongodb_user", "mongodb_user")
     {:ok, _} =
@@ -22,6 +25,7 @@ defmodule Mongo.Test do
       create_user(rs_pid, "admin_test", "mongodb_admin_user", "mongodb_admin_user", roles)
 
     nodes = ReplicaSet.nodes(rs_pid)
+    IO.puts "connecting"
     assert {:ok, pid} = Mongo.start_link(database: "mongodb_test", seeds: nodes)
 
     {:ok, [pid: pid]}
