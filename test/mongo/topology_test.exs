@@ -2,10 +2,8 @@ defmodule Mongo.TopologyTest do
   use MongoTest.Case # DO NOT MAKE ASYNCHRONOUS
   alias Mongoman.{ReplicaSet, ReplicaSetConfig}
 
-  @replset "thetestset"
-
   setup_all do
-    config = ReplicaSetConfig.make(@replset, 3)
+    config = ReplicaSetConfig.make("thetestset", 3)
     {:ok, rs_pid} = ReplicaSet.start_link(config)
     on_exit fn -> ReplicaSet.delete_config(config) end
 

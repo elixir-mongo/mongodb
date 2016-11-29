@@ -1,8 +1,29 @@
 defmodule Mongo.Test do
   use MongoTest.Case
+  alias Mongoman.{ReplicaSet, ReplicaSetConfig}
+
+  defp create_user(pid, db, user, pwd, roles \\ "") do
+    js = "db.createUser({user:'#{user}',pwd:'#{pwd}',roles:[#{roles}]})"
+    ReplicaSet.mongo(pid, js, database: db, no_json: true)
+  end
 
   setup_all do
-    assert {:ok, pid} = Mongo.start_link(database: "mongodb_test")
+    config = ReplicaSetConfig.make("thetestset", 3)
+    assert {:ok, rs_pid} = ReplicaSet.start_link(config)
+    on_exit fn -> ReplicaSet.delete_config(config) end
+
+    {:ok, _} =
+      create_user(rs_pid, "mongodb_test", "mongodb_user", "mongodb_user")
+    {:ok, _} =
+      create_user(rs_pid, "mongodb_test", "mongodb_user2", "mongodb_user2")
+    roles =
+      "{role:'readWrite',db:'mongodb_test'},{role:'read',db:'mongodb_test2'}"
+    {:ok, _} =
+      create_user(rs_pid, "admin_test", "mongodb_admin_user", "mongodb_admin_user", roles)
+
+    nodes = ReplicaSet.nodes(rs_pid)
+    assert {:ok, pid} = Mongo.start_link(database: "mongodb_test", seeds: nodes)
+
     {:ok, [pid: pid]}
   end
 
