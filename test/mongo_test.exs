@@ -1,8 +1,44 @@
 defmodule Mongo.Test do
-  use MongoTest.Case, async: true
+  use MongoTest.Case
+  alias Mongoman.{ReplicaSet, ReplicaSetConfig}
+
+  defp create_user(pid, db, user, pwd, roles \\ "") do
+    js = "db.createUser({user:'#{user}',pwd:'#{pwd}',roles:[#{roles}]})"
+    ReplicaSet.mongo(pid, js, database: db, no_json: true)
+  end
 
   setup_all do
-    assert {:ok, pid} = Mongo.start_link(database: "mongodb_test")
+    config = ReplicaSetConfig.make("thetestset", 3)
+    assert {:ok, rs_pid} = ReplicaSet.start_link(config)
+    on_exit fn -> ReplicaSet.delete_config(config) end
+
+    {:ok, output} = ReplicaSet.mongo(rs_pid, "db.version()", no_json: true)
+
+    version =
+      output
+      |> String.split("\n", trim: true)
+      |> List.last
+      |> String.split(".")
+      |> Enum.map(&elem(Integer.parse(&1), 0))
+      |> List.to_tuple
+      |> IO.inspect
+
+    if version >= {2, 6, 0} do
+      {:ok, _} =
+        create_user(rs_pid, "mongodb_test", "mongodb_user", "mongodb_user")
+      {:ok, _} =
+        create_user(rs_pid, "mongodb_test", "mongodb_user2", "mongodb_user2")
+      roles =
+        "{role:'readWrite',db:'mongodb_test'},{role:'read',db:'mongodb_test2'}"
+      {:ok, _} =
+        create_user(rs_pid, "admin_test", "mongodb_admin_user", "mongodb_admin_user", roles)
+    else
+      IO.puts "Testing"
+    end
+
+    nodes = ReplicaSet.nodes(rs_pid)
+    assert {:ok, pid} = Mongo.start_link(database: "mongodb_test", seeds: nodes)
+
     {:ok, [pid: pid]}
   end
 
@@ -458,7 +494,8 @@ defmodule Mongo.Test do
 
   # issue #19
   test "correctly pass options to cursor", c do
-    assert %Mongo.Cursor{coll: "coll", opts: [no_cursor_timeout: true, skip: 10]} =
-           Mongo.find(c.pid, "coll", %{}, skip: 10, cursor_timeout: false)
+    assert %Mongo.Cursor{opts: [slave_ok: true, no_cursor_timeout: true,
+                                skip: 10], coll: "coll"} =
+             Mongo.find(c.pid, "coll", %{}, skip: 10, cursor_timeout: false)
   end
 end
