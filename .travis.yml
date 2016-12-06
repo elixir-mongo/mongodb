@@ -6,6 +6,9 @@ cache:
   - directories:
     - ~/.mongodb
 before_install:
+  - . $HOME/.nvm/nvm.sh
+  - nvm install stable
+  - nvm use stable
   - npm install -g mongodb-version-manager
   - m use $MONGOVERSION
   - mkdir db
