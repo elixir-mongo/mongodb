@@ -1,7 +1,6 @@
 sudo: required
 language: elixir
 elixir:
-  - 1.2.6
   - 1.3.4
 cache:
   - apt
