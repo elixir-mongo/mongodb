@@ -13,6 +13,7 @@ before_install:
   - nvm use stable
   - npm install -g mongodb-version-manager
   - m use $MONGOVERSION
+  - bash ./start_mongo.bash
 before_script:
 # - sudo systemctl stop mongodb
   - export PATH=$(m path):$PATH
