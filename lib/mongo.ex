@@ -10,6 +10,8 @@ defmodule Mongo do
     * `:timeout` - The maximum time that the caller is allowed the to hold the
       connection’s state (ignored when using a run/transaction connection,
       default: `15_000`)
+    * `:pool` - The pooling behaviour module to use, this option is required
+      unless the default `DBConnection.Connection` pool is used
     * `:pool_timeout` - The maximum time to wait for a reply when making a
       synchronous call to the pool (default: `5_000`)
     * `:queue` - Whether to block waiting in an internal queue for the
@@ -81,8 +83,9 @@ defmodule Mongo do
     * `:auth` - Additionally users to authenticate (list of keyword lists
       with the keys `:username` and `:password`)
     * `:auth_source` - Database to authenticate against
-    * `:pool` - The `DBConnection.Pool` module to use, (default:
-      `DBConnection.Connection`)
+    * `:pool` - The pool module to use, see `DBConnection` for pool dependent
+      options, this option must be included with all requests contacting the
+      pool if not `DBConnection.Connection` (default: `DBConnection.Connection`)
     * `:idle` - The idle strategy, `:passive` to avoid checkin when idle and
       `:active` to checkin when idle (default: `:passive`)
     * `:idle_timeout` - The idle timeout to ping the database (default:

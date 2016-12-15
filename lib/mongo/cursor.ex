@@ -8,6 +8,13 @@ import Record, only: [defrecordp: 2]
 defmodule Mongo.Cursor do
   @moduledoc false
 
+  @type t :: %__MODULE__{
+    conn: Mongo.conn,
+    coll: Mongo.collection,
+    query: BSON.document,
+    select: BSON.document | nil,
+    opts: Keyword.t
+  }
   defstruct [:conn, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
@@ -17,12 +24,11 @@ defmodule Mongo.Cursor do
                acc, reduce_fun) do
       limit      = opts[:limit]
       opts       = Keyword.drop(opts, [:limit])
-      next_opts  = Keyword.drop(opts, [:skip])
-      after_opts = Keyword.take(opts, [:log])
+      next_opts  = Keyword.drop(opts, [:limit, :skip])
 
       start_fun = start_fun(conn, coll, query, select, limit, opts)
       next_fun  = next_fun(coll, next_opts)
-      after_fun = after_fun(after_opts)
+      after_fun = after_fun(next_opts)
 
       Stream.resource(start_fun, next_fun, after_fun).(acc, reduce_fun)
     end
@@ -104,6 +110,13 @@ end
 defmodule Mongo.AggregationCursor do
   @moduledoc false
 
+  @type t :: %__MODULE__{
+    conn: Mongo.conn,
+    coll: Mongo.collection,
+    query: BSON.document,
+    select: BSON.document | nil,
+    opts: Keyword.t
+  }
   defstruct [:conn, :coll, :query, :select, :opts]
 
   defimpl Enumerable do
@@ -111,11 +124,9 @@ defmodule Mongo.AggregationCursor do
 
     def reduce(%{conn: conn, coll: coll, query: query, select: select, opts: opts},
                acc, reduce_fun) do
-      after_opts = Keyword.take(opts, [:log])
-
       start_fun = start_fun(conn, coll, query, select, opts)
       next_fun  = next_fun(opts)
-      after_fun = after_fun(after_opts)
+      after_fun = after_fun(opts)
 
       Stream.resource(start_fun, next_fun, after_fun).(acc, reduce_fun)
     end
@@ -180,6 +191,13 @@ end
 defmodule Mongo.SinglyCursor do
   @moduledoc false
 
+  @type t :: %__MODULE__{
+    conn: Mongo.conn,
+    coll: Mongo.collection,
+    query: BSON.document,
+    select: BSON.document | nil,
+    opts: Keyword.t
+  }
   defstruct [:conn, :coll, :query, :select, :opts]
 
   defimpl Enumerable do

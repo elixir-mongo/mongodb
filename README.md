@@ -5,7 +5,7 @@
 ## Features
 
   * Supports MongoDB versions 2.4, 2.6, 3.0, 3.2
-  * Connection pooling
+  * Connection pooling (through db_connection)
   * Streaming cursors
   * Performant ObjectID generation
   * Follows driver specification set by 10gen
@@ -14,10 +14,6 @@
 
 ## Immediate Roadmap
 
-  * DBConnection
-    - Add timeouts for all calls
-    - Reconnect backoffs with https://github.com/ferd/backoff
-    - Lazy connect
   * Make sure requests don't go over the 16mb limit
   * Replica sets
     - Block in client (and timeout) when waiting for new primary selection
@@ -58,7 +54,7 @@
 
 ### Installation:
 
-Add mongodb to your mix.exs `deps` and `:applications` (replace `>= 0.0.0` in `deps` if you want a specific version). If you want to use poolboy as adapter also add it to your mix.exs `deps` and `:applications` (because poolboy is an optional dep in mongodb):
+Add mongodb to your mix.exs `deps` and `:applications` (replace `>= 0.0.0` in `deps` if you want a specific version). Mongodb supports the same pooling libraries db_connection does (currently: no pooling, poolboy, and sbroker). If you want to use poolboy as pooling library you should set up your project like this:
 
 ```elixir
 def application do
@@ -73,36 +69,40 @@ end
 
 Then run `mix deps.get` to fetch dependencies.
 
-### Connection Pools
+### Connection pooling
+
+By default mongodb will start a single connection, but it also supports pooling with the `:pool` option. For poolboy add the `pool: DBConnection.Poolboy` option to `Mongo.start_link` and to all function calls in `Mongo` using the pool.
 
 ```elixir
-defmodule MongoPool do
-  use Mongo.Pool, name: __MODULE__, adapter: Mongo.Pool.Poolboy
-end
-
-# Starts the pool named MongoPool
-{:ok, _} = MongoPool.start_link(database: "test")
+# Starts an unpooled connection
+{:ok, conn} = Mongo.start_link(database: "test")
 
 # Gets an enumerable cursor for the results
-cursor = Mongo.find(MongoPool, "test-collection", %{})
+cursor = Mongo.find(conn, "test-collection", %{})
 
 Enum.to_list(cursor)
 |> IO.inspect
 ```
 
-### Examples
+If you're using pooling it is recommend to add it to your application supervisor:
 
 ```elixir
-Mongo.find(MongoPool, "test-collection", %{}, limit: 20)
-Mongo.find(MongoPool, "test-collection", %{"field" => %{"$gt" => 0}}, limit: 20, sort: %{"field" => 1})
+def start(_type, _args) do
+  import Supervisor.Spec
 
-Mongo.insert_one(MongoPool, "test-collection", %{"field" => 10})
+  children = [
+    worker(Mongo, [name: :mongo, database: "test", pool: DBConnection.Poolboy])
+  ]
 
-Mongo.insert_many(MongoPool, "test-collection", [%{"field" => 10}, %{"field" => 20}])
+  opts = [strategy: :one_for_one, name: MyApp.Supervisor]
+  Supervisor.start_link(children, opts)
+end
+```
 
-Mongo.delete_one(MongoPool, "test-collection", %{"field" => 10})
+Then you can use the pool as following:
 
-Mongo.delete_many(MongoPool, "test-collection", %{"field" => 10})
+```elixir
+Mongo.find(:mongo, "collection", %{}, limit: 20, pool: DBConnection.Poolboy)
 ```
 
 ## License
