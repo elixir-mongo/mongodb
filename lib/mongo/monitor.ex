@@ -14,8 +14,6 @@ defmodule Mongo.Monitor do
   @min_heartbeat_frequency_ms 500
 
   def start_link(args, gen_server_opts \\ []) do
-    IO.puts "stuff"
-    IO.inspect(Exception.format_stacktrace)
     GenServer.start_link(__MODULE__, args, gen_server_opts)
   end
 
@@ -36,7 +34,7 @@ defmodule Mongo.Monitor do
       connection_opts
       |> Keyword.put(:database, "admin")
       |> Keyword.put(:skip_auth, true)
-    {:ok, pid} = IO.inspect DBConnection.start_link(Mongo.Protocol, IO.inspect(opts))
+    {:ok, pid} = DBConnection.start_link(Mongo.Protocol, opts)
     :ok = GenServer.cast(self, :check)
     {:ok, %{connection_pid: pid, topology_pid: topology_pid,
             server_description: server_description,

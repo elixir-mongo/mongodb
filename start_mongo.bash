@@ -8,17 +8,17 @@ for i in $(seq 1 3); do
   pid="$(cat tmp/db$i/mongod.lock 2>/dev/null)"
 
   if [ $? -ne 0 -a -z "$pid" ]; then
-    echo "starting mongo server"
+    # >&2 echo "starting mongo server $i"
     mongod --fork --dbpath tmp/db$i --logpath tmp/db$i/log --port 2700$i --bind_ip 127.0.0.1 \
       --replSet mongodb_test &>/dev/null
 
     if [ $? -ne 0 ]; then
       . ./stop_mongo.bash
-      echo "failed to start mongo servers..."
+      # >&2 echo "failed to start mongo servers..."
       exit 1
     fi
 
-    echo "mongo server started"
+    # >&2 echo "mongo server $i started"
   else
     needs_initiate=0
   fi
@@ -28,9 +28,9 @@ sleep 1
 
 # initiate the replica set
 
-echo "needs initiate: $needs_initiate"
+# >&2 echo "needs initiate: $needs_initiate"
 if [[ $needs_initiate -eq 1 ]]; then
-  echo "initiating"
+  # >&2 echo "initiating"
 
   host1='"127.0.0.1:27001"'
   host2='"127.0.0.1:27002"'
@@ -40,24 +40,24 @@ if [[ $needs_initiate -eq 1 ]]; then
     "JSON.stringify(rs.initiate({_id: \"mongodb_test\", members: $members}))" >/dev/null
 
   if [ $? -ne 0 ]; then
-    echo "failed to configure replica set"
+    # >&2 echo "failed to configure replica set"
     exit 1
   fi
 
-  echo "initiated"
+  # >&2 echo "initiated"
 fi
 
 repl_set_url='mongodb_test/127.0.0.1:27001,127.0.0.1:27002,127.0.0.1:27003'
 
 # wait for replica set election
 
-echo "replica set election"
+# >&2 echo "replica set election"
 mongo --port 27001 --quiet --eval 'typeof db.createUser === "function"' >tmp/over24
 if [ $? -ne 0 ]; then
-  echo "failed while waiting for replica set election"
+  # >&2 echo "failed while waiting for replica set election"
   exit 1
 else
-  echo "done"
+  # >&2 echo "done"
   if [ "$(tail -n1 tmp/over24)" == "true" ]; then
     createUser="createUser"
   else
@@ -67,7 +67,7 @@ else
     fi
   fi
 
-  echo "dropping database, adding users"
+  # >&2 echo "dropping database, adding users"
   mongo mongodb_test --host $repl_set_url --quiet --eval 'db.dropDatabase()' &>/dev/null && \
   mongo admin_test --host $repl_set_url --quiet --eval 'db.dropDatabase()' &>/dev/null &&
   mongo mongodb_test --host $repl_set_url --quiet --eval \
@@ -77,8 +77,7 @@ else
   mongo admin_test --host $repl_set_url --quiet --eval \
     "db.${createUser}({user:'mongodb_admin_user',pwd:'mongodb_admin_user',roles:[ \
       {role:'readWrite',db:'mongodb_test'},{role:'read',db:'mongodb_test2'}]})" &>/dev/null
-  echo "done"
+  # >&2 echo "done"
 fi
 
-echo "success"
 exit 0

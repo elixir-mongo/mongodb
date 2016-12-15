@@ -136,7 +136,6 @@ defmodule Mongo.Topology do
   end
 
   defp handle_server_description(state, server_description) do
-    IO.inspect(server_description)
     state
     |> get_and_update_in([:topology],
                          &TopologyDescription.update(&1, server_description,
@@ -151,8 +150,6 @@ defmodule Mongo.Topology do
         :ok = GenServer.cast(self, message)
       {previous, next} ->
         if previous != next do
-          IO.inspect previous.address
-          IO.inspect next.address
           :ok = GenEvent.notify(Mongo.Events, %ServerDescriptionChangedEvent{
             address: next.address,
             topology_pid: self,
@@ -184,8 +181,7 @@ defmodule Mongo.Topology do
                                                           topology_pid: self})
 
       {:ok, pid} = Monitor.start_link(args)
-      IO.puts "starting monitor #{inspect address}"
-      {:ok, pool} = DBConnection.start_link(Mongo.Protocol, IO.inspect(connopts))
+      {:ok, pool} = DBConnection.start_link(Mongo.Protocol, connopts)
       %{state | monitors: Map.put(state.monitors, address, pid),
         connection_pools: Map.put(state.connection_pools, address, pool)}
     end)

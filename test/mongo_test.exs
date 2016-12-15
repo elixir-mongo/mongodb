@@ -3,7 +3,6 @@ defmodule Mongo.Test do
 
   setup_all do
     assert {:ok, pid} = Mongo.TestConnection.connect
-    IO.puts "almost done"
     {:ok, [pid: pid]}
   end
 
