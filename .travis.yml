@@ -17,7 +17,6 @@ before_script:
 # - sudo systemctl stop mongodb
   - export PATH=$(m path):$PATH
   - echo $PATH
-  - bash ./start_mongo.bash
 env:
   matrix:
     - MONGOVERSION=2.4.14 TRAVIS_NODE_VERSION=4
