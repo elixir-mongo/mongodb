@@ -2,7 +2,7 @@ defmodule Mongo.ReadPreference do
   @type t :: %{
     mode: :primary | :secondary | :primary_preferred | :secondary_preferred |
           :nearest,
-    tag_sets: [%{required(String.t) => String.t}],
+    tag_sets: [%{String.t => String.t}],
     max_staleness_ms: non_neg_integer
   }
 

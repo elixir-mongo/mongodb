@@ -55,3 +55,6 @@ else
     "db.${createUser}({user:'mongodb_admin_user',pwd:'mongodb_admin_user',roles:[ \
       {role:'readWrite',db:'mongodb_test'},{role:'read',db:'mongodb_test2'}]})" &>/dev/null
 fi
+
+echo "success"
+exit 0
