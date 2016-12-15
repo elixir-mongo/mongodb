@@ -1,6 +1,4 @@
 sudo: required
-services:
-  - docker
 language: elixir
 elixir:
   - 1.3.2
@@ -15,15 +13,11 @@ before_install:
   - npm i -g npm
   - npm install -g mongodb-version-manager
   - m use $MONGOVERSION
-  - mkdir db
-  - docker --version
-  - docker ps -a
-  - which docker
 before_script:
 # - sudo systemctl stop mongodb
   - export PATH=$(m path):$PATH
   - echo $PATH
-  - mongod --fork --logpath mongo.log --dbpath db
+  - bash ./start_mongo.bash
 env:
   matrix:
     - MONGOVERSION=2.4.14 TRAVIS_NODE_VERSION=4

@@ -1,45 +1,17 @@
 defmodule Mongo.Test do
-  use MongoTest.Case
-  alias Mongoman.{ReplicaSet, ReplicaSetConfig}
+  use ExUnit.Case
 
-  defp create_user(pid, db, user, pwd, roles \\ "") do
-    js = "db.createUser({user:'#{user}',pwd:'#{pwd}',roles:[#{roles}]})"
-    ReplicaSet.mongo(pid, js, database: db, no_json: true)
-  end
+  @seeds ["127.0.0.1:27001", "127.0.0.1:27002", "127.0.0.1:27003"]
 
   setup_all do
-    config = ReplicaSetConfig.make("thetestset", 3)
-    assert {:ok, rs_pid} = ReplicaSet.start_link(config)
-    on_exit fn -> ReplicaSet.delete_config(config) end
-
-    {:ok, output} = ReplicaSet.mongo(rs_pid, "db.version()", no_json: true)
-
-    version =
-      output
-      |> String.split("\n", trim: true)
-      |> List.last
-      |> String.split(".")
-      |> Enum.map(&elem(Integer.parse(&1), 0))
-      |> List.to_tuple
-      |> IO.inspect
-
-    if version >= {2, 6, 0} do
-      {:ok, _} =
-        create_user(rs_pid, "mongodb_test", "mongodb_user", "mongodb_user")
-      {:ok, _} =
-        create_user(rs_pid, "mongodb_test", "mongodb_user2", "mongodb_user2")
-      roles =
-        "{role:'readWrite',db:'mongodb_test'},{role:'read',db:'mongodb_test2'}"
-      {:ok, _} =
-        create_user(rs_pid, "admin_test", "mongodb_admin_user", "mongodb_admin_user", roles)
-    else
-      IO.puts "Testing"
-    end
-
-    nodes = ReplicaSet.nodes(rs_pid)
-    assert {:ok, pid} = Mongo.start_link(database: "mongodb_test", seeds: nodes)
-
+    assert {:ok, pid} = Mongo.start_link(database: "mongodb_test", seeds: @seeds)
+    IO.puts "almost done"
     {:ok, [pid: pid]}
+  end
+
+  defmacro unique_name do
+    {function, _arity} = __CALLER__.function
+    "#{__CALLER__.module}.#{function}"
   end
 
   test "object_id" do

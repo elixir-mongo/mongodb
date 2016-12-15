@@ -1,5 +1,5 @@
 defmodule Mongo.TopologyDescriptionTest do
-  use MongoTest.Case, async: true
+  use ExUnit.Case, async: true
   alias Mongo.{ReadPreference, TopologyDescription}
   import Mongo.TopologyTestData
 

@@ -24,15 +24,14 @@ defmodule Mongodb.Mixfile do
      env: []]
   end
 
-  def applications(:test), do: [:logger, :connection, :db_connection, :mongoman]
+  def applications(:test), do: [:logger, :connection, :db_connection]
   def applications(_), do: [:logger, :connection, :db_connection]
 
   defp deps do
     [{:connection,    "~> 1.0"},
      {:db_connection, "~> 1.0"},
      {:ex_doc,        ">= 0.0.0", only: :dev},
-     {:earmark,       ">= 0.0.0", only: :dev},
-     {:mongoman,      "~> 0.3.4", only: [:dev, :test]}]
+     {:earmark,       ">= 0.0.0", only: :dev}]
   end
 
   defp docs do

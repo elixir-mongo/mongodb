@@ -1,14 +1,11 @@
 defmodule Mongo.TopologyTest do
-  use MongoTest.Case # DO NOT MAKE ASYNCHRONOUS
+  use ExUnit.Case # DO NOT MAKE ASYNCHRONOUS
   alias Mongoman.{ReplicaSet, ReplicaSetConfig}
 
-  setup_all do
-    config = ReplicaSetConfig.make("thetestset", 3)
-    {:ok, rs_pid} = ReplicaSet.start_link(config)
-    on_exit fn -> ReplicaSet.delete_config(config) end
+  @seeds ["127.0.0.1:27001", "127.0.0.1:27002", "127.0.0.1:27003"]
 
-    nodes = ReplicaSet.nodes(rs_pid)
-    {:ok, mongo_pid} = Mongo.start_link(database: "test", seeds: nodes)
+  setup_all do
+    {:ok, mongo_pid} = Mongo.start_link(database: "test", seeds: @seeds)
 
     %{pid: mongo_pid}
   end
