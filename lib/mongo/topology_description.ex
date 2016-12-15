@@ -14,14 +14,14 @@ defmodule Mongo.TopologyDescription do
   @type type :: :unknown | :single | :replica_set_no_primary |
                 :replica_set_with_primary | :sharded
   @type t :: %{
-                   type: type,
-               set_name: String.t | nil,
-        max_set_version: non_neg_integer | nil,
-        max_election_id: BSON.ObjectId.t,
-                servers: %{required(String.t) => Mongo.ServerDescription.t},
-             compatible: boolean,
+    type: type,
+    set_name: String.t | nil,
+    max_set_version: non_neg_integer | nil,
+    max_election_id: BSON.ObjectId.t,
+    servers: %{String.t => Mongo.ServerDescription.t},
+    compatible: boolean,
     compatibility_error: String.t | nil,
-     local_threshold_ms: non_neg_integer
+    local_threshold_ms: non_neg_integer
   }
 
   def defaults(map \\ %{}) do

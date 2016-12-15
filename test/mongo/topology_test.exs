@@ -2,12 +2,9 @@ defmodule Mongo.TopologyTest do
   use ExUnit.Case # DO NOT MAKE ASYNCHRONOUS
   alias Mongoman.{ReplicaSet, ReplicaSetConfig}
 
-  @seeds ["127.0.0.1:27001", "127.0.0.1:27002", "127.0.0.1:27003"]
-
   setup_all do
-    {:ok, mongo_pid} = Mongo.start_link(database: "test", seeds: @seeds)
-
-    %{pid: mongo_pid}
+    assert {:ok, pid} = Mongo.TestConnection.connect
+    %{pid: pid}
   end
 
   @modes [:secondary, :secondary_preferred, :primary, :primary_preferred]

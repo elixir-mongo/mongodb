@@ -1,10 +1,8 @@
 defmodule Mongo.Test do
   use ExUnit.Case
 
-  @seeds ["127.0.0.1:27001", "127.0.0.1:27002", "127.0.0.1:27003"]
-
   setup_all do
-    assert {:ok, pid} = Mongo.start_link(database: "mongodb_test", seeds: @seeds)
+    assert {:ok, pid} = Mongo.TestConnection.connect
     IO.puts "almost done"
     {:ok, [pid: pid]}
   end
