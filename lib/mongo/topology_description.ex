@@ -448,25 +448,30 @@ defmodule Mongo.TopologyDescription do
     # yes, this is really in the spec
     if server_description[:set_version] != nil and
        server_description[:election_id] != nil do
-      if topology[:max_set_version] != nil and
-         topology[:max_election_id] != nil and
-         ((topology.max_set_version >
-           server_description.set_version) or
-          ((topology.max_set_version ==
-            server_description.set_version) and
-           (topology.max_election_id >
-            server_description.election_id))) do
-        put_in(topology.servers[server_description.address],
-               ServerDescription.defaults(%{
-                 address: server_description.address
-               }))
+
+      has_set_version_and_election_id? =
+        topology[:max_set_version] != nil and
+        topology[:max_election_id] != nil
+      newer_set_version? = topology.max_set_version > server_description.set_version
+      same_set_version? = topology.max_set_version == server_description.set_version
+      greater_election_id? = topology.max_election_id > server_description.election_id
+
+      if has_set_version_and_election_id? and
+         (newer_set_version? or (same_set_version? and greater_election_id?)) do
+
+        new_server_description = ServerDescription.defaults(%{address: server_description.address})
+
+        topology
+        |> put_in([:servers, new_server_description.address], new_server_description)
         |> check_if_has_primary
       else
-        Map.put(topology, :max_election_id, server_description.election_id)
+        topology
+        |> Map.put(:max_election_id, server_description.election_id)
         |> continue(server_description)
       end
     else
-      topology |> continue(server_description)
+      topology
+      |> continue(server_description)
     end
   end
 
@@ -493,8 +498,7 @@ defmodule Mongo.TopologyDescription do
   def invalidate_stale_primary(topology, server_description) do
     {actions, new_servers} =
       topology.servers
-      |> Enum.reduce({[], %{}}, fn
-        ({address, %{type: type} = server}, {acts, servers}) ->
+      |> Enum.reduce({[], %{}}, fn ({address, %{type: type} = server}, {acts, servers}) ->
         if address != server_description.address and type == :rs_primary do
           {[{:force_check, address} | acts],
            Map.put(servers, address,
@@ -509,10 +513,13 @@ defmodule Mongo.TopologyDescription do
   def remove_dead_nodes({actions, topology}, server_description) do
     all_hosts = server_description.hosts ++ server_description.passives ++
                 server_description.arbiters
-    {actions, update_in(topology.servers, &Enum.into(Enum.filter(&1, fn
-       {address, _} ->
-         address in all_hosts
-     end), %{}))}
+
+    topology = update_in(topology.servers, &Enum.into(Enum.filter(&1, fn
+      {address, _} ->
+        address in all_hosts
+     end), %{}))
+
+    {actions, topology}
   end
 
   defp check_if_has_primary({actions, topology}) do
@@ -521,10 +528,11 @@ defmodule Mongo.TopologyDescription do
   end
 
   defp check_if_has_primary(topology) do
-    if Enum.any?(topology.servers, fn
-      {_, server_description} ->
+    any_primary? = Enum.any?(topology.servers, fn {_, server_description} ->
         server_description.type == :rs_primary
-    end) do
+    end)
+
+    if any_primary? do
       {[], %{topology | type: :replica_set_with_primary}}
     else
       {[], %{topology | type: :replica_set_no_primary}}
