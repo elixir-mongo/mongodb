@@ -29,6 +29,7 @@ defmodule Mongo.Protocol do
     # TODO: with/else in elixir 1.3
     result =
       with {:ok, s} <- tcp_connect(opts, s),
+           {:ok, s} <- maybe_ssl(opts, s),
            {:ok, s} <- wire_version(s),
            {:ok, s} <- Mongo.Auth.run(opts, s) do
         {mod, sock} = s.socket
@@ -39,7 +40,7 @@ defmodule Mongo.Protocol do
 
     case result do
       {:ok, s} ->
-        {:ok, (if s.ssl, do: ssl(s, opts), else: s)}
+        {:ok, s}
       {:disconnect, {:tcp_recv, reason}, _s} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
       {:disconnect, {:tcp_send, reason}, _s} ->
@@ -49,9 +50,16 @@ defmodule Mongo.Protocol do
     end
   end
 
-  defp ssl(%{socket: sock} = s, opts) do
-    case :ssl.connect(sock, opts[:ssl_opts] || []) do
-      {:ok, ssl_sock} -> %{s | socket: {:ssl, ssl_sock}}
+  defp maybe_ssl(opts, s) do
+    if s.ssl do
+      ssl(s, opts)
+    else
+      {:ok, s}
+    end
+  end
+  defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
+    case :ssl.connect(sock, opts[:ssl_opts] || [], 5000) do
+      {:ok, ssl_sock} -> {:ok, %{s | socket: {:ssl, ssl_sock}}}
     end
   end
 
