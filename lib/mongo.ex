@@ -405,12 +405,7 @@ defmodule Mongo do
          do: direct_command(conn, query, opts)
   end
 
-  @doc """
-  Issue a database command directly on a connection. If the command has
-  parameters use a keyword list for the document because the "command key" has
-  to be the first in the document. You should use `Mongo.command/3` for most
-  cases.
-  """
+  @doc false
   @spec direct_command(pid, BSON.document, Keyword.t) :: result(BSON.document)
   def direct_command(conn, query, opts \\ []) do
     params = [query]
@@ -690,16 +685,15 @@ defmodule Mongo do
 
   defp select_servers(topology_pid, type, opts) do
     topology = Topology.topology(topology_pid)
-    start_time = System.system_time
+    start_time = System.monotonic_time
     _select_servers(topology, type, opts, start_time)
   end
 
   @sel_timeout 30000
   defp _select_servers(topology, type, opts, start_time) do
-    with {:ok, servers, slave_ok, mongos?} <-
-           TopologyDescription.select_servers(topology, type, opts) do
+    with {:ok, servers, slave_ok, mongos?} <- TopologyDescription.select_servers(topology, type, opts) do
       if Enum.empty? servers do
-        delta_ms = System.convert_time_unit(System.system_time - start_time,
+        delta_ms = System.convert_time_unit(System.monotonic_time - start_time,
                                             :native, :milliseconds)
         if delta_ms >= @sel_timeout do
           {:ok, [], slave_ok, mongos?}

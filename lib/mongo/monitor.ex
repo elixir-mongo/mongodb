@@ -28,8 +28,7 @@ defmodule Mongo.Monitor do
   ## GenServer callbacks
 
   @doc false
-  def init([server_description, topology_pid, heartbeat_frequency_ms,
-            connection_opts]) do
+  def init([server_description, topology_pid, heartbeat_frequency_ms, connection_opts]) do
     opts = # monitors don't authenticate and use the "admin" database
       connection_opts
       |> Keyword.put(:database, "admin")
@@ -59,27 +58,22 @@ defmodule Mongo.Monitor do
   ## Private functions
 
   defp check(state) do
-    diff = :os.system_time(:milli_seconds) -
-           state.server_description.last_update_time
+    diff = :os.system_time(:milli_seconds) - state.server_description.last_update_time
     if diff < @min_heartbeat_frequency_ms do
       {:noreply, state, diff}
     else
-      server_description =
-        is_master(state.connection_pid, state.server_description)
+      server_description = is_master(state.connection_pid, state.server_description)
 
-      :ok = GenServer.call(state.topology_pid,
-                           {:server_description, server_description}, 30_000)
-      {:noreply, %{state | server_description: server_description},
-       state.heartbeat_frequency_ms}
+      :ok = GenServer.call(state.topology_pid, {:server_description, server_description}, 30_000)
+      {:noreply, %{state | server_description: server_description}, state.heartbeat_frequency_ms}
     end
   end
 
   defp call_is_master(conn_pid) do
-    start_time = System.system_time
+    start_time = System.monotonic_time
     result = Mongo.direct_command(conn_pid, %{isMaster: 1})
-    finish_time = System.system_time
-    rtt = System.convert_time_unit(finish_time - start_time, :native,
-                                   :milli_seconds)
+    finish_time = System.monotonic_time
+    rtt = System.convert_time_unit(finish_time - start_time, :native, :milli_seconds)
     finish_time = System.convert_time_unit(finish_time, :native, :milli_seconds)
 
     {result, finish_time, rtt}
@@ -95,8 +89,7 @@ defmodule Mongo.Monitor do
     case result do
       {:ok, is_master_reply} ->
         notify_success(rtt, is_master_reply, conn_pid)
-        ServerDescription.from_is_master(last_server_description, rtt,
-                                         finish_time, is_master_reply)
+        ServerDescription.from_is_master(last_server_description, rtt, finish_time, is_master_reply)
 
       {:disconnect, error, _} ->
         if last_server_description.type in [:unknown, :possible_primary] do
@@ -107,12 +100,10 @@ defmodule Mongo.Monitor do
           case result do
             {:ok, is_master_reply} ->
               notify_success(rtt, is_master_reply, conn_pid)
-              ServerDescription.from_is_master(last_server_description, rtt,
-                                               finish_time, is_master_reply)
+              ServerDescription.from_is_master(last_server_description, rtt, finish_time, is_master_reply)
             {:disconnect, error, _} ->
               notify_error(rtt, error, conn_pid)
-              ServerDescription.from_is_master_error(last_server_description,
-                                                     error)
+              ServerDescription.from_is_master_error(last_server_description, error)
           end
         end
     end

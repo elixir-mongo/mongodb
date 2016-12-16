@@ -15,22 +15,22 @@ defmodule Mongo.Topology do
 
   ## Options
 
-  * `:database` - **REQUIRED:** database for authentication and default
-  * `:connect_timeout_ms` - maximum timeout for connect
-  * `:seeds` - a seed list of hosts (without the "mongodb://" part) within the
-    cluster, defaults to `["localhost:27017"]`
-  * `:type` - a hint of the topology type, defaults to `:unknown`, see
-    `t:initial_type/0` for valid values
-  * `:set_name` - the expected replica set name, defaults to `nil`
-  * `:heartbeat_frequency_ms` - the interval between server checks, defaults
-    to 10 seconds
+    * `:database` - **REQUIRED:** database for authentication and default
+    * `:connect_timeout_ms` - maximum timeout for connect
+    * `:seeds` - a seed list of hosts (without the "mongodb://" part) within the
+      cluster, defaults to `["localhost:27017"]`
+    * `:type` - a hint of the topology type, defaults to `:unknown`, see
+      `t:initial_type/0` for valid values
+    * `:set_name` - the expected replica set name, defaults to `nil`
+    * `:heartbeat_frequency_ms` - the interval between server checks, defaults
+      to 10 seconds
 
   ## Error Reasons
 
-  * `:single_topology_multiple_hosts` - a topology of type :single was set but
-    multiple hosts were given
-  * `:set_name_bad_topology` - a `:set_name` was given but the topology was set
-    to something other than `:replica_set_no_primary` or `:single`
+    * `:single_topology_multiple_hosts` - a topology of type :single was set but
+      multiple hosts were given
+    * `:set_name_bad_topology` - a `:set_name` was given but the topology was set
+      to something other than `:replica_set_no_primary` or `:single`
   """
   @spec start_link(Keyword.t, Keyword.t) ::
           {:ok, pid} |
@@ -74,14 +74,15 @@ defmodule Mongo.Topology do
       set_name != nil and not type in [:replica_set_no_primary, :single] ->
         {:stop, :set_name_bad_topology}
       true ->
+        servers =
+          for addr <- seeds, into: %{} do
+            {addr, ServerDescription.defaults(%{address: addr, type: :unknown})}
+          end
         state = %{
           topology: TopologyDescription.defaults(%{
             type: type,
             set_name: set_name,
-            servers: seeds |> Enum.map(fn addr ->
-              {addr,
-               ServerDescription.defaults(%{address: addr, type: :unknown})}
-            end) |> Enum.into(%{}),
+            servers: servers,
             local_threshold_ms: local_threshold_ms
           }),
           seeds: seeds,
@@ -113,9 +114,9 @@ defmodule Mongo.Topology do
     new_state = handle_server_description(state, server_description)
     if state.topology != new_state.topology do
       :ok = GenEvent.notify(Mongo.Events, %TopologyDescriptionChangedEvent{
-                topology_pid: self,
+        topology_pid: self,
         previous_description: state.topology,
-             new_description: new_state.topology
+        new_description: new_state.topology
       })
       {:reply, :ok, new_state}
     else
@@ -124,12 +125,12 @@ defmodule Mongo.Topology do
   end
 
   def handle_cast({:force_check, server_address}, state) do
-    case Map.get(state.monitors, server_address) do
-      monitor_pid when is_pid(monitor_pid) ->
+    case Map.fetch(state.monitors, server_address) do
+      {:ok, monitor_pid} ->
         :ok = Monitor.force_check(monitor_pid)
         {:noreply, state}
 
-      _ ->
+      :error ->
         # ignore force checks on monitors that don't exist
         {:noreply, state}
     end

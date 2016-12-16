@@ -1,4 +1,7 @@
 defmodule Mongo.ReadPreference do
+  @moduledoc ~S"""
+  Determines which servers are considered suitable for read operations
+  """
   @type t :: %{
     mode: :primary | :secondary | :primary_preferred | :secondary_preferred |
           :nearest,

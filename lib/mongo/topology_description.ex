@@ -63,32 +63,31 @@ defmodule Mongo.TopologyDescription do
         :single ->
           server =
             topology.servers |> Map.values |> Enum.at(0, %{type: :unknown})
-          {topology.servers,
-           type != :write and server.type != :mongos, server.type == :mongos}
+          {topology.servers, type != :write and server.type != :mongos, server.type == :mongos}
         :sharded ->
-          {topology.servers |> Enum.filter(fn {_, server} ->
-             server.type == :mongos
-           end), false, true}
+          mongos_servers =
+            topology.servers
+            |> Enum.filter(fn {_, server} -> server.type == :mongos end)
+          {mongos_servers, false, true}
         _ ->
           case type do
             :read ->
-              {select_replica_set_server(topology, read_preference.mode,
-                                         read_preference), true, false}
+              {select_replica_set_server(topology, read_preference.mode, read_preference), true, false}
 
             :write ->
               if topology.type == :replica_set_with_primary do
-                {select_replica_set_server(topology, :primary,
-                                           ReadPreference.defaults),
-                 false, false}
+                {select_replica_set_server(topology, :primary, ReadPreference.defaults), false, false}
               else
                 {[], false, false}
               end
           end
       end
 
-      {:ok, Enum.map(servers, fn
-         {server, _} -> server
-       end), slave_ok, mongos?}
+      servers =
+        for {server, _} <- servers do
+          server
+        end
+      {:ok, servers, slave_ok, mongos?}
     end
   end
 
@@ -96,7 +95,7 @@ defmodule Mongo.TopologyDescription do
 
   defp select_replica_set_server(topology, mode, read_preference)
       when mode in [:primary, :primary_preferred] do
-    primary = topology.servers |> Enum.filter(fn {_, server} ->
+    primary = Enum.filter(topology.servers, fn {_, server} ->
       server.type == :rs_primary
     end)
 
