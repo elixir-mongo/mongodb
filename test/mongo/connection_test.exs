@@ -35,6 +35,7 @@ defmodule Mongo.ConnectionTest do
            Mongo.raw_find(pid, "$cmd", %{ping: 1}, %{}, [batch_size: 1])
   end
 
+  @tag :ssl
   test "ssl" do
     pid = connect_ssl()
     assert {:ok, %{docs: [%{"ok" => 1.0}]}} =
