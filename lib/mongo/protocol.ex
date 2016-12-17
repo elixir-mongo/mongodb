@@ -59,7 +59,10 @@ defmodule Mongo.Protocol do
   end
   defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
     case :ssl.connect(sock, opts[:ssl_opts] || [], 5000) do
-      {:ok, ssl_sock} -> {:ok, %{s | socket: {:ssl, ssl_sock}}}
+      {:ok, ssl_sock} ->
+        {:ok, %{s | socket: {:ssl, ssl_sock}}}
+      {:error, reason} ->
+        {:error, Mongo.Error.exception(tag: :ssl, action: "connect", reason: reason)}
     end
   end
 
