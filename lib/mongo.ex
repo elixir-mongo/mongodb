@@ -93,6 +93,8 @@ defmodule Mongo do
     * `:after_connect` - A function to run on connect using `run/3`, either
       a 1-arity fun, `{module, function, args}` with `DBConnection.t` prepended
       to `args` or `nil` (default: `nil`)
+    * `:ssl` - Set to `true` if ssl should be used (default: `false`)
+    * `:ssl_opts` - A list of ssl options, see the ssl docs
   """
   @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | term}
   def start_link(opts) do
