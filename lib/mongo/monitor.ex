@@ -35,9 +35,12 @@ defmodule Mongo.Monitor do
       |> Keyword.put(:skip_auth, true)
     {:ok, pid} = DBConnection.start_link(Mongo.Protocol, opts)
     :ok = GenServer.cast(self, :check)
-    {:ok, %{connection_pid: pid, topology_pid: topology_pid,
-            server_description: server_description,
-            heartbeat_frequency_ms: heartbeat_frequency_ms}}
+    {:ok, %{
+      connection_pid: pid,
+      topology_pid: topology_pid,
+      server_description: server_description,
+      heartbeat_frequency_ms: heartbeat_frequency_ms
+    }}
   end
 
   @doc false
@@ -81,7 +84,7 @@ defmodule Mongo.Monitor do
 
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#network-error-when-calling-ismaster
   defp is_master(conn_pid, last_server_description) do
-    :ok = GenEvent.notify(Mongo.Events, %ServerHeartbeatStartedEvent{
+    :ok = Mongo.Events.notify(%ServerHeartbeatStartedEvent{
       connection_pid: conn_pid
     })
 
@@ -110,7 +113,7 @@ defmodule Mongo.Monitor do
   end
 
   defp notify_error(rtt, error, conn_pid) do
-    :ok = GenEvent.notify(Mongo.Events, %ServerHeartbeatFailedEvent{
+    :ok = Mongo.Events.notify(%ServerHeartbeatFailedEvent{
             duration: rtt,
              failure: error,
       connection_pid: conn_pid
@@ -118,7 +121,7 @@ defmodule Mongo.Monitor do
   end
 
   defp notify_success(rtt, reply, conn_pid) do
-    :ok = GenEvent.notify(Mongo.Events, %ServerHeartbeatSucceededEvent{
+    :ok = Mongo.Events.notify(%ServerHeartbeatSucceededEvent{
       duration: rtt,
       reply: reply,
       connection_pid: conn_pid

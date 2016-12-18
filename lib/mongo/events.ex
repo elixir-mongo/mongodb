@@ -1,3 +1,10 @@
+defmodule Mongo.Events do
+  @doc false
+  def notify(event) do
+    GenEvent.notify(__MODULE__, event)
+  end
+end
+
 defmodule Mongo.Events.ServerDescriptionChangedEvent do
   @moduledoc "Published when server description changes, but does NOT include changes to the RTT."
   defstruct [:address, :topology_pid, :previous_description, :new_description]

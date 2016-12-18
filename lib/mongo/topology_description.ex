@@ -27,14 +27,14 @@ defmodule Mongo.TopologyDescription do
   def defaults(map \\ %{}) do
     default_servers = %{"localhost:27017" => ServerDescription.defaults(%{})}
     Map.merge(%{
-                     type: :unknown,
-                 set_name: nil,
-          max_set_version: nil,
-          max_election_id: nil,
-                  servers: default_servers,
-               compatible: true,
+      type: :unknown,
+      set_name: nil,
+      max_set_version: nil,
+      max_election_id: nil,
+      servers: default_servers,
+      compatible: true,
       compatibility_error: nil,
-       local_threshold_ms: 15
+      local_threshold_ms: 15
     }, map)
   end
 
@@ -109,16 +109,19 @@ defmodule Mongo.TopologyDescription do
   defp select_replica_set_server(topology, mode, read_preference)
          when mode in [:secondary, :secondary_preferred, :nearest] do
     initial = if mode in [:secondary, :secondary_preferred] do
-      topology.servers |> Enum.filter(fn {_, server} ->
+      topology.servers
+      |> Enum.filter(fn {_, server} ->
         server.type == :rs_secondary
-      end) |> Enum.into(%{})
+      end)
+      |> Enum.into(%{})
     else
       topology.servers
     end
 
-    initial |> filter_out_stale(topology, read_preference.max_staleness_ms)
-            |> select_tag_sets(read_preference.tag_sets)
-            |> filter_latency_window(topology.local_threshold_ms)
+    initial
+    |> filter_out_stale(topology, read_preference.max_staleness_ms)
+    |> select_tag_sets(read_preference.tag_sets)
+    |> filter_latency_window(topology.local_threshold_ms)
   end
 
   defp filter_out_stale(servers, topology, max_staleness_ms) do
@@ -137,31 +140,34 @@ defmodule Mongo.TopologyDescription do
             end)
           server
         :replica_set_with_primary ->
-          Enum.filter(servers, fn {_, server} ->
+          servers
+          |> Enum.filter(fn {_, server} ->
             server.type == :rs_primary
-          end) |> Enum.at(0)
+          end)
+          |> Enum.at(0)
       end
 
-      servers |> Enum.filter(fn {_, server} ->
+      servers
+      |> Enum.filter(fn {_, server} ->
         case server.type do
           :rs_secondary ->
             case topology.type do
               :replica_set_no_primary ->
                 staleness =
-                  extra.last_write_date +
-                  (server.last_update_time - extra.last_update_time) -
+                  extra.last_write_date + (server.last_update_time - extra.last_update_time) -
                   server.last_write_date + topology.heartbeat_frequency_ms
                 staleness <= max_staleness_ms
 
               :replica_set_with_primary ->
-                staleness = extra.last_write_date - server.last_write_date +
-                  topology.heartbeat_frequency_ms
+                staleness =
+                  extra.last_write_date - server.last_write_date + topology.heartbeat_frequency_ms
                 staleness <= max_staleness_ms
             end
           _ ->
             true
         end
-      end) |> Enum.into(%{})
+      end)
+      |> Enum.into(%{})
     end
   end
 
@@ -169,28 +175,21 @@ defmodule Mongo.TopologyDescription do
     if Enum.empty?(tag_sets) do
       servers
     else
-      result = Enum.reduce(tag_sets, {:continue, servers}, fn
-        (tag_set, {:continue, servers}) ->
-          new_servers = servers |> Enum.filter(fn {_, server} ->
+      tag_sets
+      |> Enum.reduce_while(servers, fn (tag_set, servers) ->
+        new_servers =
+          Enum.filter(servers, fn {_, server} ->
             tag_set_ms = MapSet.new(tag_set)
             server_tag_set_ms = MapSet.new(server.tag_set)
             MapSet.subset?(tag_set_ms, server_tag_set_ms)
           end)
-          if Enum.empty?(new_servers) do
-            {:continue, servers}
-          else
-            {:done, new_servers}
-          end
-        (_tag_set, {:done, _} = result) ->
-          result
+        if Enum.empty?(new_servers) do
+          {:cont, servers}
+        else
+          {:halt, new_servers}
+        end
       end)
-
-      case result do
-        {:continue, _} ->
-          %{}
-        {:done, servers} ->
-          servers |> Enum.into(%{})
-      end
+      |> Enum.into(%{})
     end
   end
 
@@ -198,9 +197,12 @@ defmodule Mongo.TopologyDescription do
     if Enum.empty?(servers) do
       servers
     else
-      min_server = Enum.min_by(servers, fn {_, server} ->
-        server.round_trip_time
-      end) |> elem(1)
+      min_server =
+        servers
+        |> Enum.min_by(fn {_, server} ->
+          server.round_trip_time
+        end)
+        |> elem(1)
       latency_window = min_server.round_trip_time + local_threshold_ms
 
       Enum.filter(servers, fn {_, server} ->
@@ -220,15 +222,16 @@ defmodule Mongo.TopologyDescription do
     if server_supported? do
       check_for_single_topology(topology, server_description, num_seeds)
     else
-      {[],
-       topology
-       |> Map.put(:compatible, false)
-       |> Map.put(:compatibility_error,
-           "Server at #{server_description.address} uses wire protocol " <>
-           "versions #{server_description.min_wire_version} through " <>
-           "#{server_description.max_wire_version}, but client only " <>
-           "supports #{Enum.min(@wire_protocol_range)} through " <>
-           "#{Enum.max(@wire_protocol_range)}.")}
+      topology =
+        topology
+        |> Map.put(:compatible, false)
+        |> Map.put(:compatibility_error,
+            "Server at #{server_description.address} uses wire protocol " <>
+            "versions #{server_description.min_wire_version} through " <>
+            "#{server_description.max_wire_version}, but client only " <>
+            "supports #{Enum.min(@wire_protocol_range)} through " <>
+            "#{Enum.max(@wire_protocol_range)}.")
+      {[], topology}
     end
   end
 
@@ -239,8 +242,7 @@ defmodule Mongo.TopologyDescription do
         previous_description =
           topology.servers |> Map.values |> hd
         {[{previous_description, server_description}],
-         put_in(topology.servers[server_description.address],
-                server_description)}
+         put_in(topology.servers[server_description.address], server_description)}
       _ ->
         check_server_in_topology(topology, server_description, num_seeds)
     end
@@ -293,10 +295,10 @@ defmodule Mongo.TopologyDescription do
         {[], topology}
       type when type in [:rs_ghost, :standalone, :rs_primary, :rs_secondary,
                          :rs_arbiter, :rs_other] ->
- 	{_, new_topology} = pop_in(topology.servers[server_description.address])
-        {[], new_topology}
-      _ ->
-        {[], topology}
+ 	      {_, new_topology} = pop_in(topology.servers[server_description.address])
+          {[], new_topology}
+        _ ->
+          {[], topology}
     end
   end
 
@@ -306,7 +308,7 @@ defmodule Mongo.TopologyDescription do
       type when type in [:unknown, :rs_ghost] ->
         {[], topology}
       type when type in [:standalone, :mongos] ->
- 	{_, new_topology} = pop_in(topology.servers[server_description.address])
+ 	      {_, new_topology} = pop_in(topology.servers[server_description.address])
         {[], new_topology}
       :rs_primary ->
         update_rs_from_primary(topology, server_description)
@@ -325,7 +327,7 @@ defmodule Mongo.TopologyDescription do
       :rs_ghost ->
         topology |> check_if_has_primary
       type when type in [:standalone, :mongos] ->
-	{_, new_topology} = pop_in(topology.servers[server_description.address])
+	      {_, new_topology} = pop_in(topology.servers[server_description.address])
         check_if_has_primary(new_topology)
       :rs_primary ->
         update_rs_from_primary(topology, server_description)
@@ -354,7 +356,7 @@ defmodule Mongo.TopologyDescription do
       if num_seeds == 1 do
         {[], Map.put(topology, :type, :single)}
       else
- 	{_, new_topology} = pop_in(topology.servers[server_description.address])
+ 	      {_, new_topology} = pop_in(topology.servers[server_description.address])
         {[], new_topology}
       end
     end
@@ -365,11 +367,12 @@ defmodule Mongo.TopologyDescription do
       {[], topology}
     else
       if invalid_set_name?(topology, server_description) do
- 	{_, new_topology} = pop_in(topology.servers[server_description.address])
+ 	      {_, new_topology} = pop_in(topology.servers[server_description.address])
         {[], new_topology}
       else
         {actions, topology} =
-          Map.put(topology, :set_name, server_description.set_name)
+          topology
+          |> Map.put(:set_name, server_description.set_name)
           |> add_new_servers(server_description)
 
 
@@ -389,17 +392,17 @@ defmodule Mongo.TopologyDescription do
   end
 
   defp add_new_servers(topology, server_description) do
-    all_hosts = server_description.hosts ++ server_description.passives ++
-                server_description.arbiters
-    {[], Enum.reduce(all_hosts, topology, fn (host, topology) ->
+    all_hosts =
+      server_description.hosts ++ server_description.passives ++ server_description.arbiters
+    topology = Enum.reduce(all_hosts, topology, fn (host, topology) ->
       if not host in Map.keys(topology.servers) do
         # this is kinda like an "upsert"
-        put_in(topology.servers[host],
-               ServerDescription.defaults(%{address: host}))
+        put_in(topology.servers[host], ServerDescription.defaults(%{address: host}))
       else
         topology
       end
-    end)}
+    end)
+    {[], topology}
   end
 
   defp update_rs_with_primary_from_member(topology, server_description) do
@@ -407,7 +410,7 @@ defmodule Mongo.TopologyDescription do
       {[], topology}
     else
       topology = if invalid_set_name?(topology, server_description) do
- 	{_, new_topology} = pop_in(topology.servers[server_description.address])
+ 	      {_, new_topology} = pop_in(topology.servers[server_description.address])
         new_topology
       else
         topology
@@ -487,8 +490,7 @@ defmodule Mongo.TopologyDescription do
   defp handle_set_version(topology, server_description) do
     if server_description.set_version != nil and
        (topology.max_set_version == nil or
-        (server_description.set_version >
-         topology.max_set_version)) do
+        (server_description.set_version > topology.max_set_version)) do
       Map.put(topology, :max_set_version, server_description.set_version)
     else
       topology
@@ -501,8 +503,7 @@ defmodule Mongo.TopologyDescription do
       |> Enum.reduce({[], %{}}, fn ({address, %{type: type} = server}, {acts, servers}) ->
         if address != server_description.address and type == :rs_primary do
           {[{:force_check, address} | acts],
-           Map.put(servers, address,
-                   ServerDescription.defaults(%{address: address}))}
+           Map.put(servers, address, ServerDescription.defaults(%{address: address}))}
         else
           {acts, Map.put(servers, address, server)}
         end
@@ -511,13 +512,13 @@ defmodule Mongo.TopologyDescription do
   end
 
   def remove_dead_nodes({actions, topology}, server_description) do
-    all_hosts = server_description.hosts ++ server_description.passives ++
-                server_description.arbiters
+    all_hosts =
+      server_description.hosts ++ server_description.passives ++ server_description.arbiters
 
-    topology = update_in(topology.servers, &Enum.into(Enum.filter(&1, fn
-      {address, _} ->
+    topology =
+      update_in(topology.servers, &Enum.into(Enum.filter(&1, fn {address, _} ->
         address in all_hosts
-     end), %{}))
+      end), %{}))
 
     {actions, topology}
   end
@@ -528,9 +529,10 @@ defmodule Mongo.TopologyDescription do
   end
 
   defp check_if_has_primary(topology) do
-    any_primary? = Enum.any?(topology.servers, fn {_, server_description} ->
+    any_primary? =
+      Enum.any?(topology.servers, fn {_, server_description} ->
         server_description.type == :rs_primary
-    end)
+      end)
 
     if any_primary? do
       {[], %{topology | type: :replica_set_with_primary}}
