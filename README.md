@@ -4,7 +4,7 @@
 
 ## Features
 
-  * Supports MongoDB versions 2.4, 2.6, 3.0, 3.2
+  * Supports MongoDB versions 2.4, 2.6, 3.0, 3.2, 3.4
   * Connection pooling (through db_connection)
   * Streaming cursors
   * Performant ObjectID generation
