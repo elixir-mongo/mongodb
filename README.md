@@ -91,7 +91,7 @@ def start(_type, _args) do
   import Supervisor.Spec
 
   children = [
-    worker(Mongo, [name: :mongo, database: "test", pool: DBConnection.Poolboy])
+    worker(Mongo, [[name: :mongo, database: "test", pool: DBConnection.Poolboy]])
   ]
 
   opts = [strategy: :one_for_one, name: MyApp.Supervisor]
