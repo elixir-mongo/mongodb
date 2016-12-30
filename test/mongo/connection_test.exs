@@ -23,10 +23,23 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
+  defp connect_ssl do
+    assert {:ok, pid} =
+      Mongo.start_link(hostname: "localhost", database: "mongodb_test", ssl: true)
+    pid
+  end
+
   test "connect and ping" do
     pid = connect()
     assert {:ok, %{docs: [%{"ok" => 1.0}]}} =
            Mongo.raw_find(pid, "$cmd", %{ping: 1}, %{}, [batch_size: 1])
+  end
+
+  @tag :ssl
+  test "ssl" do
+    pid = connect_ssl()
+    assert {:ok, %{docs: [%{"ok" => 1.0}]}} =
+      Mongo.raw_find(pid, "$cmd", %{ping: 1}, %{}, [batch_size: 1])
   end
 
   test "auth" do

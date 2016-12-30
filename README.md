@@ -4,7 +4,7 @@
 
 ## Features
 
-  * Supports MongoDB versions 2.4, 2.6, 3.0, 3.2
+  * Supports MongoDB versions 2.4, 2.6, 3.0, 3.2, 3.4
   * Connection pooling (through db_connection)
   * Streaming cursors
   * Performant ObjectID generation
@@ -21,7 +21,6 @@
 
 ## Tentative Roadmap
 
-  * SSL
   * Use meta-driver test suite
   * Server selection / Read preference
     - https://www.mongodb.com/blog/post/server-selection-next-generation-mongodb-drivers
@@ -30,7 +29,7 @@
 ## Data representation
 
     BSON                Elixir
-    ----------        	------
+    ----------          ------
     double              0.0
     string              "Elixir"
     document            [{"key", "value"}] | %{"key" => "value"} (1)
@@ -104,6 +103,26 @@ Then you can use the pool as following:
 ```elixir
 Mongo.find(:mongo, "collection", %{}, limit: 20, pool: DBConnection.Poolboy)
 ```
+
+## Contributing
+
+The SSL test suite is enabled by default. You have two options. Either exclude
+the SSL tests or enable SSL on your Mongo server.
+
+### Disable the SSL tests
+
+`mix test --exclude ssl`
+
+### Enable SSL on your Mongo server
+
+```bash
+$ openssl req -newkey rsa:2048 -new -x509 -days 365 -nodes -out mongodb-cert.crt -keyout mongodb-cert.key
+$ cat mongodb-cert.key mongodb-cert.crt > mongodb.pem
+$ mongod --sslMode allowSSL --sslPEMKeyFile /path/to/mongodb.pem
+```
+
+* For `--sslMode` you can use one of `allowSSL` or `preferSSL`
+* You can enable any other options you want when starting `mongod`
 
 ## License
 

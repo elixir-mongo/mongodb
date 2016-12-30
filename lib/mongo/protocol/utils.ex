@@ -28,8 +28,8 @@ defmodule Mongo.Protocol.Utils do
     end
   end
 
-  def send(id, op, s) do
-    case :gen_tcp.send(s.socket, encode(id, op)) do
+  def send(id, op, %{socket: {mod, sock}} = s) do
+    case mod.send(sock, encode(id, op)) do
       :ok              -> :ok
       {:error, reason} -> send_error(reason, s)
     end
@@ -40,14 +40,14 @@ defmodule Mongo.Protocol.Utils do
   # command in the same call to :gen_tcp.send/2 so we hide the workaround
   # for mongosniff behind a flag
   if Mix.env in [:dev, :test] && System.get_env("MONGO_NO_BATCH_SEND") do
-    def send(ops, s) do
+    def send(ops, %{socket: {mod, sock}} = s) do
       # Do a separate :gen_tcp.send/2 for each message because mongosniff
       # cannot handle more than one message per packet. TCP is a stream
       # protocol, but no.
       # https://jira.mongodb.org/browse/TOOLS-821
       Enum.find_value(List.wrap(ops), fn {id, op} ->
         data = encode(id, op)
-        case :gen_tcp.send(s.socket, data) do
+        case mod.send(sock, data) do
           :ok              -> nil
           {:error, reason} -> send_error(reason, s)
         end
@@ -55,13 +55,13 @@ defmodule Mongo.Protocol.Utils do
       || :ok
     end
   else
-    def send(ops, s) do
+    def send(ops, %{socket: {mod, sock}} = s) do
       data =
         Enum.reduce(List.wrap(ops), "", fn {id, op}, acc ->
           [acc|encode(id, op)]
         end)
 
-      case :gen_tcp.send(s.socket, data) do
+      case mod.send(sock, data) do
         :ok              -> :ok
         {:error, reason} -> send_error(reason, s)
       end
@@ -76,23 +76,23 @@ defmodule Mongo.Protocol.Utils do
   #       based on message size in header.
   #       :gen.tcp.recv(socket, min(size, max_packet))
   #       where max_packet = 64mb
-  defp recv(nil, data, s) do
+  defp recv(nil, data, %{socket: {mod, sock}} = s) do
     case decode_header(data) do
       {:ok, header, rest} ->
         recv(header, rest, s)
       :error ->
-        case :gen_tcp.recv(s.socket, 0, s.timeout) do
+        case mod.recv(sock, 0, s.timeout) do
           {:ok, tail}      -> recv(nil, [data|tail], s)
           {:error, reason} -> recv_error(reason, s)
         end
     end
   end
-  defp recv(header, data, s) do
+  defp recv(header, data, %{socket: {mod, sock}} = s) do
     case decode_message(header, data) do
       {:ok, id, reply, ""} ->
         {:ok, id, reply}
       :error ->
-        case :gen_tcp.recv(s.socket, 0, s.timeout) do
+        case mod.recv(sock, 0, s.timeout) do
           {:ok, tail}      -> recv(header, [data|tail], s)
           {:error, reason} -> recv_error(reason, s)
         end
