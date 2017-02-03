@@ -109,8 +109,11 @@ defmodule Mongo.Protocol.Utils do
     {:disconnect, error, s}
   end
 
-  def namespace(coll, s),
+  def namespace(coll, s, database \\ nil)
+  def namespace(coll, s, database) when is_nil(database),
     do: [s.database, ?. | coll]
+  def namespace(coll, _, database),
+    do: [database, ?. | coll]
 
   def digest(nonce, username, password) do
     :crypto.hash(:md5, [nonce, username, digest_password(username, password)])

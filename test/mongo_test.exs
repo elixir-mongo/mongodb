@@ -461,4 +461,13 @@ defmodule Mongo.Test do
     assert %Mongo.Cursor{coll: "coll", opts: [no_cursor_timeout: true, skip: 10]} =
            Mongo.find(c.pid, "coll", %{}, skip: 10, cursor_timeout: false)
   end
+
+  test "access multiple databases", c do
+    coll = unique_name()
+
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 42}, database: "mongodb_test2")
+
+    assert {:ok, 1} = Mongo.count(c.pid, coll, [], database: "mongodb_test2")
+    assert {:ok, 0} = Mongo.count(c.pid, coll, [])
+ end
 end

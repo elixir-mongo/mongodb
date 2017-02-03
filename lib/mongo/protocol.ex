@@ -162,7 +162,7 @@ defmodule Mongo.Protocol do
     num_skip   = Keyword.get(opts, :skip, 0)
     num_return = Keyword.get(opts, :batch_size, 0)
 
-    op_query(coll: Utils.namespace(coll, s), query: query, select: select,
+    op_query(coll: Utils.namespace(coll, s, opts[:database]), query: query, select: select,
              num_skip: num_skip, num_return: num_return, flags: flags(flags))
     |> message_reply(s)
   end
@@ -170,7 +170,7 @@ defmodule Mongo.Protocol do
   defp handle_execute(:get_more, {coll, cursor_id}, [], opts, s) do
     num_return = Keyword.get(opts, :batch_size, 0)
 
-    op_get_more(coll: Utils.namespace(coll, s), cursor_id: cursor_id,
+    op_get_more(coll: Utils.namespace(coll, s, opts[:database]), cursor_id: cursor_id,
                 num_return: num_return)
     |> message_reply(s)
   end
@@ -183,52 +183,52 @@ defmodule Mongo.Protocol do
 
   defp handle_execute(:insert_one, coll, [doc], opts, s) do
     flags  = flags(Keyword.take(opts, @insert_flags))
-    op     = op_insert(coll: Utils.namespace(coll, s), docs: [doc], flags: flags)
+    op     = op_insert(coll: Utils.namespace(coll, s, opts[:database]), docs: [doc], flags: flags)
     message_gle(-11, op, opts, s)
   end
 
   defp handle_execute(:insert_many, coll, docs, opts, s) do
     flags  = flags(Keyword.take(opts, @insert_flags))
-    op     = op_insert(coll: Utils.namespace(coll, s), docs: docs, flags: flags)
+    op     = op_insert(coll: Utils.namespace(coll, s, opts[:database]), docs: docs, flags: flags)
     message_gle(-12, op, opts, s)
   end
 
   defp handle_execute(:delete_one, coll, [query], opts, s) do
     flags = [:single]
-    op    = op_delete(coll: Utils.namespace(coll, s), query: query, flags: flags)
+    op    = op_delete(coll: Utils.namespace(coll, s, opts[:database]), query: query, flags: flags)
     message_gle(-13, op, opts, s)
   end
 
   defp handle_execute(:delete_many, coll, [query], opts, s) do
     flags = []
-    op = op_delete(coll: Utils.namespace(coll, s), query: query, flags: flags)
+    op = op_delete(coll: Utils.namespace(coll, s, opts[:database]), query: query, flags: flags)
     message_gle(-14, op, opts, s)
   end
 
   defp handle_execute(:replace_one, coll, [query, replacement], opts, s) do
     flags  = flags(Keyword.take(opts, @update_flags))
-    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: replacement,
+    op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: replacement,
                        flags: flags)
     message_gle(-15, op, opts, s)
   end
 
   defp handle_execute(:update_one, coll, [query, update], opts, s) do
     flags  = flags(Keyword.take(opts, @update_flags))
-    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: update,
+    op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: update,
                        flags: flags)
     message_gle(-16, op, opts, s)
   end
 
   defp handle_execute(:update_many, coll, [query, update], opts, s) do
     flags  = [:multi | flags(Keyword.take(opts, @update_flags))]
-    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: update,
+    op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: update,
                        flags: flags)
     message_gle(-17, op, opts, s)
   end
 
   defp handle_execute(:command, nil, [query], opts, s) do
     flags = Keyword.take(opts, @find_one_flags)
-    op_query(coll: Utils.namespace("$cmd", s), query: query, select: "",
+    op_query(coll: Utils.namespace("$cmd", s, opts[:database]), query: query, select: "",
              num_skip: 0, num_return: 1, flags: flags(flags))
     |> message_reply(s)
   end
@@ -254,7 +254,7 @@ defmodule Mongo.Protocol do
       with :ok <- Utils.send(id, op, s), do: {:ok, :ok, s}
     else
       command = BSON.Encoder.document([{:getLastError, 1}|Map.to_list(write_concern)])
-      gle_op = op_query(coll: Utils.namespace("$cmd", s), query: command,
+      gle_op = op_query(coll: Utils.namespace("$cmd", s, opts[:database]), query: command,
                         select: "", num_skip: 0, num_return: -1, flags: [])
 
       ops = [{id, op}, {s.request_id, gle_op}]
