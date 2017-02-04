@@ -15,7 +15,7 @@ defmodule Mongo.Protocol.Utils do
   end
 
   def command(id, command, s) do
-    op = op_query(coll: namespace("$cmd", s), query: BSON.Encoder.document(command),
+    op = op_query(coll: namespace("$cmd", s, nil), query: BSON.Encoder.document(command),
                   select: "", num_skip: 0, num_return: 1, flags: [])
     case message(id, op, s) do
       {:ok, op_reply(docs: docs)} ->
@@ -109,8 +109,10 @@ defmodule Mongo.Protocol.Utils do
     {:disconnect, error, s}
   end
 
-  def namespace(coll, s),
+  def namespace(coll, s, nil),
     do: [s.database, ?. | coll]
+  def namespace(coll, _, database),
+    do: [database, ?. | coll]
 
   def digest(nonce, username, password) do
     :crypto.hash(:md5, [nonce, username, digest_password(username, password)])
