@@ -319,6 +319,58 @@ defmodule Mongo do
     bangify(distinct(conn, coll, field, filter, opts))
   end
 
+
+  @doc """
+  Selects documents in a collection and returns a cursor for the selected
+  documents.
+
+  If multiple documents satisfy the query, this method returns the first document
+  according to the natural order which reflects the order of documents on the disk.
+
+  ## Options
+
+    * `:comment` - Associates a comment to a query
+    * `:cursor_type` - Set to :tailable or :tailable_await to return a tailable
+      cursor
+    * `:max_time` - Specifies a time limit in milliseconds
+    * `:modifiers` - Meta-operators modifying the output or behavior of a query,
+      see http://docs.mongodb.org/manual/reference/operator/query-modifier/
+    * `:cursor_timeout` - Set to false if cursor should not close after 10
+      minutes (Default: true)
+    * `:projection` - Limits the fields to return for all matching document
+    * `:skip` - The number of documents to skip before returning (Default: 0)
+  """
+  @spec find_one(conn, collection, BSON.document, Keyword.t) :: cursor
+  def find_one(conn, coll, filter, opts \\ []) do
+    query = [
+      {"$comment", opts[:comment]},
+      {"$maxTimeMS", opts[:max_time]},
+      {"$orderby", opts[:sort]}
+    ] ++ Enum.into(opts[:modifiers] || [], [])
+
+    query = filter_nils(query)
+
+    query =
+      if query == [] do
+        filter
+      else
+        filter = normalize_doc(filter)
+        filter = if List.keymember?(filter, "$query", 0), do: filter, else: [{"$query", filter}]
+        filter ++ query
+      end
+
+    select = opts[:projection]
+    opts = if Keyword.get(opts, :cursor_timeout, true), do: opts, else: [{:no_cursor_timeout, true}|opts]
+    drop = ~w(comment max_time modifiers sort cursor_type projection cursor_timeout order_by)a
+    opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
+
+    # Return the first element
+    cursor = cursor(conn, coll, query, select, opts)
+    list = Enum.to_list(cursor)
+    List.first(list)
+  end
+
+
   @doc """
   Selects documents in a collection and returns a cursor for the selected
   documents.
