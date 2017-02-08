@@ -321,7 +321,7 @@ defmodule Mongo do
 
 
   @doc """
-  Selects document a single document in a collection and returns either the document
+  Selects document a single document in a collection and returns either a document
   or nil.
 
   If multiple documents satisfy the query, this method returns the first document
