@@ -321,8 +321,8 @@ defmodule Mongo do
 
 
   @doc """
-  Selects documents in a collection and returns a cursor for the selected
-  documents.
+  Selects document a single document in a collection and returns either the document
+  or nil.
 
   If multiple documents satisfy the query, this method returns the first document
   according to the natural order which reflects the order of documents on the disk.
@@ -361,10 +361,11 @@ defmodule Mongo do
 
     select = opts[:projection]
     opts = if Keyword.get(opts, :cursor_timeout, true), do: opts, else: [{:no_cursor_timeout, true}|opts]
-    drop = ~w(comment max_time modifiers sort cursor_type projection cursor_timeout order_by)a
-    opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
 
-    # Return the first element
+    drop = ~w(comment max_time modifiers sort cursor_type projection cursor_timeout order_by limit)a
+    opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
+    opts = [{:limit, 1} | opts]
+
     cursor = cursor(conn, coll, query, select, opts)
     list = Enum.to_list(cursor)
     List.first(list)
