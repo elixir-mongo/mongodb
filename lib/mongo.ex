@@ -344,8 +344,7 @@ defmodule Mongo do
   def find_one(conn, coll, filter, opts \\ []) do
     query = [
       {"$comment", opts[:comment]},
-      {"$maxTimeMS", opts[:max_time]},
-      {"$orderby", opts[:sort]}
+      {"$maxTimeMS", opts[:max_time]}
     ] ++ Enum.into(opts[:modifiers] || [], [])
 
     query = filter_nils(query)
