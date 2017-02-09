@@ -130,16 +130,13 @@ defmodule Mongo.Test do
     assert nil == Mongo.find_one(c.pid, coll, %{})
 
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 42, bar: 1})
-
     assert %{"foo" => 42} = Mongo.find_one(c.pid, coll, %{}, batch_size: 1)
+    assert nil == Mongo.find_one(c.pid, coll, %{foo: 43})
 
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 43})
 
-    # we should still get one
     assert %{"foo" => 42} = Mongo.find_one(c.pid, coll, %{}, batch_size: 1)
-
     assert %{"foo" => 43} != Mongo.find_one(c.pid, coll, %{}, batch_size: 1)
-
   end
 
   test "find_one_and_update", c do

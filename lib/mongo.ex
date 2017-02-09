@@ -365,9 +365,9 @@ defmodule Mongo do
     opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
     opts = [{:limit, 1} | opts]
 
-    cursor = cursor(conn, coll, query, select, opts)
-    list = Enum.to_list(cursor)
-    List.first(list)
+    cursor(conn, coll, query, select, opts)
+    |> Enum.to_list
+    |> List.first
   end
 
 
