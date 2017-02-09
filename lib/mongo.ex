@@ -344,6 +344,7 @@ defmodule Mongo do
     opts =
       opts
       |> Keyword.delete(:order_by)
+      |> Keyword.delete(:sort)
       |> Keyword.put(:limit, 1)
     find(conn, coll, filter, opts)
     |> Enum.to_list
