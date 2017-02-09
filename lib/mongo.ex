@@ -322,6 +322,38 @@ defmodule Mongo do
   end
 
   @doc """
+  Selects document a single document in a collection and returns either a document
+  or nil.
+
+  If multiple documents satisfy the query, this method returns the first document
+  according to the natural order which reflects the order of documents on the disk.
+
+  ## Options
+
+    * `:comment` - Associates a comment to a query
+    * `:cursor_type` - Set to :tailable or :tailable_await to return a tailable
+      cursor
+    * `:max_time` - Specifies a time limit in milliseconds
+    * `:modifiers` - Meta-operators modifying the output or behavior of a query,
+      see http://docs.mongodb.org/manual/reference/operator/query-modifier/
+    * `:cursor_timeout` - Set to false if cursor should not close after 10
+      minutes (Default: true)
+    * `:projection` - Limits the fields to return for all matching document
+    * `:skip` - The number of documents to skip before returning (Default: 0)
+  """
+  @spec find_one(conn, collection, BSON.document, Keyword.t) :: cursor
+  def find_one(conn, coll, filter, opts \\ []) do
+    opts =
+      opts
+      |> Keyword.delete(:order_by)
+      |> Keyword.delete(:sort)
+      |> Keyword.put(:limit, 1)
+    find(conn, coll, filter, opts)
+    |> Enum.to_list
+    |> List.first
+  end
+
+  @doc """
   Selects documents in a collection and returns a cursor for the selected
   documents.
 
