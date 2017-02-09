@@ -342,30 +342,11 @@ defmodule Mongo do
   """
   @spec find_one(conn, collection, BSON.document, Keyword.t) :: cursor
   def find_one(conn, coll, filter, opts \\ []) do
-    query = [
-      {"$comment", opts[:comment]},
-      {"$maxTimeMS", opts[:max_time]}
-    ] ++ Enum.into(opts[:modifiers] || [], [])
-
-    query = filter_nils(query)
-
-    query =
-      if query == [] do
-        filter
-      else
-        filter = normalize_doc(filter)
-        filter = if List.keymember?(filter, "$query", 0), do: filter, else: [{"$query", filter}]
-        filter ++ query
-      end
-
-    select = opts[:projection]
-    opts = if Keyword.get(opts, :cursor_timeout, true), do: opts, else: [{:no_cursor_timeout, true}|opts]
-
-    drop = ~w(comment max_time modifiers sort cursor_type projection cursor_timeout order_by limit)a
-    opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
-    opts = [{:limit, 1} | opts]
-
-    cursor(conn, coll, query, select, opts)
+    opts =
+      opts
+      |> Keyword.delete(:order_by)
+      |> Keyword.put(:limit, 1)
+    find(conn, coll, filter, opts)
     |> Enum.to_list
     |> List.first
   end
