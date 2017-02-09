@@ -319,7 +319,6 @@ defmodule Mongo do
     bangify(distinct(conn, coll, field, filter, opts))
   end
 
-
   @doc """
   Selects document a single document in a collection and returns either a document
   or nil.
@@ -350,7 +349,6 @@ defmodule Mongo do
     |> Enum.to_list
     |> List.first
   end
-
 
   @doc """
   Selects documents in a collection and returns a cursor for the selected
