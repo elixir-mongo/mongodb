@@ -127,15 +127,17 @@ defmodule Mongo.Test do
   test "find_one", c do
     coll = unique_name()
 
-    assert nil == Mongo.find_one(c.pid, coll, %{})
+    assert [] = Mongo.find(c.pid, coll, %{}) |> Enum.to_list
 
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 42, bar: 1})
-    assert %{"foo" => 42} = Mongo.find_one(c.pid, coll, %{}, batch_size: 1)
+
     assert nil == Mongo.find_one(c.pid, coll, %{foo: 43})
+    assert %{"foo" => 42} = Mongo.find_one(c.pid, coll, %{}, batch_size: 1)
 
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 43})
 
     assert %{"foo" => 42} = Mongo.find_one(c.pid, coll, %{}, batch_size: 1)
+    # should return the first one so the next test fails
     assert %{"foo" => 43} != Mongo.find_one(c.pid, coll, %{}, batch_size: 1)
   end
 
