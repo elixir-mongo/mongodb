@@ -14,7 +14,6 @@ defmodule Mongo.Messages do
   import Record
   import Mongo.BinaryUtils
 
-  @op_reply            1
   @op_update        2001
   @op_insert        2002
   @op_query         2004
@@ -45,12 +44,12 @@ defmodule Mongo.Messages do
     single: 0x1
   ]
 
-  @reply_flags [
-    cursor_not_found:   0x1,
-    query_failure:      0x2,
-    shard_config_stale: 0x4,
-    await_capable:      0x8
-  ]
+  # @reply_flags [
+  #   cursor_not_found:   0x1,
+  #   query_failure:      0x2,
+  #   shard_config_stale: 0x4,
+  #   await_capable:      0x8
+  # ]
 
   @header_size 4 * 4
 
