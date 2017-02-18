@@ -44,13 +44,6 @@ defmodule Mongo.Messages do
     single: 0x1
   ]
 
-  # @reply_flags [
-  #   cursor_not_found:   0x1,
-  #   query_failure:      0x2,
-  #   shard_config_stale: 0x4,
-  #   await_capable:      0x8
-  # ]
-
   @header_size 4 * 4
 
   defrecordp :msg_header, [:length, :request_id, :response_to, :op_code]
@@ -152,7 +145,6 @@ defmodule Mongo.Messages do
   defp op_to_code(op_kill_cursors()), do: @op_kill_cursors
 
   defp decode_reply(<<flags::int32, cursor_id::int64, from::int32, num::int32, rest::binary>>) do
-    # flags = unblit_flags(flags)
     op_reply(flags: flags, cursor_id: cursor_id, from: from, num: num, docs: rest)
   end
 
@@ -168,15 +160,6 @@ defmodule Mongo.Messages do
   defp blit_flags(_op, flags) when is_integer(flags) do
     flags
   end
-
-  # defp unblit_flags(bits) do
-  #   import Bitwise
-  #   Enum.reduce(@reply_flags, [], fn {flag, bit}, acc ->
-  #     if (bit &&& bits) == 0,
-  #         do: acc,
-  #       else: [flag|acc]
-  #   end)
-  # end
 
   Enum.each(@update_flags, fn {flag, bit} ->
     defp flag_to_bit(:update, unquote(flag)), do: unquote(bit)
