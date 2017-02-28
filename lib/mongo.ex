@@ -19,6 +19,8 @@ defmodule Mongo do
     * `:log` - A function to log information about a call, either
       a 1-arity fun, `{module, function, args}` with `DBConnection.LogEntry.t`
       prepended to `args` or `nil`. See `DBConnection.LogEntry` (default: `nil`)
+    * `:database` - A database to run the query against. Defaults to the value
+      provided when the connection was established.
 
   ## Read options
 
