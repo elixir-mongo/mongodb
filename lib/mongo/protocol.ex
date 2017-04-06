@@ -42,7 +42,8 @@ defmodule Mongo.Protocol do
             end
           end
 
-        :ok = :inet.setopts(s.socket, active: :once)
+        {mod, sock} = s.socket
+        :ok = setopts(mod, sock, active: :once)
         inner_result
       end
 
@@ -162,10 +163,11 @@ defmodule Mongo.Protocol do
   end
 
   def handle_execute(%Mongo.Query{action: action, extra: extra}, params, opts, original_state) do
-    :ok = :inet.setopts(original_state.socket, [active: false])
+    {mod, sock} = original_state.socket
+    :ok = setopts(mod, sock, active: false)
     tmp_state = %{original_state | database: Keyword.get(opts, :database, original_state.database)}
     with {:ok, reply, tmp_state} <- handle_execute(action, extra, params, opts, tmp_state) do
-      :ok = :inet.setopts(original_state.socket, [active: :once])
+      :ok = setopts(mod, sock, active: :once)
       {:ok, reply, Map.put(tmp_state, :database, original_state.database)}
     end
   end

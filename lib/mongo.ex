@@ -55,6 +55,7 @@ defmodule Mongo do
 
   @timeout 5000
 
+  @type conn :: DbConnection.Conn
   @type collection :: String.t
   @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
   @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t}
