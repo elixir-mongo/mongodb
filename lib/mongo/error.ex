@@ -11,6 +11,11 @@ defmodule Mongo.Error do
     %Mongo.Error{message: "tcp #{action}: #{formatted_reason} - #{inspect(reason)}"}
   end
 
+  def exception(tag: :ssl, action: action, reason: reason) do
+    formatted_reason = :ssl.format_error(reason)
+    %Mongo.Error{message: "ssl #{action}: #{formatted_reason} - #{inspect(reason)}"}
+  end
+
   def exception(message: message, code: code) do
     %Mongo.Error{message: message, code: code}
   end

@@ -20,7 +20,8 @@ defmodule Mongo.Protocol do
       timeout: opts[:timeout] || @timeout,
       database: Keyword.fetch!(opts, :database),
       write_concern: Map.new(write_concern),
-      wire_version: nil
+      wire_version: nil,
+      ssl: opts[:ssl] || false
     }
 
     connect(opts, s)
@@ -34,13 +35,15 @@ defmodule Mongo.Protocol do
           if opts[:skip_auth] do
             {:ok, s}
           else
-            with {:ok, s} <- wire_version(s),
+            with {:ok, s} <- maybe_ssl(opts, s),
+                 {:ok, s} <- wire_version(s),
                  {:ok, s} <- Mongo.Auth.run(opts, s) do
               {:ok, s}
             end
           end
 
-        :ok = :inet.setopts(s.socket, active: :once)
+        {mod, sock} = s.socket
+        :ok = setopts(mod, sock, active: :once)
         inner_result
       end
 
@@ -53,6 +56,22 @@ defmodule Mongo.Protocol do
         {:error, Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)}
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  defp maybe_ssl(opts, s) do
+    if s.ssl do
+      ssl(s, opts)
+    else
+      {:ok, s}
+    end
+  end
+  defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
+    case :ssl.connect(sock, opts[:ssl_opts] || [], 5000) do
+      {:ok, ssl_sock} ->
+        {:ok, %{s | socket: {:ssl, ssl_sock}}}
+      {:error, reason} ->
+        {:error, Mongo.Error.exception(tag: :ssl, action: "connect", reason: reason)}
     end
   end
 
@@ -71,7 +90,7 @@ defmodule Mongo.Protocol do
         buffer = buffer |> max(sndbuf) |> max(recbuf)
         :ok = :inet.setopts(socket, buffer: buffer)
 
-        {:ok, %{s | socket: socket}}
+        {:ok, %{s | socket: {:gen_tcp, socket}}}
 
       {:error, reason} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: reason)}
@@ -106,14 +125,14 @@ defmodule Mongo.Protocol do
     {:disconnect, err, s}
   end
 
-  def checkout(s) do
-    case :inet.setopts(s.socket, [active: :false]) do
+  def checkout(%{socket: {mod, sock}} = s) do
+    case setopts(mod, sock, [active: :false]) do
       :ok                       -> recv_buffer(s)
       {:disconnect, _, _} = dis -> dis
     end
   end
 
-  defp recv_buffer(%{socket: sock} = s) do
+  defp recv_buffer(%{socket: {:gen_tcp, sock}} = s) do
     receive do
       {:tcp, ^sock, _buffer} ->
         {:ok, s}
@@ -123,9 +142,19 @@ defmodule Mongo.Protocol do
         {:ok, s}
     end
   end
+  defp recv_buffer(%{socket: {:ssl, sock}} = s) do
+    receive do
+      {:ssl, ^sock, _buffer} ->
+        {:ok, s}
+    after
+      0 ->
+        :ssl.setopts(sock, buffer: <<>>)
+        {:ok, s}
+    end
+  end
 
-  def checkin(s) do
-    :ok = :inet.setopts(s.socket, [active: :once])
+  def checkin(%{socket: {mod, sock}} = s) do
+    :ok = setopts(mod, sock, [active: :once])
     {:ok, s}
   end
 
@@ -134,10 +163,11 @@ defmodule Mongo.Protocol do
   end
 
   def handle_execute(%Mongo.Query{action: action, extra: extra}, params, opts, original_state) do
-    :ok = :inet.setopts(original_state.socket, [active: false])
+    {mod, sock} = original_state.socket
+    :ok = setopts(mod, sock, active: false)
     tmp_state = %{original_state | database: Keyword.get(opts, :database, original_state.database)}
     with {:ok, reply, tmp_state} <- handle_execute(action, extra, params, opts, tmp_state) do
-      :ok = :inet.setopts(original_state.socket, [active: :once])
+      :ok = setopts(mod, sock, active: :once)
       {:ok, reply, Map.put(tmp_state, :database, original_state.database)}
     end
   end
@@ -151,7 +181,7 @@ defmodule Mongo.Protocol do
     num_skip   = Keyword.get(opts, :skip, 0)
     num_return = Keyword.get(opts, :batch_size, 0)
 
-    op_query(coll: Utils.namespace(coll, s), query: query, select: select,
+    op_query(coll: Utils.namespace(coll, s, opts[:database]), query: query, select: select,
              num_skip: num_skip, num_return: num_return, flags: flags(flags))
     |> message_reply(s)
   end
@@ -159,7 +189,7 @@ defmodule Mongo.Protocol do
   defp handle_execute(:get_more, {coll, cursor_id}, [], opts, s) do
     num_return = Keyword.get(opts, :batch_size, 0)
 
-    op_get_more(coll: Utils.namespace(coll, s), cursor_id: cursor_id,
+    op_get_more(coll: Utils.namespace(coll, s, opts[:database]), cursor_id: cursor_id,
                 num_return: num_return)
     |> message_reply(s)
   end
@@ -172,52 +202,52 @@ defmodule Mongo.Protocol do
 
   defp handle_execute(:insert_one, coll, [doc], opts, s) do
     flags  = flags(Keyword.take(opts, @insert_flags))
-    op     = op_insert(coll: Utils.namespace(coll, s), docs: [doc], flags: flags)
+    op     = op_insert(coll: Utils.namespace(coll, s, opts[:database]), docs: [doc], flags: flags)
     message_gle(-11, op, opts, s)
   end
 
   defp handle_execute(:insert_many, coll, docs, opts, s) do
     flags  = flags(Keyword.take(opts, @insert_flags))
-    op     = op_insert(coll: Utils.namespace(coll, s), docs: docs, flags: flags)
+    op     = op_insert(coll: Utils.namespace(coll, s, opts[:database]), docs: docs, flags: flags)
     message_gle(-12, op, opts, s)
   end
 
   defp handle_execute(:delete_one, coll, [query], opts, s) do
     flags = [:single]
-    op    = op_delete(coll: Utils.namespace(coll, s), query: query, flags: flags)
+    op    = op_delete(coll: Utils.namespace(coll, s, opts[:database]), query: query, flags: flags)
     message_gle(-13, op, opts, s)
   end
 
   defp handle_execute(:delete_many, coll, [query], opts, s) do
     flags = []
-    op = op_delete(coll: Utils.namespace(coll, s), query: query, flags: flags)
+    op = op_delete(coll: Utils.namespace(coll, s, opts[:database]), query: query, flags: flags)
     message_gle(-14, op, opts, s)
   end
 
   defp handle_execute(:replace_one, coll, [query, replacement], opts, s) do
     flags  = flags(Keyword.take(opts, @update_flags))
-    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: replacement,
+    op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: replacement,
                        flags: flags)
     message_gle(-15, op, opts, s)
   end
 
   defp handle_execute(:update_one, coll, [query, update], opts, s) do
     flags  = flags(Keyword.take(opts, @update_flags))
-    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: update,
+    op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: update,
                        flags: flags)
     message_gle(-16, op, opts, s)
   end
 
   defp handle_execute(:update_many, coll, [query, update], opts, s) do
     flags  = [:multi | flags(Keyword.take(opts, @update_flags))]
-    op     = op_update(coll: Utils.namespace(coll, s), query: query, update: update,
+    op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: update,
                        flags: flags)
     message_gle(-17, op, opts, s)
   end
 
   defp handle_execute(:command, nil, [query], opts, s) do
     flags = Keyword.take(opts, @find_one_flags)
-    op_query(coll: Utils.namespace("$cmd", s), query: query, select: "",
+    op_query(coll: Utils.namespace("$cmd", s, opts[:database]), query: query, select: "",
              num_skip: 0, num_return: 1, flags: flags(flags))
     |> message_reply(s)
   end
@@ -243,11 +273,25 @@ defmodule Mongo.Protocol do
       with :ok <- Utils.send(id, op, s), do: {:ok, :ok, s}
     else
       command = BSON.Encoder.document([{:getLastError, 1}|Map.to_list(write_concern)])
-      gle_op = op_query(coll: Utils.namespace("$cmd", s), query: command,
+      gle_op = op_query(coll: Utils.namespace("$cmd", s, opts[:database]), query: command,
                         select: "", num_skip: 0, num_return: -1, flags: [])
 
       ops = [{id, op}, {s.request_id, gle_op}]
       message_reply(ops, s)
     end
   end
+
+  def ping(%{wire_version: wire_version, socket: {mod, sock}} = s) do
+    {:ok, active} = getopts(mod, sock, [:active])
+    :ok = setopts(mod, sock, [active: false])
+    with {:ok, %{wire_version: ^wire_version}} <- wire_version(s),
+         :ok = setopts(mod, sock, active),
+         do: {:ok, s}
+  end
+
+  defp setopts(:gen_tcp, sock, opts), do: :inet.setopts(sock, opts)
+  defp setopts(:ssl, sock, opts), do: :ssl.setopts(sock, opts)
+
+  defp getopts(:gen_tcp, sock, opts), do: :inet.getopts(sock, opts)
+  defp getopts(:ssl, sock, opts), do: :ssl.getopts(sock, opts)
 end

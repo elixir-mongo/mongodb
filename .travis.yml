@@ -23,6 +23,7 @@ env:
     - MONGOVERSION=2.6.12 TRAVIS_NODE_VERSION=4
     - MONGOVERSION=3.0.12 TRAVIS_NODE_VERSION=4
     - MONGOVERSION=3.2.10 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.4.0 TRAVIS_NODE_VERSION=4
 notifications:
   recipients:
     - eric.meadows.jonsson@gmail.com
