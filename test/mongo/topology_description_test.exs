@@ -23,8 +23,8 @@ defmodule Mongo.TopologyDescriptionTest do
   end
 
   test "replica set server selection" do
-    all_hosts = ["cjmbp.local:27018", "cjmbp.local:27019", "cjmbp.local:27020"]
-    master = "cjmbp.local:27018"
+    all_hosts = ["localhost:27018", "localhost:27019", "localhost:27020"]
+    master = "localhost:27018"
 
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :secondary})
