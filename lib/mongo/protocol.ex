@@ -11,7 +11,7 @@ defmodule Mongo.Protocol do
   @write_concern ~w(w j wtimeout)a
 
   def disconnect(_error, %{socket: {mod, sock}}) do
-    mod.close(socket)
+    mod.close(sock)
   end
 
   def connect(opts) do
