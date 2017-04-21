@@ -7,7 +7,7 @@ defmodule Mongo.App do
     children = [
       worker(Mongo.IdServer, []),
       worker(Mongo.PBKDF2Cache, []),
-      worker(Mongo.Monitor, [])
+      worker(GenEvent, [[name: Mongo.Events]])
     ]
 
     opts = [strategy: :one_for_one, name: Mongo.Supervisor]

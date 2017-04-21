@@ -18,13 +18,15 @@ defmodule Mongo.Protocol do
     {write_concern, opts} = Keyword.split(opts, @write_concern)
     write_concern = Keyword.put_new(write_concern, :w, 1)
 
-    s = %{socket: nil,
-          request_id: 0,
-          timeout: opts[:timeout] || @timeout,
-          database: Keyword.fetch!(opts, :database),
-          write_concern: Map.new(write_concern),
-          wire_version: nil,
-          ssl: opts[:ssl] || false}
+    s = %{
+      socket: nil,
+      request_id: 0,
+      timeout: opts[:timeout] || @timeout,
+      database: Keyword.fetch!(opts, :database),
+      write_concern: Map.new(write_concern),
+      wire_version: nil,
+      ssl: opts[:ssl] || false
+    }
 
     connect(opts, s)
   end
@@ -32,14 +34,21 @@ defmodule Mongo.Protocol do
   defp connect(opts, s) do
     # TODO: with/else in elixir 1.3
     result =
-      with {:ok, s} <- tcp_connect(opts, s),
-           {:ok, s} <- maybe_ssl(opts, s),
-           {:ok, s} <- wire_version(s),
-           {:ok, s} <- Mongo.Auth.run(opts, s) do
+      with {:ok, s} <- tcp_connect(opts, s) do
+        inner_result =
+          if opts[:skip_auth] do
+            {:ok, s}
+          else
+            with {:ok, s} <- maybe_ssl(opts, s),
+                 {:ok, s} <- wire_version(s),
+                 {:ok, s} <- Mongo.Auth.run(opts, s) do
+              {:ok, s}
+            end
+          end
+
         {mod, sock} = s.socket
         :ok = setopts(mod, sock, active: :once)
-        Mongo.Monitor.add_conn(self(), opts[:name], s.wire_version)
-        {:ok, s}
+        inner_result
       end
 
     case result do
@@ -157,8 +166,18 @@ defmodule Mongo.Protocol do
     handle_execute(query, params, opts, s)
   end
 
-  def handle_execute(%Mongo.Query{action: action, extra: extra}, params, opts, s) do
-    handle_execute(action, extra, params, opts, s)
+  def handle_execute(%Mongo.Query{action: action, extra: extra}, params, opts, original_state) do
+    {mod, sock} = original_state.socket
+    :ok = setopts(mod, sock, active: false)
+    tmp_state = %{original_state | database: Keyword.get(opts, :database, original_state.database)}
+    with {:ok, reply, tmp_state} <- handle_execute(action, extra, params, opts, tmp_state) do
+      :ok = setopts(mod, sock, active: :once)
+      {:ok, reply, Map.put(tmp_state, :database, original_state.database)}
+    end
+  end
+
+  defp handle_execute(:wire_version, _, _, _, s) do
+    {:ok, s.wire_version, s}
   end
 
   defp handle_execute(:find, coll, [query, select], opts, s) do

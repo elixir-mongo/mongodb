@@ -7,6 +7,7 @@ defmodule Mongodb.Mixfile do
     [app: :mongodb,
      version: @version,
      elixir: "~> 1.2",
+     elixirc_paths: elixirc_paths(Mix.env),
      name: "Mongodb",
      deps: deps(),
      docs: docs(),
@@ -14,11 +15,17 @@ defmodule Mongodb.Mixfile do
      package: package()]
   end
 
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_),     do: ["lib"]
+
   def application do
-    [applications: [:logger, :connection, :db_connection],
+    [applications: applications(Mix.env),
      mod: {Mongo.App, []},
      env: []]
   end
+
+  def applications(:test), do: [:logger, :connection, :db_connection]
+  def applications(_), do: [:logger, :connection, :db_connection]
 
   defp deps do
     [{:connection,    "~> 1.0"},

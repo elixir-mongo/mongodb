@@ -1,6 +1,6 @@
+sudo: required
 language: elixir
 elixir:
-  - 1.2.6
   - 1.3.4
 cache:
   - apt
@@ -12,18 +12,18 @@ before_install:
   - nvm use stable
   - npm install -g mongodb-version-manager
   - m use $MONGOVERSION
-  - mkdir db
+  - bash ./start_mongo.bash
 before_script:
-  - sudo service mongodb stop
+# - sudo systemctl stop mongodb
   - export PATH=$(m path):$PATH
-  - mongod --fork --logpath mongo.log --dbpath db
+  - echo $PATH
 env:
   matrix:
-    - MONGOVERSION=2.4.14
-    - MONGOVERSION=2.6.12
-    - MONGOVERSION=3.0.12
-    - MONGOVERSION=3.2.10
-    - MONGOVERSION=3.4.0
+    - MONGOVERSION=2.4.14 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=2.6.12 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.0.12 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.2.10 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.4.0 TRAVIS_NODE_VERSION=4
 notifications:
   recipients:
     - eric.meadows.jonsson@gmail.com
