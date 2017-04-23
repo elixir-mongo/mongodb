@@ -8,7 +8,7 @@ defmodule Mongo.Topology do
 
   @type initial_type :: :unknown | :single | :replica_set_no_primary | :sharded
 
-  @doc ~S"""
+  @doc """
   Starts a new topology connection, which handles pooling and server selection
   for replica sets.
 
@@ -206,7 +206,9 @@ defmodule Mongo.Topology do
       |> Enum.into([])
       |> rename_key(:host, :hostname)
 
-    Keyword.merge(Keyword.take(opts, @connect_opts), host_opts)
+    opts
+    |> Keyword.take(@connect_opts)
+    |> Keyword.merge(host_opts)
   end
 
   defp rename_key(map, original_key, new_key) do
