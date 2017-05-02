@@ -118,6 +118,8 @@ defmodule BSON.DateTime do
   @doc """
   Converts `BSON.DateTime` into a `{{year, month, day}, {hour, min, sec, usec}}`
   tuple.
+
+  Also see `to_elixir_datetime/1`
   """
   def to_datetime(%BSON.DateTime{utc: utc}) do
     seconds = div(utc, 1000) + @epoch
@@ -129,11 +131,34 @@ defmodule BSON.DateTime do
   @doc """
   Converts `{{year, month, day}, {hour, min, sec, usec}}` into a `BSON.DateTime`
   struct.
+
+  Also see `from_elixir_datetime/1`
   """
   def from_datetime({date, {hour, min, sec, usec}}) do
     greg_secs = :calendar.datetime_to_gregorian_seconds({date, {hour, min, sec}})
     epoch_secs = greg_secs - @epoch
     %BSON.DateTime{utc: epoch_secs * 1000 + div(usec, 1000)}
+  end
+
+  @doc """
+  Converts `BSON.DateTime` into a native Elixir `DateTime` struct.
+
+      iex> BSON.DateTime.to_elixir_datetime(%BSON.DateTime{utc: 1000})
+      %DateTime{calendar: Calendar.ISO, day: 1, hour: 0, microsecond: {0, 3}, minute: 0, month: 1, second: 1, std_offset: 0, time_zone: "Etc/UTC", utc_offset: 0, year: 1970, zone_abbr: "UTC"}
+  """
+  def to_elixir_datetime(%BSON.DateTime{utc: unix_ms}) do
+    DateTime.from_unix!(unix_ms, :milliseconds)
+  end
+
+  @doc """
+  Converts a native Elixir `DateTime` struct into a `BSON.DateTime`
+  struct.
+
+      iex> BSON.DateTime.from_elixir_datetime(DateTime.from_unix!(1))
+      %BSON.DateTime{utc: 1000}
+  """
+  def from_elixir_datetime(%DateTime{} = datetime) do
+    %BSON.DateTime{utc: datetime |> DateTime.to_unix(:milliseconds)}
   end
 
   @doc """

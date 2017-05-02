@@ -6,7 +6,7 @@ defmodule Mongodb.Mixfile do
   def project do
     [app: :mongodb,
      version: @version,
-     elixir: "~> 1.2",
+     elixir: "~> 1.3",
      name: "Mongodb",
      deps: deps(),
      docs: docs(),

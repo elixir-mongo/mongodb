@@ -1,5 +1,6 @@
 defmodule BSON.TypesTest do
   use ExUnit.Case, async: true
+  doctest BSON.DateTime
 
   test "inspect BSON.Binary" do
     value = %BSON.Binary{binary: <<1, 2, 3>>}
