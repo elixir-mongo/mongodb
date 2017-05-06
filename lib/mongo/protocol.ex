@@ -10,6 +10,10 @@ defmodule Mongo.Protocol do
   @update_flags ~w(upsert)a
   @write_concern ~w(w j wtimeout)a
 
+  def disconnect(_error, %{socket: {mod, sock}}) do
+    mod.close(sock)
+  end
+
   def connect(opts) do
     {write_concern, opts} = Keyword.split(opts, @write_concern)
     write_concern = Keyword.put_new(write_concern, :w, 1)

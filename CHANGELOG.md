@@ -1,5 +1,11 @@
 ## v0.2.1-dev
 
+* Enhancements
+  * Add functions `BSON.DateTime.to_elixir_datetime/1` and `BSON.DateTime.from_elixir_datetime/1`
+
+* Changes
+  * Requires Elixir ~1.3
+
 ## v0.2.0 (2016-11-11)
 
 * Enhancements
