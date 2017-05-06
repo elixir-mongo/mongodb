@@ -197,7 +197,6 @@ defmodule Mongo.Topology do
     end)
   end
 
-  @connect_opts [:database, :pool, :ssl]
   defp connect_opts_from_address(opts, address) do
     host_opts =
       "mongodb://" <> address
@@ -205,10 +204,7 @@ defmodule Mongo.Topology do
       |> Map.take([:host, :port])
       |> Enum.into([])
       |> rename_key(:host, :hostname)
-
-    opts
-    |> Keyword.take(@connect_opts)
-    |> Keyword.merge(host_opts)
+      |> Keyword.merge(opts)
   end
 
   defp rename_key(map, original_key, new_key) do
