@@ -56,7 +56,7 @@ defmodule Mongo.Topology do
   @doc false
   def init(opts) do
     seeds = Keyword.get(opts, :seeds, [
-      Keyword.get(opts, :hostname, "localhost") <> ":" <> Keyword.get(opts, :port, "27017")
+      Keyword.get(opts, :hostname, "localhost") <> ":" <> to_string(Keyword.get(opts, :port, 27017))
     ])
     type = Keyword.get(opts, :type, :unknown)
     set_name = Keyword.get(opts, :set_name, nil)
