@@ -25,8 +25,10 @@ defmodule BSON.Encoder do
   def encode(%BSON.ObjectId{value: <<_::binary(12)>> = value}),
     do: value
 
-  def encode(%BSON.DateTime{utc: utc}) when is_int64(utc),
-    do: <<utc::int64>>
+  def encode(%DateTime{} = datetime) do
+    unix_ms = DateTime.to_unix(datetime, :milliseconds)
+    <<unix_ms::int64>>
+  end
 
   def encode(%BSON.Regex{pattern: pattern, options: options}),
     do: [cstring(pattern) | cstring(options)]
@@ -127,7 +129,7 @@ defmodule BSON.Encoder do
 
   defp type(%BSON.Binary{}),                do: @type_binary
   defp type(%BSON.ObjectId{}),              do: @type_objectid
-  defp type(%BSON.DateTime{}),              do: @type_datetime
+  defp type(%DateTime{}),                   do: @type_datetime
   defp type(%BSON.Regex{}),                 do: @type_regex
   defp type(%BSON.JavaScript{scope: nil}),  do: @type_js
   defp type(%BSON.JavaScript{}),            do: @type_js_scope

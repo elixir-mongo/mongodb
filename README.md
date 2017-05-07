@@ -36,7 +36,7 @@
     binary              %BSON.Binary{binary: <<42, 43>>, subtype: :generic}
     object id           %BSON.ObjectId{value: <<...>>}
     boolean             true | false
-    UTC datetime        %BSON.DateTime{utc: ...}
+    UTC datetime        %DateTime{}
     null                nil
     regex               %BSON.Regex{pattern: "..."}
     JavaScript          %BSON.JavaScript{code: "..."}
