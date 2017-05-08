@@ -1,10 +1,11 @@
-## v0.2.1-dev
+## v0.2.1 (2017-05-08)
 
 * Enhancements
+  * SSL support
   * Add functions `BSON.DateTime.to_elixir_datetime/1` and `BSON.DateTime.from_elixir_datetime/1`
 
 * Changes
-  * Requires Elixir ~1.3
+  * Requires Elixir ~> 1.3
 
 ## v0.2.0 (2016-11-11)
 

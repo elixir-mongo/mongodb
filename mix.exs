@@ -1,7 +1,7 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.2.1-dev"
+  @version "0.2.1"
 
   def project do
     [app: :mongodb,
@@ -40,7 +40,7 @@ defmodule Mongodb.Mixfile do
   end
 
   defp package do
-    [maintainers: ["Eric Meadows-Jönsson"],
+    [maintainers: ["Eric Meadows-Jönsson", "Justin Wood"],
      licenses: ["Apache 2.0"],
      links: %{"GitHub" => "https://github.com/ericmj/mongodb"}]
   end
