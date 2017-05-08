@@ -4,7 +4,7 @@ defmodule BSON do
   """
 
   @type t :: document | String.t | atom | number | boolean | BSON.Binary.t |
-             BSON.ObjectId.t | BSON.DateTime.t | BSON.Regex.t |
+             BSON.ObjectId.t | BSON.Regex.t |
              BSON.JavaScript.t | BSON.Timestamp.t | [t]
   @type document :: %{atom => BSON.t} | %{String.t => BSON.t} |
                     [{atom, BSON.t}] | [{String.t, BSON.t}]

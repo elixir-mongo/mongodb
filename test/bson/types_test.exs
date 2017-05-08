@@ -1,6 +1,5 @@
 defmodule BSON.TypesTest do
   use ExUnit.Case, async: true
-  doctest BSON.DateTime
 
   test "inspect BSON.Binary" do
     value = %BSON.Binary{binary: <<1, 2, 3>>}
@@ -31,11 +30,6 @@ defmodule BSON.TypesTest do
     assert_raise FunctionClauseError, fn ->
       BSON.ObjectId.decode!("")
     end
-  end
-
-  test "inspect BSON.DateTime" do
-    value = %BSON.DateTime{utc: 1437940203000}
-    assert inspect(value) == "#BSON.DateTime<2015-07-26T19:50:03Z>"
   end
 
   test "inspect BSON.Regex" do
