@@ -1,4 +1,4 @@
-## v0.3.0-dev
+## v0.3.0 (2017-05-11)
 
 * Breaking changes
   * Remove `BSON.DateTime` and replace it with native Elixir `DateTime`
