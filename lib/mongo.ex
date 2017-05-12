@@ -337,7 +337,7 @@ defmodule Mongo do
       see http://docs.mongodb.org/manual/reference/operator/query-modifier/
     * `:cursor_timeout` - Set to false if cursor should not close after 10
       minutes (Default: true)
-    * `:order_by` - Sorts the results of a query in ascending or descending order
+    * `:sort` - Sorts the results of a query in ascending or descending order
     * `:projection` - Limits the fields to return for all matching document
     * `:skip` - The number of documents to skip before returning (Default: 0)
   """
