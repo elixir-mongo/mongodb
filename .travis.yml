@@ -13,17 +13,19 @@ before_install:
   - npm install -g mongodb-version-manager
   - m use $MONGOVERSION
   - bash ./start_mongo.bash
+  - mkdir db
 before_script:
-# - sudo systemctl stop mongodb
   - export PATH=$(m path):$PATH
   - echo $PATH
+  - mongod --fork --logpath mongo.log --dbpath db
 env:
   matrix:
     - MONGOVERSION=2.4.14 TRAVIS_NODE_VERSION=4
     - MONGOVERSION=2.6.12 TRAVIS_NODE_VERSION=4
-    - MONGOVERSION=3.0.12 TRAVIS_NODE_VERSION=4
-    - MONGOVERSION=3.2.10 TRAVIS_NODE_VERSION=4
-    - MONGOVERSION=3.4.0 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.0.15 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.2.13 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=3.4.4 TRAVIS_NODE_VERSION=4
 notifications:
   recipients:
     - eric.meadows.jonsson@gmail.com
+    - justin.k.wood@gmail.com
