@@ -123,10 +123,8 @@ defmodule Mongo.Topology do
         previous_description: state.topology,
         new_description: new_state.topology
       })
-      {:reply, :ok, new_state}
-    else
-      {:reply, :ok, new_state}
     end
+    {:reply, :ok, new_state}
   end
 
   def handle_cast({:force_check, server_address}, state) do

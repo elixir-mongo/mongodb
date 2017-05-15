@@ -453,6 +453,7 @@ defmodule Mongo do
   def direct_command(conn, query, opts \\ []) do
     params = [query]
     query = %Query{action: :command}
+
     with {:ok, reply} <- DBConnection.execute(conn, query, params,
                                               defaults(opts)) do
       case reply do

@@ -32,23 +32,16 @@ defmodule Mongo.Protocol do
   end
 
   defp connect(opts, s) do
-    # TODO: with/else in elixir 1.3
     result =
-      with {:ok, s} <- tcp_connect(opts, s) do
-        inner_result =
-          if opts[:skip_auth] do
-            {:ok, s}
-          else
-            with {:ok, s} <- maybe_ssl(opts, s),
-                 {:ok, s} <- wire_version(s),
-                 {:ok, s} <- Mongo.Auth.run(opts, s) do
-              {:ok, s}
-            end
-          end
+      with {:ok, s} <- tcp_connect(opts, s),
+           {:ok, s} <- maybe_ssl(opts, s),
+           {:ok, s} <- wire_version(s),
+           {:ok, s} <- maybe_auth(opts, s) do
 
         {mod, sock} = s.socket
         :ok = setopts(mod, sock, active: :once)
-        inner_result
+
+        {:ok, s}
       end
 
     case result do
@@ -60,6 +53,14 @@ defmodule Mongo.Protocol do
         {:error, Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)}
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  defp maybe_auth(opts, s) do
+    if opts[:skip_auth] do
+      {:ok, s}
+    else
+      Mongo.Auth.run(opts, s)
     end
   end
 
