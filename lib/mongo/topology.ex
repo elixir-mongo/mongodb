@@ -35,6 +35,10 @@ defmodule Mongo.Topology do
           {:ok, pid} |
           {:error, reason :: atom}
   def start_link(opts, gen_server_opts \\ []) do
+    gen_server_opts =
+      opts
+      |> Keyword.take([:debug, :name, :timeout, :spawn_opt])
+      |> Keyword.merge(gen_server_opts)
     GenServer.start_link(__MODULE__, opts, gen_server_opts)
   end
 
@@ -205,6 +209,8 @@ defmodule Mongo.Topology do
       |> Enum.into([])
       |> rename_key(:host, :hostname)
       |> Keyword.merge(opts)
+      |> Keyword.drop([:name])
+
   end
 
   defp rename_key(map, original_key, new_key) do

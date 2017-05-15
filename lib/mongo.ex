@@ -107,6 +107,10 @@ defmodule Mongo do
     Topology.start_link(opts)
   end
 
+  def child_spec(opts, child_opts \\ []) do
+    Supervisor.Spec.worker(Mongo.Topology, [opts], child_opts)
+  end
+
   @doc """
   Generates a new `BSON.ObjectId`.
   """
