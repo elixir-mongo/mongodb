@@ -54,6 +54,10 @@ defmodule Mongo.Protocol do
     end
   end
 
+  def disconnect(opts, %{socket: {:gen_tcp, pid}}) do
+    :gen_tcp.close(pid)
+  end
+
   defp maybe_ssl(opts, s) do
     if s.ssl do
       ssl(s, opts)
