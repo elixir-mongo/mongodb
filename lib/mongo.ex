@@ -428,6 +428,21 @@ defmodule Mongo do
   end
 
   @doc """
+  Selects a single document in a collection and return the document or null
+  """
+  @spec findOne(Pool.t, collection, BSON.document, Keyword.t) :: BSON.document
+  def findOne(pool, coll, filter, opts \\ []) do
+    opts = Dict.put(opts, :limit, 1)
+    cursor = find(pool, coll, filter, opts)
+    result = Enum.to_list(cursor)
+    if result == [] do
+      nil
+    else
+      hd(result)
+    end
+  end
+
+  @doc """
   Issue a database command. If the command has parameters use a keyword
   list for the document because the "command key" has to be the first
   in the document.
