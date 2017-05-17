@@ -108,7 +108,7 @@ defmodule Mongo do
   end
 
   def child_spec(opts, child_opts \\ []) do
-    Supervisor.Spec.worker(Mongo.Topology, [opts], child_opts)
+    Supervisor.Spec.worker(Mongo, [opts], child_opts)
   end
 
   @doc """

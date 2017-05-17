@@ -39,7 +39,8 @@ defmodule Mongo.Monitor do
       connection_pid: pid,
       topology_pid: topology_pid,
       server_description: server_description,
-      heartbeat_frequency_ms: heartbeat_frequency_ms
+      heartbeat_frequency_ms: heartbeat_frequency_ms,
+      opts: opts
     }}
   end
 
@@ -65,16 +66,16 @@ defmodule Mongo.Monitor do
     if diff < @min_heartbeat_frequency_ms do
       {:noreply, state, diff}
     else
-      server_description = is_master(state.connection_pid, state.server_description)
+      server_description = is_master(state.connection_pid, state.server_description, state.opts)
 
       :ok = GenServer.call(state.topology_pid, {:server_description, server_description}, 30_000)
       {:noreply, %{state | server_description: server_description}, state.heartbeat_frequency_ms}
     end
   end
 
-  defp call_is_master(conn_pid) do
+  defp call_is_master(conn_pid, opts) do
     start_time = System.monotonic_time
-    result = Mongo.direct_command(conn_pid, %{isMaster: 1})
+    result = Mongo.direct_command(conn_pid, %{isMaster: 1}, opts)
     finish_time = System.monotonic_time
     rtt = System.convert_time_unit(finish_time - start_time, :native, :milli_seconds)
     finish_time = System.convert_time_unit(finish_time, :native, :milli_seconds)
@@ -83,12 +84,12 @@ defmodule Mongo.Monitor do
   end
 
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#network-error-when-calling-ismaster
-  defp is_master(conn_pid, last_server_description) do
+  defp is_master(conn_pid, last_server_description, opts) do
     :ok = Mongo.Events.notify(%ServerHeartbeatStartedEvent{
       connection_pid: conn_pid
     })
 
-    {result, finish_time, rtt} = call_is_master(conn_pid)
+    {result, finish_time, rtt} = call_is_master(conn_pid, opts)
     case result do
       {:ok, is_master_reply} ->
         notify_success(rtt, is_master_reply, conn_pid)
@@ -99,7 +100,7 @@ defmodule Mongo.Monitor do
           notify_error(rtt, error, conn_pid)
           ServerDescription.from_is_master_error(last_server_description, error)
         else
-          {result, finish_time, rtt} = call_is_master(conn_pid)
+          {result, finish_time, rtt} = call_is_master(conn_pid, opts)
           case result do
             {:ok, is_master_reply} ->
               notify_success(rtt, is_master_reply, conn_pid)
