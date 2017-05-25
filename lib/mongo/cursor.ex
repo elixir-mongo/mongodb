@@ -136,7 +136,7 @@ defmodule Mongo.AggregationCursor do
 
       fn ->
         case Mongo.raw_find(conn, coll, query, projector, opts) do
-          {:ok, %{cursor_id: 0, docs: [%{"ok" => 1.0, "cursor" => %{"id" => cursor, "ns" => coll, "firstBatch" => docs}}]}} ->
+          {:ok, %{cursor_id: 0, docs: [%{"ok" => ok, "cursor" => %{"id" => cursor, "ns" => coll, "firstBatch" => docs}}]}} when ok == 1->
             state(conn: conn, cursor: cursor, coll: only_coll(coll), buffer: docs)
           {:error, error} ->
             raise error
@@ -214,7 +214,7 @@ defmodule Mongo.SinglyCursor do
     defp start_fun(conn, coll, query, projector, opts) do
       fn ->
         case Mongo.raw_find(conn, coll, query, projector, opts) do
-          {:ok, %{cursor_id: 0, docs: [%{"ok" => 1.0, "result" => docs}]}} ->
+          {:ok, %{cursor_id: 0, docs: [%{"ok" => ok, "result" => docs}]}} when ok == 1 ->
             docs
           {:error, error} ->
             raise error
