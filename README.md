@@ -11,12 +11,11 @@
   * Follows driver specification set by 10gen
   * Safe (by default) and unsafe writes
   * Aggregation pipeline
+  * Replica sets
 
 ## Immediate Roadmap
 
   * Make sure requests don't go over the 16mb limit
-  * Replica sets
-    - Block in client (and timeout) when waiting for new primary selection
   * New 2.6 write queries and bulk writes
 
 ## Tentative Roadmap
