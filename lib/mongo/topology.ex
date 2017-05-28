@@ -206,9 +206,10 @@ defmodule Mongo.Topology do
       |> Map.take([:host, :port])
       |> Enum.into([])
       |> rename_key(:host, :hostname)
-      |> Keyword.merge(opts)
-      |> Keyword.drop([:name])
 
+    opts
+    |> Keyword.merge(host_opts)
+    |> Keyword.drop([:name])
   end
 
   defp rename_key(map, original_key, new_key) do
