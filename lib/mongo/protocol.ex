@@ -4,7 +4,7 @@ defmodule Mongo.Protocol do
   alias Mongo.Protocol.Utils
 
   @timeout 5000
-  @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results)a
+  @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results oplog_replay)a
   @find_one_flags ~w(slave_ok exhaust partial)a
   @insert_flags ~w(continue_on_error)a
   @update_flags ~w(upsert)a
