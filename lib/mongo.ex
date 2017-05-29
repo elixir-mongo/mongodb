@@ -464,7 +464,7 @@ defmodule Mongo do
           {:error, Mongo.Error.exception(message: "cursor not found")}
         op_reply(docs: [%{"ok" => 0.0, "errmsg" => reason} = error]) ->
           {:error, %Mongo.Error{message: "command failed: #{reason}", code: error["code"]}}
-        op_reply(docs: [%{"ok" => 1.0} = doc]) ->
+        op_reply(docs: [%{"ok" => ok} = doc]) when ok == 1 ->
           {:ok, doc}
         # TODO: Check if needed
         op_reply(docs: []) ->
@@ -881,10 +881,10 @@ defmodule Mongo do
   defp get_last_error(:ok) do
     :ok
   end
-  defp get_last_error(op_reply(docs: [%{"ok" => 1.0, "err" => nil} = doc])) do
+  defp get_last_error(op_reply(docs: [%{"ok" => ok, "err" => nil} = doc])) when ok == 1 do
     {:ok, doc}
   end
-  defp get_last_error(op_reply(docs: [%{"ok" => 1.0, "err" => message, "code" => code}])) do
+  defp get_last_error(op_reply(docs: [%{"ok" => ok, "err" => message, "code" => code}])) when ok == 1 do
     # If a batch insert (OP_INSERT) fails some documents may still have been
     # inserted, but mongo always returns {n: 0}
     # When we support the 2.6 bulk write API we will get number of inserted
