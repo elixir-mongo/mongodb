@@ -1,3 +1,7 @@
+## v0.4.0-dev
+
+* Replica Set Support
+
 ## v0.3.0 (2017-05-11)
 
 * Breaking changes

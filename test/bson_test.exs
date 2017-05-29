@@ -1,5 +1,5 @@
 defmodule BSONTest do
-  use MongoTest.Case, async: true
+  use ExUnit.Case, async: true
 
   import BSON, only: [decode: 1]
 
