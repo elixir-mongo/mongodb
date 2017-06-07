@@ -1,4 +1,4 @@
-## v0.4.0-dev
+## v0.4.0 (2017-06-07)
 
 * Replica Set Support
 
