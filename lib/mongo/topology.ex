@@ -68,7 +68,7 @@ defmodule Mongo.Topology do
     local_threshold_ms = Keyword.get(opts, :local_threshold_ms, 15)
 
     :ok = Mongo.Events.notify(%TopologyOpeningEvent{
-      topology_pid: self
+      topology_pid: self()
     })
 
     cond do
@@ -102,7 +102,7 @@ defmodule Mongo.Topology do
 
   def terminate(_reason, _state) do
     :ok = Mongo.Events.notify(%TopologyClosedEvent{
-      topology_pid: self
+      topology_pid: self()
     })
   end
 
@@ -119,7 +119,7 @@ defmodule Mongo.Topology do
     new_state = handle_server_description(state, server_description)
     if state.topology != new_state.topology do
       :ok = Mongo.Events.notify(%TopologyDescriptionChangedEvent{
-        topology_pid: self,
+        topology_pid: self(),
         previous_description: state.topology,
         new_description: new_state.topology
       })
@@ -150,12 +150,12 @@ defmodule Mongo.Topology do
   defp process_events({events, state}) do
     Enum.each(events, fn
       {:force_check, _} = message ->
-        :ok = GenServer.cast(self, message)
+        :ok = GenServer.cast(self(), message)
       {previous, next} ->
         if previous != next do
           :ok = Mongo.Events.notify(%ServerDescriptionChangedEvent{
             address: next.address,
-            topology_pid: self,
+            topology_pid: self(),
             previous_description: previous,
             new_description: next
           })
@@ -178,12 +178,12 @@ defmodule Mongo.Topology do
       heartbeat_frequency = state.heartbeat_frequency_ms
       args = [
         server_description,
-        self,
+        self(),
         heartbeat_frequency,
         Keyword.put_new(connopts, :pool, DBConnection.Connection)
       ]
 
-      :ok = Mongo.Events.notify(%ServerOpeningEvent{address: address, topology_pid: self})
+      :ok = Mongo.Events.notify(%ServerOpeningEvent{address: address, topology_pid: self()})
 
       {:ok, pid} = Monitor.start_link(args)
       {:ok, pool} = DBConnection.start_link(Mongo.Protocol, connopts)
@@ -191,7 +191,7 @@ defmodule Mongo.Topology do
         connection_pools: Map.put(state.connection_pools, address, pool)}
     end)
     Enum.reduce(removed, state, fn (address, state) ->
-      :ok = Mongo.Events.notify(%ServerClosedEvent{address: address, topology_pid: self})
+      :ok = Mongo.Events.notify(%ServerClosedEvent{address: address, topology_pid: self()})
       :ok = Monitor.stop(state.monitors[address])
       :ok = GenServer.stop(state.connection_pools[address])
       %{state | monitors: Map.delete(state.monitors, address),

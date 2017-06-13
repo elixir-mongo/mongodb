@@ -488,6 +488,8 @@ defmodule Mongo.Test do
   test "access multiple databases", c do
     coll = unique_name()
 
+    Mongo.delete_many(c.pid, coll, %{}, database: "mongodb_test2")
+
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 42}, database: "mongodb_test2")
 
     assert {:ok, 1} = Mongo.count(c.pid, coll, [], database: "mongodb_test2")

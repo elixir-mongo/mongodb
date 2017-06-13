@@ -34,7 +34,7 @@ defmodule Mongo.Monitor do
       |> Keyword.put(:database, "admin")
       |> Keyword.put(:skip_auth, true)
     {:ok, pid} = DBConnection.start_link(Mongo.Protocol, opts)
-    :ok = GenServer.cast(self, :check)
+    :ok = GenServer.cast(self(), :check)
     {:ok, %{
       connection_pid: pid,
       topology_pid: topology_pid,

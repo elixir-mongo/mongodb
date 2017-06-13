@@ -1,6 +1,6 @@
 defmodule Mongo.TopologyTest do
   use ExUnit.Case # DO NOT MAKE ASYNCHRONOUS
-  alias Mongoman.{ReplicaSet, ReplicaSetConfig}
+  # alias Mongoman.{ReplicaSet, ReplicaSetConfig}
 
   setup_all do
     assert {:ok, pid} = Mongo.TestConnection.connect
