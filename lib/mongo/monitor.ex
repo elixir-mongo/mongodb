@@ -31,6 +31,7 @@ defmodule Mongo.Monitor do
   def init([server_description, topology_pid, heartbeat_frequency_ms, connection_opts]) do
     opts = # monitors don't authenticate and use the "admin" database
       connection_opts
+      |> Keyword.drop([:pool])
       |> Keyword.put(:database, "admin")
       |> Keyword.put(:skip_auth, true)
     {:ok, pid} = DBConnection.start_link(Mongo.Protocol, opts)
