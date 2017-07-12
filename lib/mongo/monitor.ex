@@ -17,8 +17,11 @@ defmodule Mongo.Monitor do
     GenServer.start_link(__MODULE__, args, gen_server_opts)
   end
 
+  # We need to stop asynchronously because a Monitor can call the Topology
+  # which may try to stop the same Monitor that called it. Ending in a timeout.
+  # See issues #139 for some information.
   def stop(pid) do
-    GenServer.stop(pid)
+    GenServer.cast(pid, :stop)
   end
 
   def force_check(pid) do
@@ -48,6 +51,9 @@ defmodule Mongo.Monitor do
   @doc false
   def handle_cast(:check, state) do
     check(state)
+  end
+  def handle_cast(:stop, state) do
+    GenServer.stop(self())
   end
 
   @doc false
