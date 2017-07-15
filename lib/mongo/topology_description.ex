@@ -11,8 +11,8 @@ defmodule Mongo.TopologyDescription do
   alias Mongo.ReadPreference
 
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#topologydescription
-  @type type :: :"unknown()" | :"single()" | :"replica_set_no_primary()" |
-                :"replica_set_with_primary()" | :"sharded()"
+  @type type :: :unknown | :single | :replica_set_no_primary |
+                :replica_set_with_primary | :sharded
   @type t :: %{
     type: type,
     set_name: String.t | nil,
