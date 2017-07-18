@@ -39,7 +39,7 @@ defmodule Mongodb.Mixfile do
     [main: "readme",
      extras: ["README.md"],
      source_ref: "v#{@version}",
-     source_url: "https://github.com/ericmj/mongodb"]
+     source_url: "https://github.com/ankhers/mongodb"]
   end
 
   defp description do
@@ -49,6 +49,6 @@ defmodule Mongodb.Mixfile do
   defp package do
     [maintainers: ["Eric Meadows-Jönsson", "Justin Wood"],
      licenses: ["Apache 2.0"],
-     links: %{"GitHub" => "https://github.com/ericmj/mongodb"}]
+     links: %{"GitHub" => "https://github.com/ankhers/mongodb"}]
   end
 end
