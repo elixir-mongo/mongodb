@@ -149,9 +149,11 @@ defmodule BSONTest do
 
   @mapNaN %{"a" => :NaN}
   @binNaN <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 248::little-integer-size(8), 127::little-integer-size(8), 0>>
+  @binNaN2 <<16, 0, 0, 0, 1, 97, 0, 1, 0, 0, 0, 0, 0, 240::little-integer-size(8), 127::little-integer-size(8), 0>>
 
   test "decode float NaN" do
     assert decode(@binNaN) == @mapNaN
+    assert decode(@binNaN2) == @mapNaN
   end
 
   test "encode float NaN" do
