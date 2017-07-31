@@ -10,8 +10,13 @@ defmodule Mongo.Protocol do
   @update_flags ~w(upsert)a
   @write_concern ~w(w j wtimeout)a
 
-  def disconnect(_error, %{socket: {mod, sock}}) do
+  def disconnect(_error, %{socket: {mod, sock}} = s) do
+    notify_disconnect(s)
     mod.close(sock)
+  end
+
+  defp notify_disconnect(%{connection_type: type, topology_pid: pid, host: host}) do
+    GenServer.cast(pid, {:disconnect, type, host})
   end
 
   def connect(opts) do
@@ -25,6 +30,8 @@ defmodule Mongo.Protocol do
       database: Keyword.fetch!(opts, :database),
       write_concern: Map.new(write_concern),
       wire_version: nil,
+      connection_type: Keyword.fetch!(opts, :connection_type),
+      topology_pid: Keyword.fetch!(opts, :topology_pid),
       ssl: opts[:ssl] || false
     }
 
@@ -86,6 +93,8 @@ defmodule Mongo.Protocol do
     sock_opts = [:binary, active: false, packet: :raw, send_timeout: s.timeout, nodelay: true]
                 ++ (opts[:socket_options] || [])
 
+    s = Map.put(s, :host, "#{host}:#{port}")
+
     case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
       {:ok, socket} ->
         # A suitable :buffer is only set if :recbuf is included in
@@ -110,6 +119,9 @@ defmodule Mongo.Protocol do
         {:ok, %{s | wire_version: version}}
       {:ok, %{"ok" => ok}} when ok == 1 ->
         {:ok, %{s | wire_version: 0}}
+      {:ok, %{"ok" => ok, "errmsg" => msg, "code" => code}} when ok == 0 ->
+        err = Mongo.Error.exception(message: msg, code: code)
+        {:disconnect, err, s}
       {:disconnect, _, _} = error ->
         error
     end
