@@ -1,3 +1,10 @@
+## v0.4.1 (2017-08-09)
+
+* Bug fixes
+  * Monitors no longer use a pool
+  * Can now connect to a Mongo instance using a CNAME
+  * Pass options through Mongo.aggregate/4
+
 ## v0.4.0 (2017-06-07)
 
 * Replica Set Support
