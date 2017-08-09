@@ -139,7 +139,7 @@ defmodule Mongo do
     wv_query = %Query{action: :wire_version}
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, version} <- DBConnection.execute(conn, wv_query, [], defaults) do
+         {:ok, version} <- DBConnection.execute(conn, wv_query, [], defaults(opts)) do
       cursor? = version >= 1 and Keyword.get(opts, :use_cursor, true)
       opts = Keyword.drop(opts, ~w(allow_disk_use max_time use_cursor)a)
 
