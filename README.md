@@ -109,7 +109,7 @@ Mongo.find(:mongo, "collection", %{}, limit: 20, pool: DBConnection.Poolboy)
 To connect to a Mongo cluster that is using replica sets, it is recommended to use the `:seeds` list instead of a `:hostname` and `:port` pair.
 
 ```elixir
-{:ok, pid} = Mongo.start_link(database: "test", seeds: "hostname1.net:27017", "hostname2.net:27017")
+{:ok, pid} = Mongo.start_link(database: "test", seeds: ["hostname1.net:27017", "hostname2.net:27017"])
 ```
 
 This will allow for scenarios where the first `"hostname1.net:27017"` is unreachable for any reason and will automatically try to connect to each of the following entries in the list to connect to the cluster.
