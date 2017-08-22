@@ -97,9 +97,15 @@ defmodule Mongo.Monitor do
     end
   end
 
+  # TODO: Remove this try/rescue once a new version of db_connection is released
   defp call_is_master(conn_pid, opts) do
     start_time = System.monotonic_time
-    result = Mongo.direct_command(conn_pid, %{isMaster: 1}, opts)
+    result = try do
+      Mongo.direct_command(conn_pid, %{isMaster: 1}, opts)
+    rescue
+      e ->
+        {:error, e}
+    end
     finish_time = System.monotonic_time
     rtt = System.convert_time_unit(finish_time - start_time, :native, :milli_seconds)
     finish_time = System.convert_time_unit(finish_time, :native, :milli_seconds)
