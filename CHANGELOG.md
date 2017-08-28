@@ -1,3 +1,9 @@
+## v0.4.2 (2017-08-28)
+
+* Bug fixes
+  * Fix application crash when a replica set member goes offline
+  * Fix application crash on start when a replica set member is offline
+
 ## v0.4.1 (2017-08-09)
 
 * Bug fixes
