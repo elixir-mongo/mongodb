@@ -8,6 +8,9 @@ defmodule Mongo.Topology do
 
   @type initial_type :: :unknown | :single | :replica_set_no_primary | :sharded
 
+  # https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#heartbeatfrequencyms-defaults-to-10-seconds-or-60-seconds
+  @heartbeat_frequency_ms 10_000
+
   @doc """
   Starts a new topology connection, which handles pooling and server selection
   for replica sets.
@@ -21,7 +24,6 @@ defmodule Mongo.Topology do
     * `:type` - a hint of the topology type, defaults to `:unknown`, see
       `t:initial_type/0` for valid values
     * `:set_name` - the expected replica set name, defaults to `nil`
-    * `:heartbeat_frequency_ms` - the interval between server checks, defaults
       to 10 seconds
 
   ## Error Reasons
@@ -64,7 +66,6 @@ defmodule Mongo.Topology do
     ])
     type = Keyword.get(opts, :type, :unknown)
     set_name = Keyword.get(opts, :set_name, nil)
-    heartbeat_frequency_ms = Keyword.get(opts, :heartbeat_frequency_ms, 10000)
     local_threshold_ms = Keyword.get(opts, :local_threshold_ms, 15)
 
     :ok = Mongo.Events.notify(%TopologyOpeningEvent{
@@ -90,7 +91,6 @@ defmodule Mongo.Topology do
               local_threshold_ms: local_threshold_ms
             }),
             seeds: seeds,
-            heartbeat_frequency_ms: heartbeat_frequency_ms,
             opts: opts,
             monitors: %{},
             connection_pools: %{}
@@ -125,6 +125,28 @@ defmodule Mongo.Topology do
       })
     end
     {:reply, :ok, new_state}
+  end
+
+  def handle_cast({:disconnect, :monitor, host}, state) do
+    new_state = remove_address(host, state)
+    {:noreply, new_state}
+  end
+  def handle_cast({:disconnect, :client, _host}, state) do
+    {:noreply, state}
+  end
+
+  def handle_cast({:connected, monitor_pid}, state) do
+    {host, ^monitor_pid} = Enum.find(state.monitors, fn {key, value} -> value == monitor_pid end)
+    conn_opts =
+      state.opts
+      |> Keyword.put(:connection_type, :client)
+      |> Keyword.put(:topology_pid, self())
+      |> connect_opts_from_address(host)
+
+    {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
+    connection_pools = Map.put(state.connection_pools, host, pool)
+    new_state = %{ state | connection_pools: connection_pools }
+    {:noreply, new_state}
   end
 
   def handle_cast({:force_check, server_address}, state) do
@@ -175,28 +197,32 @@ defmodule Mongo.Topology do
     state = Enum.reduce(added, state, fn (address, state) ->
       server_description = state.topology.servers[address]
       connopts = connect_opts_from_address(state.opts, address)
-      heartbeat_frequency = state.heartbeat_frequency_ms
       args = [
         server_description,
         self,
-        heartbeat_frequency,
-        Keyword.put_new(connopts, :pool, DBConnection.Connection)
+        @heartbeat_frequency_ms,
+        Keyword.put(connopts, :pool, DBConnection.Connection)
       ]
 
       :ok = Mongo.Events.notify(%ServerOpeningEvent{address: address, topology_pid: self})
 
       {:ok, pid} = Monitor.start_link(args)
-      {:ok, pool} = DBConnection.start_link(Mongo.Protocol, connopts)
-      %{state | monitors: Map.put(state.monitors, address, pid),
-        connection_pools: Map.put(state.connection_pools, address, pool)}
+      %{ state | monitors: Map.put(state.monitors, address, pid) }
     end)
-    Enum.reduce(removed, state, fn (address, state) ->
-      :ok = Mongo.Events.notify(%ServerClosedEvent{address: address, topology_pid: self})
-      :ok = Monitor.stop(state.monitors[address])
-      :ok = GenServer.stop(state.connection_pools[address])
-      %{state | monitors: Map.delete(state.monitors, address),
-        connection_pools: Map.delete(state.connection_pools, address)}
-    end)
+    Enum.reduce(removed, state, &remove_address/2)
+  end
+
+  defp remove_address(address, state) do
+    :ok = Mongo.Events.notify(%ServerClosedEvent{address: address, topology_pid: self})
+    :ok = Monitor.stop(state.monitors[address])
+
+    :ok = case state.connection_pools[address] do
+            nil -> :ok
+            pid -> GenServer.stop(pid)
+          end
+
+    %{state | monitors: Map.delete(state.monitors, address),
+      connection_pools: Map.delete(state.connection_pools, address)}
   end
 
   defp connect_opts_from_address(opts, address) do

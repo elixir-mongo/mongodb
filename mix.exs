@@ -29,7 +29,7 @@ defmodule Mongodb.Mixfile do
 
   defp deps do
     [{:connection,    "~> 1.0"},
-     {:db_connection, "~> 1.0"},
+     {:db_connection, "~> 1.1"},
      {:poolboy,       ">= 0.0.0", only: :test},
      {:ex_doc,        ">= 0.0.0", only: :dev},
      {:earmark,       ">= 0.0.0", only: :dev}]
