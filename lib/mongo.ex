@@ -145,9 +145,9 @@ defmodule Mongo do
 
       if cursor? do
         query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
-        aggregation_cursor(topology_pid, "$cmd", query, nil, opts)
+        aggregation_cursor(conn, "$cmd", query, nil, opts)
       else
-        singly_cursor(topology_pid, "$cmd", query, nil, opts)
+        singly_cursor(conn, "$cmd", query, nil, opts)
       end
     end
   end
@@ -370,7 +370,7 @@ defmodule Mongo do
     opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
     with {:ok, conn, slave_ok, _} <- select_server(topology_pid, :read, opts),
          opts = Keyword.put(opts, :slave_ok, slave_ok),
-         do: cursor(topology_pid, coll, query, select, opts)
+         do: cursor(conn, coll, query, select, opts)
   end
 
   @doc """
@@ -407,31 +407,28 @@ defmodule Mongo do
   end
 
   @doc false
-  def raw_find(topology_pid, coll, query, select, opts) do
+  def raw_find(conn, coll, query, select, opts) do
     params = [query, select]
     query = %Query{action: :find, extra: coll}
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
          :ok <- maybe_failure(reply),
          op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
          do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
   end
 
   @doc false
-  def get_more(topology_pid, coll, cursor, opts) do
+  def get_more(conn, coll, cursor, opts) do
     query = %Query{action: :get_more, extra: {coll, cursor}}
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, reply} <- DBConnection.execute(conn, query, [], defaults(opts)),
+    with {:ok, reply} <- DBConnection.execute(conn, query, [], defaults(opts)),
          :ok <- maybe_failure(reply),
          op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
          do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
   end
 
   @doc false
-  def kill_cursors(topology_pid, cursor_ids, opts) do
+  def kill_cursors(conn, cursor_ids, opts) do
     query = %Query{action: :kill_cursors, extra: cursor_ids}
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, :ok} <- DBConnection.execute(conn, query, [], defaults(opts)),
+    with {:ok, :ok} <- DBConnection.execute(conn, query, [], defaults(opts)),
          do: :ok
   end
 
@@ -713,6 +710,7 @@ defmodule Mongo do
     bangify(update_many(topology_pid, coll, filter, update, opts))
   end
 
+  @doc false
   def select_server(topology_pid, type, opts \\ []) do
     with {:ok, servers, slave_ok, mongos?} <-
            select_servers(topology_pid, type, opts) do
