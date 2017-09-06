@@ -1,3 +1,9 @@
+## v0.4.3-dev
+
+* Bug fixes
+  * Send TLS server name indication (SNI) if none is set in the `:ssl_opts`
+  * Ensure cursor requests are routed to the proper node in the cluster
+
 ## v0.4.2 (2017-08-28)
 
 * Bug fixes
