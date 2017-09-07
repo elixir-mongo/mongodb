@@ -137,15 +137,23 @@ defmodule Mongo.Topology do
 
   def handle_cast({:connected, monitor_pid}, state) do
     {host, ^monitor_pid} = Enum.find(state.monitors, fn {key, value} -> value == monitor_pid end)
-    conn_opts =
-      state.opts
-      |> Keyword.put(:connection_type, :client)
-      |> Keyword.put(:topology_pid, self())
-      |> connect_opts_from_address(host)
+    arbiters =
+      Enum.flat_map(state.topology.servers, fn {_, s} -> s.arbiters end)
 
-    {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
-    connection_pools = Map.put(state.connection_pools, host, pool)
-    new_state = %{ state | connection_pools: connection_pools }
+    new_state =
+      if host in arbiters do
+        state
+      else
+        conn_opts =
+          state.opts
+          |> Keyword.put(:connection_type, :client)
+          |> Keyword.put(:topology_pid, self())
+          |> connect_opts_from_address(host)
+
+        {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
+        connection_pools = Map.put(state.connection_pools, host, pool)
+        %{ state | connection_pools: connection_pools }
+      end
     {:noreply, new_state}
   end
 
