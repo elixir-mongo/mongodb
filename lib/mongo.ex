@@ -717,8 +717,8 @@ defmodule Mongo do
       if Enum.empty? servers do
         {:ok, [], slave_ok, mongos?}
       else
-        with {:ok, connection} = servers |> Enum.take_random(1) |> Enum.at(0)
-                                         |> get_connection(topology_pid) do
+        with {:ok, connection} <- servers |> Enum.take_random(1) |> Enum.at(0)
+                                          |> get_connection(topology_pid) do
           {:ok, connection, slave_ok, mongos?}
         end
       end
@@ -763,7 +763,7 @@ defmodule Mongo do
 
   defp get_connection(server, pid) do
     if server != nil do
-      with {:ok, connection} = Topology.connection_for_address(pid, server) do
+      with {:ok, connection} <- Topology.connection_for_address(pid, server) do
         {:ok, connection}
       end
     else
