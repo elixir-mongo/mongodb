@@ -100,7 +100,9 @@ defmodule Mongo.Topology do
     end
   end
 
-  def terminate(_reason, _state) do
+  def terminate(_reason, state) do
+    Enum.each(state.connection_pools, fn {_address, pid} -> GenServer.stop(pid) end)
+    Enum.each(state.monitors, fn {_address, pid} -> GenServer.stop(pid) end)
     :ok = Mongo.Events.notify(%TopologyClosedEvent{
       topology_pid: self
     })
