@@ -1,8 +1,14 @@
-## v0.4.3-dev
+## v0.4.3 (2017-09-16)
 
-* Bug fixes
+* Enhancements
   * Send TLS server name indication (SNI) if none is set in the `:ssl_opts`
+  * Fixed a couple dialyzer issues
+  * Add basic examples of `$and`, `$or`, and `$in` operators in README
+
+* Bug Fixes
   * Ensure cursor requests are routed to the proper node in the cluster
+  * No longer attempting to authenticate against arbiter nodes
+  * Prevent monitor errors if you have stopped the mongo process
 
 ## v0.4.2 (2017-08-28)
 
