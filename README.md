@@ -114,6 +114,26 @@ To connect to a Mongo cluster that is using replica sets, it is recommended to u
 
 This will allow for scenarios where the first `"hostname1.net:27017"` is unreachable for any reason and will automatically try to connect to each of the following entries in the list to connect to the cluster.
 
+### Examples
+
+Using `$and`
+
+```elixir
+Mongo.find(:mongo, "users", %{"$and" => [%{email: "my@email.com"}, %{first_name: "first_name"}]})
+```
+
+Using `$or`
+
+```elixir
+Mongo.find(:mongo, "users", %{"$or" => [%{email: "my@email.com"}, %{first_name: "first_name"}]})
+```
+
+Using `$in`
+
+```elixir
+Mongo.find(:mongo, "users", %{email: %{"$in" => ["my@email.com", "other@email.com"]}})
+```
+
 ## Contributing
 
 The SSL test suite is enabled by default. You have two options. Either exclude
