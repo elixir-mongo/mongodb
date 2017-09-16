@@ -872,7 +872,7 @@ defmodule Mongo do
     raise ArgumentError, "expected list of documents, got: #{inspect other}"
   end
 
-  defp defaults(opts \\ []) do
+  defp defaults(opts) do
     Keyword.put_new(opts, :timeout, @timeout)
   end
 
