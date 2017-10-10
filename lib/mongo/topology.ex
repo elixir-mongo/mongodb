@@ -117,7 +117,7 @@ defmodule Mongo.Topology do
   end
 
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#updating-the-topologydescription
-  def handle_call({:server_description, server_description}, _from, state) do
+  def handle_cast({:server_description, server_description}, state) do
     new_state = handle_server_description(state, server_description)
     if state.topology != new_state.topology do
       :ok = Mongo.Events.notify(%TopologyDescriptionChangedEvent{
@@ -126,7 +126,7 @@ defmodule Mongo.Topology do
         new_description: new_state.topology
       })
     end
-    {:reply, :ok, new_state}
+    {:noreply, new_state}
   end
 
   def handle_cast({:disconnect, :monitor, host}, state) do

@@ -92,7 +92,7 @@ defmodule Mongo.Monitor do
     else
       server_description = is_master(state.connection_pid, state.server_description, state.opts)
 
-      :ok = GenServer.call(state.topology_pid, {:server_description, server_description}, 30_000)
+      :ok = GenServer.cast(state.topology_pid, {:server_description, server_description})
       {:noreply, %{state | server_description: server_description}, state.heartbeat_frequency_ms}
     end
   end
