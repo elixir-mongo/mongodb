@@ -78,7 +78,7 @@ By default mongodb will start a single connection, but it also supports pooling 
 # Gets an enumerable cursor for the results
 cursor = Mongo.find(conn, "test-collection", %{})
 
-cusor
+cursor
 |> Enum.to_list()
 |> IO.inspect
 ```
