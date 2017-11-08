@@ -483,6 +483,10 @@ defmodule Mongo do
 
   If the document is missing the `_id` field or it is `nil`, an ObjectId
   will be generated, inserted into the document, and returned in the result struct.
+
+  ## Examples
+
+      Mongo.insert_one(pid, "users", %{first_name: "John", last_name: "Smith"})
   """
   @spec insert_one(GenServer.server, collection, BSON.document, Keyword.t) :: result(Mongo.InsertOneResult.t)
   def insert_one(topology_pid, coll, doc, opts \\ []) do
@@ -517,6 +521,10 @@ defmodule Mongo do
 
     * `:continue_on_error` - even if insert fails for one of the documents
       continue inserting the remaining ones (default: `false`)
+
+  ## Examples
+
+      Mongo.insert_many(pid, "users", [%{first_name: "John", last_name: "Smith"}, %{first_name: "Jane", last_name: "Doe"}])
   """
   # TODO describe the ordered option
   @spec insert_many(GenServer.server, collection, [BSON.document], Keyword.t) :: result(Mongo.InsertManyResult.t)
