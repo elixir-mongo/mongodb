@@ -71,6 +71,10 @@ defmodule BSON.Decoder do
     {DateTime.from_unix!(unix_ms, :milliseconds), rest}
   end
 
+  defp type(@type_undefined, rest) do
+    {nil, rest}
+  end
+
   defp type(@type_null, rest) do
     {nil, rest}
   end
