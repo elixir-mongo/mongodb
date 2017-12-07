@@ -144,6 +144,11 @@ defmodule Mongo.Protocol do
     {:disconnect, err, s}
   end
 
+  def handle_info({:ssl_closed, _}, s) do
+    err = Mongo.Error.exception(tag: :ssl, action: "async recv", reason: :closed)
+    {:disconnect, err, s}
+  end
+
   def checkout(%{socket: {mod, sock}} = s) do
     case setopts(mod, sock, [active: :false]) do
       :ok                       -> recv_buffer(s)
