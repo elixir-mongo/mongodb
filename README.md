@@ -73,7 +73,7 @@ By default mongodb will start a single connection, but it also supports pooling 
 
 ```elixir
 # Starts an unpooled connection
-{:ok, conn} = Mongo.start_link(database: "test")
+{:ok, conn} = Mongo.start_link(url: "mongodb://localhost:27017/db-name")
 
 # Gets an enumerable cursor for the results
 cursor = Mongo.find(conn, "test-collection", %{})
