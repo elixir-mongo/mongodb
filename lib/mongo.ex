@@ -52,6 +52,7 @@ defmodule Mongo do
   alias Mongo.ReadPreference
   alias Mongo.TopologyDescription
   alias Mongo.Topology
+  alias Mongo.UrlParser
 
   @timeout 5000
 
@@ -75,7 +76,7 @@ defmodule Mongo do
   Start and link to a database connection process.
 
   ### Options
-
+    * `:url` - A mongo connection url, options defined separately are used as default values
     * `:hostname` - Server hostname
     * `:port` - Server port
     * `:database` - Database
@@ -104,7 +105,9 @@ defmodule Mongo do
   """
   @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | term}
   def start_link(opts) do
-    Topology.start_link(opts)
+    opts
+    |> UrlParser.parse_url()
+    |> Topology.start_link()
   end
 
   def child_spec(opts, child_opts \\ []) do
