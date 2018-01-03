@@ -40,6 +40,7 @@ defmodule Mongo.UrlParser do
   }
 
   @driver_option_map %{
+    max_pool_size: :pool_size,
     replica_set: :set_name,
     w_timeout: :wtimeout
   }
