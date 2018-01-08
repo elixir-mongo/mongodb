@@ -14,11 +14,11 @@ defmodule Mongo.UrlParserTest do
         username: "user",
         password: "password",
         database: "db_name",
+        pool_size: 5,
         auth_source: "admin",
         set_name: "set-name",
         ssl: true,
-        seeds: ["seed1.domain.com:27017", "seed2.domain.com:27017", "seed3.domain.com:27017"],
-        pool_size: 5
+        seeds: ["seed1.domain.com:27017", "seed2.domain.com:27017", "seed3.domain.com:27017"]
       ]
     end
     test "merge options" do
