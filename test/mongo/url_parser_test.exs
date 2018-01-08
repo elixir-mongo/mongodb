@@ -9,7 +9,7 @@ defmodule Mongo.UrlParserTest do
       assert UrlParser.parse_url([url: "mongodb://localhost:27017"]) == [seeds: ["localhost:27017"]]
     end
     test "cluster url" do
-      url = "mongodb://user:password@seed1.domain.com:27017,seed2.domain.com:27017,seed3.domain.com:27017/db_name?ssl=true&replicaSet=set-name&authSource=admin"
+      url = "mongodb://user:password@seed1.domain.com:27017,seed2.domain.com:27017,seed3.domain.com:27017/db_name?ssl=true&replicaSet=set-name&authSource=admin&maxPoolSize=5"
       assert UrlParser.parse_url([url: url]) == [
         username: "user",
         password: "password",
@@ -17,7 +17,8 @@ defmodule Mongo.UrlParserTest do
         auth_source: "admin",
         set_name: "set-name",
         ssl: true,
-        seeds: ["seed1.domain.com:27017", "seed2.domain.com:27017", "seed3.domain.com:27017"]
+        seeds: ["seed1.domain.com:27017", "seed2.domain.com:27017", "seed3.domain.com:27017"],
+        pool_size: 5
       ]
     end
     test "merge options" do
