@@ -148,12 +148,12 @@ defmodule BSON.Timestamp do
   Represents BSON Timestamp type
   """
 
-  @type t :: %__MODULE__{value: integer}
-  defstruct [:value]
+  @type t :: %__MODULE__{value: integer, ordinal: integer}
+  defstruct [:value, :ordinal]
 
   defimpl Inspect do
-    def inspect(%BSON.Timestamp{value: value}, _opts) do
-      "#BSON.Timestamp<#{value}>"
+    def inspect(%BSON.Timestamp{value: value, ordinal: ordinal}, _opts) do
+      "#BSON.Timestamp<#{value}:#{ordinal}>"
     end
   end
 end

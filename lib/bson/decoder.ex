@@ -106,8 +106,8 @@ defmodule BSON.Decoder do
     {int, rest}
   end
 
-  defp type(@type_timestamp, <<value::int64, rest::binary>>) do
-    {%BSON.Timestamp{value: value}, rest}
+  defp type(@type_timestamp, <<ordinal::int32, epoch::int32, rest::binary>>) do
+    {%BSON.Timestamp{value: epoch, ordinal: ordinal}, rest}
   end
 
   defp type(@type_int64, <<int::int64, rest::binary>>) do
