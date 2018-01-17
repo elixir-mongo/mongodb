@@ -64,6 +64,7 @@ defmodule Mongo.Topology do
     seeds = Keyword.get(opts, :seeds, [
       Keyword.get(opts, :hostname, "localhost") <> ":" <> to_string(Keyword.get(opts, :port, 27017))
     ])
+    excluded_hosts = Keyword.get(opts, :excluded_hosts, [])
     type = Keyword.get(opts, :type, :unknown)
     set_name = Keyword.get(opts, :set_name, nil)
     local_threshold_ms = Keyword.get(opts, :local_threshold_ms, 15)
@@ -91,6 +92,7 @@ defmodule Mongo.Topology do
               local_threshold_ms: local_threshold_ms
             }),
             seeds: seeds,
+            excluded_hosts: excluded_hosts,
             opts: opts,
             monitors: %{},
             connection_pools: %{}
@@ -200,7 +202,7 @@ defmodule Mongo.Topology do
 
   defp reconcile_servers(state) do
     old_addrs = Map.keys(state.monitors)
-    new_addrs = Map.keys(state.topology.servers)
+    new_addrs = Map.keys(state.topology.servers) |> Enum.filter(&(not(&1 in state.excluded_hosts)))
     added = new_addrs -- old_addrs
     removed = old_addrs -- new_addrs
 
