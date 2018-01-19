@@ -143,6 +143,7 @@ defmodule Mongo do
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, version} <- DBConnection.execute(conn, wv_query, [], defaults(opts)) do
+
       cursor? = version >= 1 and Keyword.get(opts, :use_cursor, true)
       opts = Keyword.drop(opts, ~w(allow_disk_use max_time use_cursor)a)
 
@@ -371,7 +372,7 @@ defmodule Mongo do
     opts = if Keyword.get(opts, :cursor_timeout, true), do: opts, else: [{:no_cursor_timeout, true}|opts]
     drop = ~w(comment max_time modifiers sort cursor_type projection cursor_timeout)a
     opts = cursor_type(opts[:cursor_type]) ++ Keyword.drop(opts, drop)
-    with {:ok, conn, slave_ok, _} <- select_server(topology_pid, :read, opts),
+    with {:ok, _conn, slave_ok, _} <- select_server(topology_pid, :read, opts),
          opts = Keyword.put(opts, :slave_ok, slave_ok),
          do: cursor(conn, coll, query, select, opts)
   end

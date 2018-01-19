@@ -256,7 +256,7 @@ defmodule Mongo.TopologyDescription do
       address = server_description.address
       old_description = topology.servers[address]
 
-      {actions, topology} = ret =
+      {actions, topology} =
         topology
         |> put_in([:servers, address], server_description)
         |> update_topology(topology.type, server_description, num_seeds)
@@ -541,18 +541,4 @@ defmodule Mongo.TopologyDescription do
     end
   end
 
-  # invalid state checks to use before returning the state
-
-  defp check_topology(topo) do
-    cond do
-      invalid_set_name?(topo) ->
-        :invalid_set_name
-      true ->
-        :ok
-    end
-  end
-
-  defp invalid_set_name?(topo) do
-    topo.type == :single and topo.set_name != topo.servers[0].set_name
-  end
 end

@@ -69,7 +69,7 @@ defmodule Mongo.Topology do
     local_threshold_ms = Keyword.get(opts, :local_threshold_ms, 15)
 
     :ok = Mongo.Events.notify(%TopologyOpeningEvent{
-      topology_pid: self
+      topology_pid: self()
     })
 
     cond do
@@ -104,7 +104,7 @@ defmodule Mongo.Topology do
     Enum.each(state.connection_pools, fn {_address, pid} -> GenServer.stop(pid) end)
     Enum.each(state.monitors, fn {_address, pid} -> GenServer.stop(pid) end)
     :ok = Mongo.Events.notify(%TopologyClosedEvent{
-      topology_pid: self
+      topology_pid: self()
     })
   end
 
@@ -121,7 +121,7 @@ defmodule Mongo.Topology do
     new_state = handle_server_description(state, server_description)
     if state.topology != new_state.topology do
       :ok = Mongo.Events.notify(%TopologyDescriptionChangedEvent{
-        topology_pid: self,
+        topology_pid: self(),
         previous_description: state.topology,
         new_description: new_state.topology
       })
@@ -182,12 +182,12 @@ defmodule Mongo.Topology do
   defp process_events({events, state}) do
     Enum.each(events, fn
       {:force_check, _} = message ->
-        :ok = GenServer.cast(self, message)
+        :ok = GenServer.cast(self(), message)
       {previous, next} ->
         if previous != next do
           :ok = Mongo.Events.notify(%ServerDescriptionChangedEvent{
             address: next.address,
-            topology_pid: self,
+            topology_pid: self(),
             previous_description: previous,
             new_description: next
           })
@@ -209,12 +209,12 @@ defmodule Mongo.Topology do
       connopts = connect_opts_from_address(state.opts, address)
       args = [
         server_description,
-        self,
+        self(),
         @heartbeat_frequency_ms,
         Keyword.put(connopts, :pool, DBConnection.Connection)
       ]
 
-      :ok = Mongo.Events.notify(%ServerOpeningEvent{address: address, topology_pid: self})
+      :ok = Mongo.Events.notify(%ServerOpeningEvent{address: address, topology_pid: self()})
 
       {:ok, pid} = Monitor.start_link(args)
       %{ state | monitors: Map.put(state.monitors, address, pid) }
