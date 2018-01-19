@@ -1,10 +1,10 @@
 # Mongodb
 
-[![Build Status](https://travis-ci.org/ericmj/mongodb.svg?branch=master)](https://travis-ci.org/ericmj/mongodb)
+[![Build Status](https://travis-ci.org/ankhers/mongodb.svg?branch=master)](https://travis-ci.org/ankhers/mongodb)
 
 ## Features
 
-  * Supports MongoDB versions 2.4, 2.6, 3.0, 3.2, 3.4
+  * Supports MongoDB versions 2.4, 2.6, 3.0, 3.2, 3.4, 3.6
   * Connection pooling (through db_connection)
   * Streaming cursors
   * Performant ObjectID generation
@@ -73,12 +73,13 @@ By default mongodb will start a single connection, but it also supports pooling 
 
 ```elixir
 # Starts an unpooled connection
-{:ok, conn} = Mongo.start_link(database: "test")
+{:ok, conn} = Mongo.start_link(url: "mongodb://localhost:27017/db-name")
 
 # Gets an enumerable cursor for the results
 cursor = Mongo.find(conn, "test-collection", %{})
 
-Enum.to_list(cursor)
+cursor
+|> Enum.to_list()
 |> IO.inspect
 ```
 
@@ -103,6 +104,36 @@ Then you can use the pool as following:
 Mongo.find(:mongo, "collection", %{}, limit: 20, pool: DBConnection.Poolboy)
 ```
 
+### Replica Sets
+
+To connect to a Mongo cluster that is using replica sets, it is recommended to use the `:seeds` list instead of a `:hostname` and `:port` pair.
+
+```elixir
+{:ok, pid} = Mongo.start_link(database: "test", seeds: ["hostname1.net:27017", "hostname2.net:27017"])
+```
+
+This will allow for scenarios where the first `"hostname1.net:27017"` is unreachable for any reason and will automatically try to connect to each of the following entries in the list to connect to the cluster.
+
+### Examples
+
+Using `$and`
+
+```elixir
+Mongo.find(:mongo, "users", %{"$and" => [%{email: "my@email.com"}, %{first_name: "first_name"}]})
+```
+
+Using `$or`
+
+```elixir
+Mongo.find(:mongo, "users", %{"$or" => [%{email: "my@email.com"}, %{first_name: "first_name"}]})
+```
+
+Using `$in`
+
+```elixir
+Mongo.find(:mongo, "users", %{email: %{"$in" => ["my@email.com", "other@email.com"]}})
+```
+
 ## Contributing
 
 The SSL test suite is enabled by default. You have two options. Either exclude
@@ -125,7 +156,7 @@ $ mongod --sslMode allowSSL --sslPEMKeyFile /path/to/mongodb.pem
 
 ## License
 
-Copyright 2015 Eric Meadows-Jönsson
+Copyright 2015 Justin Wood
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

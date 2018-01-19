@@ -1,7 +1,7 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.4.0"
+  @version "0.4.4-dev"
 
   def project do
     [app: :mongodb,
@@ -29,17 +29,18 @@ defmodule Mongodb.Mixfile do
 
   defp deps do
     [{:connection,    "~> 1.0"},
-     {:db_connection, "~> 1.0"},
+     {:db_connection, "~> 1.1"},
      {:poolboy,       ">= 0.0.0", only: :test},
      {:ex_doc,        ">= 0.0.0", only: :dev},
-     {:earmark,       ">= 0.0.0", only: :dev}]
+     {:earmark,       ">= 0.0.0", only: :dev},
+     {:dialyxir,      "~> 0.5.1", only: :dev}]
   end
 
   defp docs do
     [main: "readme",
      extras: ["README.md"],
      source_ref: "v#{@version}",
-     source_url: "https://github.com/ericmj/mongodb"]
+     source_url: "https://github.com/ankhers/mongodb"]
   end
 
   defp description do
@@ -49,6 +50,6 @@ defmodule Mongodb.Mixfile do
   defp package do
     [maintainers: ["Eric Meadows-Jönsson", "Justin Wood"],
      licenses: ["Apache 2.0"],
-     links: %{"GitHub" => "https://github.com/ericmj/mongodb"}]
+     links: %{"GitHub" => "https://github.com/ankhers/mongodb"}]
   end
 end

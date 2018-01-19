@@ -42,8 +42,8 @@ defmodule BSON.Encoder do
     [<<size::int32>> | iodata]
   end
 
-  def encode(%BSON.Timestamp{value: value}),
-    do: <<value::int64>>
+  def encode(%BSON.Timestamp{value: epoch, ordinal: ordinal}),
+    do: <<ordinal::int32, epoch::int32>>
 
   def encode([]) do
     document([])

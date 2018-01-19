@@ -10,8 +10,13 @@ defmodule Mongo.Protocol do
   @update_flags ~w(upsert)a
   @write_concern ~w(w j wtimeout)a
 
-  def disconnect(_error, %{socket: {mod, sock}}) do
+  def disconnect(_error, %{socket: {mod, sock}} = s) do
+    notify_disconnect(s)
     mod.close(sock)
+  end
+
+  defp notify_disconnect(%{connection_type: type, topology_pid: pid, host: host}) do
+    GenServer.cast(pid, {:disconnect, type, host})
   end
 
   def connect(opts) do
@@ -25,6 +30,8 @@ defmodule Mongo.Protocol do
       database: Keyword.fetch!(opts, :database),
       write_concern: Map.new(write_concern),
       wire_version: nil,
+      connection_type: Keyword.fetch!(opts, :connection_type),
+      topology_pid: Keyword.fetch!(opts, :topology_pid),
       ssl: opts[:ssl] || false
     }
 
@@ -72,7 +79,9 @@ defmodule Mongo.Protocol do
     end
   end
   defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
-    case :ssl.connect(sock, opts[:ssl_opts] || [], 5000) do
+    host      = (opts[:hostname] || "localhost") |> to_char_list
+    ssl_opts = Keyword.put_new(opts[:ssl_opts] || [], :server_name_indication, host)
+    case :ssl.connect(sock, ssl_opts, 5000) do
       {:ok, ssl_sock} ->
         {:ok, %{s | socket: {:ssl, ssl_sock}}}
       {:error, reason} ->
@@ -85,6 +94,8 @@ defmodule Mongo.Protocol do
     port      = opts[:port] || 27017
     sock_opts = [:binary, active: false, packet: :raw, send_timeout: s.timeout, nodelay: true]
                 ++ (opts[:socket_options] || [])
+
+    s = Map.put(s, :host, "#{host}:#{port}")
 
     case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
       {:ok, socket} ->
@@ -110,6 +121,9 @@ defmodule Mongo.Protocol do
         {:ok, %{s | wire_version: version}}
       {:ok, %{"ok" => ok}} when ok == 1 ->
         {:ok, %{s | wire_version: 0}}
+      {:ok, %{"ok" => ok, "errmsg" => msg, "code" => code}} when ok == 0 ->
+        err = Mongo.Error.exception(message: msg, code: code)
+        {:disconnect, err, s}
       {:disconnect, _, _} = error ->
         error
     end
@@ -127,6 +141,11 @@ defmodule Mongo.Protocol do
 
   def handle_info({:tcp_error, _, reason}, s) do
     err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: reason)
+    {:disconnect, err, s}
+  end
+
+  def handle_info({:ssl_closed, _}, s) do
+    err = Mongo.Error.exception(tag: :ssl, action: "async recv", reason: :closed)
     {:disconnect, err, s}
   end
 

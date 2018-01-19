@@ -1,3 +1,38 @@
+## v0.4.4-dev
+
+* Enhancements
+  * Added support for using a mongo url via the `:url` key
+
+* Bug Fixes
+  * Added another case for BSON NaN
+  * Fixed encoding and decoding of the BSON Timestamp type
+  * Should now figure out Topology for replica sets even if you exclude the `:type` key
+
+## v0.4.3 (2017-09-16)
+
+* Enhancements
+  * Send TLS server name indication (SNI) if none is set in the `:ssl_opts`
+  * Fixed a couple dialyzer issues
+  * Add basic examples of `$and`, `$or`, and `$in` operators in README
+
+* Bug Fixes
+  * Ensure cursor requests are routed to the proper node in the cluster
+  * No longer attempting to authenticate against arbiter nodes
+  * Prevent monitor errors if you have stopped the mongo process
+
+## v0.4.2 (2017-08-28)
+
+* Bug fixes
+  * Fix application crash when a replica set member goes offline
+  * Fix application crash on start when a replica set member is offline
+
+## v0.4.1 (2017-08-09)
+
+* Bug fixes
+  * Monitors no longer use a pool
+  * Can now connect to a Mongo instance using a CNAME
+  * Pass options through Mongo.aggregate/4
+
 ## v0.4.0 (2017-06-07)
 
 * Replica Set Support

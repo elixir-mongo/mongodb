@@ -17,8 +17,11 @@ defmodule Mongo.Monitor do
     GenServer.start_link(__MODULE__, args, gen_server_opts)
   end
 
+  # We need to stop asynchronously because a Monitor can call the Topology
+  # which may try to stop the same Monitor that called it. Ending in a timeout.
+  # See issues #139 for some information.
   def stop(pid) do
-    GenServer.stop(pid)
+    GenServer.cast(pid, :stop)
   end
 
   def force_check(pid) do
@@ -33,6 +36,13 @@ defmodule Mongo.Monitor do
       connection_opts
       |> Keyword.put(:database, "admin")
       |> Keyword.put(:skip_auth, true)
+      |> Keyword.put(:after_connect, {__MODULE__, :connected, [self(), topology_pid]})
+      |> Keyword.put(:backoff_min, heartbeat_frequency_ms)
+      |> Keyword.put(:backoff_max, heartbeat_frequency_ms)
+      |> Keyword.put(:backoff_type, :rand)
+      |> Keyword.put(:connection_type, :monitor)
+      |> Keyword.put(:topology_pid, topology_pid)
+
     {:ok, pid} = DBConnection.start_link(Mongo.Protocol, opts)
     :ok = GenServer.cast(self(), :check)
     {:ok, %{
@@ -45,8 +55,22 @@ defmodule Mongo.Monitor do
   end
 
   @doc false
+  def terminate(reason, state) do
+    GenServer.stop(state.connection_pid, reason)
+  end
+
+  @doc false
+  def connected(_connection, me, topology_pid) do
+    GenServer.cast(topology_pid, {:connected, me})
+  end
+
+  @doc false
   def handle_cast(:check, state) do
     check(state)
+  end
+  def handle_cast(:stop, state) do
+    exit(:normal)
+    {:noreply, state}
   end
 
   @doc false
@@ -73,12 +97,18 @@ defmodule Mongo.Monitor do
     end
   end
 
+  # TODO: Remove this try/rescue once a new version of db_connection is released
   defp call_is_master(conn_pid, opts) do
     start_time = System.monotonic_time
-    result = Mongo.direct_command(conn_pid, %{isMaster: 1}, opts)
+    result = try do
+      Mongo.direct_command(conn_pid, %{isMaster: 1}, opts)
+    rescue
+      e ->
+        {:error, e}
+    end
     finish_time = System.monotonic_time
-    rtt = System.convert_time_unit(finish_time - start_time, :native, :milli_seconds)
-    finish_time = System.convert_time_unit(finish_time, :native, :milli_seconds)
+    rtt = System.convert_time_unit(finish_time - start_time, :native, :milliseconds)
+    finish_time = System.convert_time_unit(finish_time, :native, :milliseconds)
 
     {result, finish_time, rtt}
   end
@@ -95,7 +125,7 @@ defmodule Mongo.Monitor do
         notify_success(rtt, is_master_reply, conn_pid)
         ServerDescription.from_is_master(last_server_description, rtt, finish_time, is_master_reply)
 
-      {:disconnect, error, _} ->
+      {:error, error} ->
         if last_server_description.type in [:unknown, :possible_primary] do
           notify_error(rtt, error, conn_pid)
           ServerDescription.from_is_master_error(last_server_description, error)
@@ -105,7 +135,7 @@ defmodule Mongo.Monitor do
             {:ok, is_master_reply} ->
               notify_success(rtt, is_master_reply, conn_pid)
               ServerDescription.from_is_master(last_server_description, rtt, finish_time, is_master_reply)
-            {:disconnect, error, _} ->
+            {:error, error} ->
               notify_error(rtt, error, conn_pid)
               ServerDescription.from_is_master_error(last_server_description, error)
           end

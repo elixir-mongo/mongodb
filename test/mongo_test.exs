@@ -39,6 +39,23 @@ defmodule Mongo.Test do
     assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}, %{"foo" => 45}] =
            Mongo.aggregate(c.pid, coll, []) |> Enum.to_list
 
+    query = [
+      %{
+        "$match" => %{
+          "foo" => %{ "$gt" => 43 }
+        }
+      },
+      %{
+        "$group" => %{
+          "_id" => "foo",
+          "total" => %{ "$sum" => "$foo" }
+        }
+      }
+    ]
+
+    assert [%{"_id" => "foo", "total" => 89}] =
+           Mongo.aggregate(c.pid, coll, query) |> Enum.to_list
+
     assert []               = Mongo.aggregate(c.pid, coll, []) |> Enum.take(0)
     assert []               = Mongo.aggregate(c.pid, coll, []) |> Enum.drop(4)
     assert [%{"foo" => 42}] = Mongo.aggregate(c.pid, coll, []) |> Enum.take(1)

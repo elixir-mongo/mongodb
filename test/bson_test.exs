@@ -60,8 +60,8 @@ defmodule BSONTest do
   @map16 %{"l" => 12345}
   @bin16 <<12, 0, 0, 0, 16, 108, 0, 57, 48, 0, 0, 0>>
 
-  @map17 %{"m" => %BSON.Timestamp{value: 12345678}}
-  @bin17 <<16, 0, 0, 0, 17, 109, 0, 78, 97, 188, 0, 0, 0, 0, 0, 0>>
+  @map17 %{"m" => %BSON.Timestamp{value: 1423458185, ordinal: 9}}
+  @bin17 <<16, 0, 0, 0, 17, 109, 0, 9, 0, 0, 0, 137, 63, 216, 84, 0>>
 
   @map18 %{"n" => 123456789123456}
   @bin18 <<16, 0, 0, 0, 18, 110, 0, 128, 145, 15, 134, 72, 112, 0, 0, 0>>
@@ -149,9 +149,11 @@ defmodule BSONTest do
 
   @mapNaN %{"a" => :NaN}
   @binNaN <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 248::little-integer-size(8), 127::little-integer-size(8), 0>>
+  @binNaN2 <<16, 0, 0, 0, 1, 97, 0, 1, 0, 0, 0, 0, 0, 240::little-integer-size(8), 127::little-integer-size(8), 0>>
 
   test "decode float NaN" do
     assert decode(@binNaN) == @mapNaN
+    assert decode(@binNaN2) == @mapNaN
   end
 
   test "encode float NaN" do

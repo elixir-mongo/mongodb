@@ -28,6 +28,10 @@ defmodule BSON.Decoder do
     {:NaN, rest}
   end
 
+  defp type(@type_float, <<1, 0, 0, 0, 0, 0, 240::little-integer-size(8), 127::little-integer-size(8), rest::binary>>) do
+    {:NaN, rest}
+  end
+
   defp type(@type_float, <<float::little-float64, rest::binary>>) do
     {float, rest}
   end
@@ -67,6 +71,10 @@ defmodule BSON.Decoder do
     {DateTime.from_unix!(unix_ms, :milliseconds), rest}
   end
 
+  defp type(@type_undefined, rest) do
+    {nil, rest}
+  end
+
   defp type(@type_null, rest) do
     {nil, rest}
   end
@@ -98,8 +106,8 @@ defmodule BSON.Decoder do
     {int, rest}
   end
 
-  defp type(@type_timestamp, <<value::int64, rest::binary>>) do
-    {%BSON.Timestamp{value: value}, rest}
+  defp type(@type_timestamp, <<ordinal::int32, epoch::int32, rest::binary>>) do
+    {%BSON.Timestamp{value: epoch, ordinal: ordinal}, rest}
   end
 
   defp type(@type_int64, <<int::int64, rest::binary>>) do
