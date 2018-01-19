@@ -1,3 +1,13 @@
+## v0.4.4-dev
+
+* Enhancements
+  * Added support for using a mongo url via the `:url` key
+
+* Bug Fixes
+  * Added another case for BSON NaN
+  * Fixed encoding and decoding of the BSON Timestamp type
+  * Should now figure out Topology for replica sets even if you exclude the `:type` key
+
 ## v0.4.3 (2017-09-16)
 
 * Enhancements
