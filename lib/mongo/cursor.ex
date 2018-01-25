@@ -33,6 +33,12 @@ defmodule Mongo.Cursor do
       Stream.resource(start_fun, next_fun, after_fun).(acc, reduce_fun)
     end
 
+    # we cannot determinstically slice, so tell Enumerable to
+    # fall back on brute force
+    def slice(_cursor) do
+      { :error, __MODULE__ }
+    end
+
     defp start_fun(conn, coll, query, projector, limit, opts) do
       opts = batch_size(limit, opts)
 
@@ -131,6 +137,12 @@ defmodule Mongo.AggregationCursor do
       Stream.resource(start_fun, next_fun, after_fun).(acc, reduce_fun)
     end
 
+    # we cannot determinstically slice, so tell Enumerable to
+    # fall back on brute force
+    def slice(_cursor) do
+      { :error, __MODULE__ }
+    end
+
     defp start_fun(conn, coll, query, projector, opts) do
       opts = Keyword.put(opts, :batch_size, -1)
 
@@ -209,6 +221,10 @@ defmodule Mongo.SinglyCursor do
       after_fun = after_fun()
 
       Stream.resource(start_fun, next_fun, after_fun).(acc, reduce_fun)
+    end
+
+    def slice(_cursor) do
+      { :error, __MODULE__ }
     end
 
     defp start_fun(conn, coll, query, projector, opts) do

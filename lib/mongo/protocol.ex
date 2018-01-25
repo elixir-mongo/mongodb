@@ -79,7 +79,7 @@ defmodule Mongo.Protocol do
     end
   end
   defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
-    host      = (opts[:hostname] || "localhost") |> to_char_list
+    host      = (opts[:hostname] || "localhost") |> to_charlist
     ssl_opts = Keyword.put_new(opts[:ssl_opts] || [], :server_name_indication, host)
     case :ssl.connect(sock, ssl_opts, 5000) do
       {:ok, ssl_sock} ->
@@ -90,7 +90,7 @@ defmodule Mongo.Protocol do
   end
 
   defp tcp_connect(opts, s) do
-    host      = (opts[:hostname] || "localhost") |> to_char_list
+    host      = (opts[:hostname] || "localhost") |> to_charlist
     port      = opts[:port] || 27017
     sock_opts = [:binary, active: false, packet: :raw, send_timeout: s.timeout, nodelay: true]
                 ++ (opts[:socket_options] || [])
