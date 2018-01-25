@@ -396,7 +396,8 @@ defmodule Mongo do
     * `:projection` - Limits the fields to return for all matching document
     * `:skip` - The number of documents to skip before returning (Default: 0)
   """
-  @spec find_one(GenServer.server, collection, BSON.document, Keyword.t) :: cursor
+  @spec find_one(GenServer.server, collection, BSON.document, Keyword.t) ::
+    BSON.document | nil
   def find_one(conn, coll, filter, opts \\ []) do
     opts =
       opts
