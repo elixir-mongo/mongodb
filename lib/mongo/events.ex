@@ -1,7 +1,60 @@
 defmodule Mongo.Events do
   @doc false
+
+  use GenServer
+
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  end
+
   def notify(event) do
-    GenEvent.notify(__MODULE__, event)
+    GenServer.cast(__MODULE__, { :notify, event })
+  end
+
+  def wait_for_event(module, timeout) do
+    GenServer.call(__MODULE__, { :add_client, self() })
+    try do
+      receive do
+        { :notification_received, event = %{ __struct__: ^module }} ->
+          event
+      after
+        timeout ->
+          :timeout
+      end
+    after
+      GenServer.call(__MODULE__, { :remove_client, self() })
+    end
+  end
+
+  # server impl
+  def init(_) do
+    Process.flag(:trap_exit, true)
+    { :ok, %{ clients: [] } }
+  end
+
+  def handle_call({ :add_client, pid}, _, state = %{ clients: clients}) do
+    Process.link(pid)
+    { :reply, :ok, %{ state | clients: [ pid | clients ] }}
+  end
+
+  def handle_call({ :remove_client, pid}, _, state = %{ clients: clients}) do
+    Process.unlink(pid)
+    { :reply, :ok, %{ state | clients: remove_client(pid, clients) }}
+  end
+
+  def handle_cast({:notify, event}, state = %{ clients: clients }) do
+    clients
+    |> Enum.map(&send(&1, { :notification_received, event }))
+    { :noreply, state }
+  end
+
+  def handle_info({:EXIT, pid, _reason}, state = %{ clients: clients }) do
+    {:noreply, %{ state | clients: remove_client(pid, clients) }}
+  end
+
+  defp remove_client(pid, clients) do
+    clients
+    |> Enum.reject(fn client -> client == pid end)
   end
 
   defmodule ServerDescriptionChangedEvent do

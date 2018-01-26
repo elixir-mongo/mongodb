@@ -5,3 +5,4 @@ erl_crash.dump
 *.ez
 /tmp
 .tool-versions
+.elixir_ls
