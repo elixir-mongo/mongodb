@@ -751,28 +751,20 @@ defmodule Mongo do
         if delta_ms >= @sel_timeout do
           {:ok, [], slave_ok, mongos?}
         else
-          case Mongo.Events.wait_for_event(TopologyDescriptionChangedEvent, @sel_timeout - delta_ms) do
-            :timeout ->
-              { :error, :selection_timeout }
-            event = %TopologyDescriptionChangedEvent{} ->
-              _select_servers(event.new_description, type, opts, start_time)
+          try do
+            GenEvent.stream(Mongo.Events, timeout: @sel_timeout - delta_ms)
+            |> Stream.filter(fn
+              %TopologyDescriptionChangedEvent{} -> true
+              _ -> false
+            end)
+            |> Enum.at(0)
+          catch
+            :exit, {:timeout, _} ->
+              {:error, :selection_timeout}
+          else
+            evt ->
+              _select_servers(evt.new_description, type, opts, start_time)
           end
-          # I left this in to make it easy to compare the old and the new. Please delete
-          # if you're OK with it.  @pragdave
-          # try do
-          #   GenEvent.stream(Mongo.Events, timeout: @sel_timeout - delta_ms)
-          #   |> Stream.filter(fn
-          #     %TopologyDescriptionChangedEvent{} -> true
-          #     _ -> false
-          #   end)
-          #   |> Enum.at(0)
-          # catch
-          #   :exit, {:timeout, _} ->
-          #     {:error, :selection_timeout}
-          # else
-          #   evt ->
-          #     _select_servers(evt.new_description, type, opts, start_time)
-          # end
         end
       else
         {:ok, servers, slave_ok, mongos?}
