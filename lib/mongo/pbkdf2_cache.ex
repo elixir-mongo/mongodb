@@ -3,7 +3,7 @@ defmodule Mongo.PBKDF2Cache do
   use GenServer
   @name __MODULE__
 
-  def start_link do
+  def start_link(_ \\ nil) do
     GenServer.start_link(__MODULE__, [], name: @name)
   end
 
