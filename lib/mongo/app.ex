@@ -5,8 +5,8 @@ defmodule Mongo.App do
     import Supervisor.Spec, warn: false
 
     children = [
-      Mongo.IdServer,
-      Mongo.PBKDF2Cache,
+      worker(Mongo.IdServer, []),
+      worker(Mongo.PBKDF2Cache, []),
       worker(GenEvent, [[name: Mongo.Events]])
     ]
 
