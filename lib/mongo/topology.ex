@@ -78,10 +78,7 @@ defmodule Mongo.Topology do
       set_name != nil and not type in [:unknown, :replica_set_no_primary, :single] ->
         {:stop, :set_name_bad_topology}
       true ->
-        servers =
-          for addr <- seeds, into: %{} do
-            {addr, ServerDescription.defaults(%{address: addr, type: :unknown})}
-          end
+        servers = servers_from_seeds(seeds)
         state =
           %{
             topology: TopologyDescription.defaults(%{
@@ -129,8 +126,13 @@ defmodule Mongo.Topology do
     {:reply, :ok, new_state}
   end
 
+  def handle_cast(:reconcile, state) do
+    new_state = reconcile_servers(state)
+    {:noreply, new_state}
+  end
   def handle_cast({:disconnect, :monitor, host}, state) do
     new_state = remove_address(host, state)
+    maybe_reinit(new_state)
     {:noreply, new_state}
   end
   def handle_cast({:disconnect, :client, _host}, state) do
@@ -219,7 +221,24 @@ defmodule Mongo.Topology do
       {:ok, pid} = Monitor.start_link(args)
       %{ state | monitors: Map.put(state.monitors, address, pid) }
     end)
+
     Enum.reduce(removed, state, &remove_address/2)
+  end
+
+  defp maybe_reinit(%{monitors: monitors} = state) when map_size(monitors) > 0,
+    do: state
+  defp maybe_reinit(state) do
+    servers = servers_from_seeds(state.seeds)
+
+    GenServer.cast(self(), :reconcile)
+
+    put_in(state, [:topology, :servers], servers)
+  end
+
+  defp servers_from_seeds(seeds) do
+    for addr <- seeds, into: %{} do
+      {addr, ServerDescription.defaults(%{address: addr, type: :unknown})}
+    end
   end
 
   defp remove_address(address, state) do
