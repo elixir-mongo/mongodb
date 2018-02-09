@@ -1,12 +1,17 @@
-## v0.4.4-dev
+## v0.4.4 (2017-09-16)
 
 * Enhancements
   * Added support for using a mongo url via the `:url` key
+  * Added MongoDB 3.6 to supported versions
+  * Added support for the deprecated `undefined` BSON type
 
 * Bug Fixes
   * Added another case for BSON NaN
   * Fixed encoding and decoding of the BSON Timestamp type
-  * Should now figure out Topology for replica sets even if you exclude the `:type` key
+  * Should now figure out Topology for replica sets even if you exclude the
+    `:type` key
+  * Fixed an issue where our monitors would become empty, preventing the driver
+    from reconnecting to a downed database
 
 ## v0.4.3 (2017-09-16)
 
