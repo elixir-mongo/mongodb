@@ -1,5 +1,5 @@
-sudo: required
 language: elixir
+sudo: false
 
 elixir:
   - 1.3
@@ -7,30 +7,16 @@ elixir:
   - 1.5
   - 1.6
 
-cache:
-  - apt
-  - directories:
-    - ~/.mongodb
-
-before_install:
-  - . $HOME/.nvm/nvm.sh
-  - nvm install stable
-  - nvm use stable
-  - npm install -g mongodb-version-manager
-  - m use $MONGOVERSION
-  - bash ./start_mongo.bash
-  - mkdir db
-
 before_script:
-  - export PATH=$(m path):$PATH
-  - echo $PATH
-  - mongod --fork --logpath mongo.log --dbpath db
-
+  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${MONGODB}.tgz -O /tmp/mongodb.tgz
+  - tar -xvf /tmp/mongodb.tgz
+  - mkdir /tmp/data
+  - ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --dbpath /tmp/data --bind_ip 127.0.0.1 --auth &> /dev/null &
 env:
   matrix:
-    - MONGOVERSION=2.4.14 TRAVIS_NODE_VERSION=4
-    - MONGOVERSION=2.6.12 TRAVIS_NODE_VERSION=4
-    - MONGOVERSION=3.0.15 TRAVIS_NODE_VERSION=4
-    - MONGOVERSION=3.2.13 TRAVIS_NODE_VERSION=4
-    - MONGOVERSION=3.4.4 TRAVIS_NODE_VERSION=4
-    - MONGOVERSION=3.6.0 TRAVIS_NODE_VERSION=4
+    - MONGOVERSION=2.4.14
+    - MONGOVERSION=2.6.12
+    - MONGOVERSION=3.0.15
+    - MONGOVERSION=3.2.13
+    - MONGOVERSION=3.4.4
+    - MONGOVERSION=3.6.2
