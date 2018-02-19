@@ -48,6 +48,17 @@ defmodule Mongo.Topology do
     GenServer.call(pid, {:connection, address})
   end
 
+  def wait_for_connection(pid, timeout, start_time) do
+    :ok = GenServer.call(pid, :wait_for_connection)
+    delta_ms = System.convert_time_unit(System.monotonic_time - start_time, :native, :milliseconds)
+
+    receive do
+      {:new_connection, servers} ->
+    after delta_ms ->
+        []
+    end
+  end
+
   def topology(pid) do
     GenServer.call(pid, :topology)
   end
@@ -90,7 +101,8 @@ defmodule Mongo.Topology do
             seeds: seeds,
             opts: opts,
             monitors: %{},
-            connection_pools: %{}
+            connection_pools: %{},
+            waiting_pids: []
           }
           |> reconcile_servers
         {:ok, state}
@@ -126,6 +138,10 @@ defmodule Mongo.Topology do
     {:reply, :ok, new_state}
   end
 
+  def handle_call(:wait_for_connection, from, %{waiting_pids: waiting} = state) do
+    {:reply, :ok, %{state | waiting_pids: [from | waiting]}}
+  end
+
   def handle_cast(:reconcile, state) do
     new_state = reconcile_servers(state)
     {:noreply, new_state}
@@ -156,6 +172,9 @@ defmodule Mongo.Topology do
 
         {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
         connection_pools = Map.put(state.connection_pools, host, pool)
+        Enum.each(state.waiting_pids, fn pid ->
+          send(pid, {:new_connection, host})
+        end)
         %{ state | connection_pools: connection_pools }
       end
     {:noreply, new_state}

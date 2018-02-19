@@ -738,35 +738,16 @@ defmodule Mongo do
   end
 
   defp select_servers(topology_pid, type, opts) do
-    topology = Topology.topology(topology_pid)
     start_time = System.monotonic_time
-    _select_servers(topology, type, opts, start_time)
+    _select_servers(topology_pid, type, opts, start_time)
   end
 
   @sel_timeout 30000
-  defp _select_servers(topology, type, opts, start_time) do
+  defp _select_servers(topology_pid, type, opts, start_time) do
+    topology = Topology.topology(topology_pid)
     with {:ok, servers, slave_ok, mongos?} <- TopologyDescription.select_servers(topology, type, opts) do
       if Enum.empty? servers do
-        delta_ms = System.convert_time_unit(System.monotonic_time - start_time,
-                                            :native, :milliseconds)
-        if delta_ms >= @sel_timeout do
-          {:ok, [], slave_ok, mongos?}
-        else
-          try do
-            GenEvent.stream(Mongo.Events, timeout: @sel_timeout - delta_ms)
-            |> Stream.filter(fn
-              %TopologyDescriptionChangedEvent{} -> true
-              _ -> false
-            end)
-            |> Enum.at(0)
-          catch
-            :exit, {:timeout, _} ->
-              {:error, :selection_timeout}
-          else
-            evt ->
-              _select_servers(evt.new_description, type, opts, start_time)
-          end
-        end
+        Topology.wait_for_connection(topology_pid, @sel_timeout, start_time)
       else
         {:ok, servers, slave_ok, mongos?}
       end
