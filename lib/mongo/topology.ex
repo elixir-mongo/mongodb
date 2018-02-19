@@ -49,13 +49,16 @@ defmodule Mongo.Topology do
   end
 
   def wait_for_connection(pid, timeout, start_time) do
-    :ok = GenServer.call(pid, :wait_for_connection)
-    delta_ms = System.convert_time_unit(System.monotonic_time - start_time, :native, :milliseconds)
+    :ok = GenServer.call(pid, {:wait_for_connection, self()})
+    timeout = timeout - System.convert_time_unit(System.monotonic_time - start_time, :native, :milliseconds)
 
     receive do
-      {:new_connection, servers} ->
-    after delta_ms ->
-        []
+      {:new_connection, server} ->
+        {:ok, [server]}
+      {:connected, servers} ->
+        {:ok, servers}
+    after timeout ->
+        {:error, :selection_timeout}
     end
   end
 
@@ -138,8 +141,13 @@ defmodule Mongo.Topology do
     {:reply, :ok, new_state}
   end
 
-  def handle_call(:wait_for_connection, from, %{waiting_pids: waiting} = state) do
-    {:reply, :ok, %{state | waiting_pids: [from | waiting]}}
+  def handle_call({:wait_for_connection, pid}, _from, %{connection_pools: pools} = state) when map_size(pools) > 0 do
+    servers = Enum.map(pools, fn {key, _value} -> key end)
+    send(pid, {:connected, servers})
+    {:reply, :ok, state}
+  end
+  def handle_call({:wait_for_connection, pid}, _from, %{waiting_pids: waiting} = state) do
+    {:reply, :ok, %{state | waiting_pids: [pid | waiting]}}
   end
 
   def handle_cast(:reconcile, state) do
@@ -175,7 +183,7 @@ defmodule Mongo.Topology do
         Enum.each(state.waiting_pids, fn pid ->
           send(pid, {:new_connection, host})
         end)
-        %{ state | connection_pools: connection_pools }
+        %{ state | connection_pools: connection_pools, waiting_pids: [] }
       end
     {:noreply, new_state}
   end
