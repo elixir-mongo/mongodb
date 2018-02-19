@@ -739,15 +739,20 @@ defmodule Mongo do
 
   defp select_servers(topology_pid, type, opts) do
     start_time = System.monotonic_time
-    _select_servers(topology_pid, type, opts, start_time)
+    select_servers(topology_pid, type, opts, start_time)
   end
 
   @sel_timeout 30000
-  defp _select_servers(topology_pid, type, opts, start_time) do
+  defp select_servers(topology_pid, type, opts, start_time) do
     topology = Topology.topology(topology_pid)
     with {:ok, servers, slave_ok, mongos?} <- TopologyDescription.select_servers(topology, type, opts) do
       if Enum.empty? servers do
-        Topology.wait_for_connection(topology_pid, @sel_timeout, start_time)
+        case Topology.wait_for_connection(topology_pid, @sel_timeout, start_time) do
+          {:ok, servers} ->
+            select_servers(topology_pid, type, opts, start_time)
+          {:error, :selection_timeout} = error ->
+            error
+        end
       else
         {:ok, servers, slave_ok, mongos?}
       end
