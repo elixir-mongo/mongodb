@@ -743,6 +743,10 @@ defmodule Mongo do
   end
 
   @sel_timeout 30000
+  # NOTE: Should think about the handling completely in the Topology GenServer
+  #       in order to make the entire operation atomic instead of querying
+  #       and then potentially having an outdated topology when waiting for the
+  #       connection.
   defp select_servers(topology_pid, type, opts, start_time) do
     topology = Topology.topology(topology_pid)
     with {:ok, servers, slave_ok, mongos?} <- TopologyDescription.select_servers(topology, type, opts) do
