@@ -48,7 +48,6 @@ defmodule Mongo do
   use Bitwise
   use Mongo.Messages
   alias Mongo.Query
-  alias Mongo.Events.TopologyDescriptionChangedEvent
   alias Mongo.ReadPreference
   alias Mongo.TopologyDescription
   alias Mongo.Topology
@@ -752,7 +751,7 @@ defmodule Mongo do
     with {:ok, servers, slave_ok, mongos?} <- TopologyDescription.select_servers(topology, type, opts) do
       if Enum.empty? servers do
         case Topology.wait_for_connection(topology_pid, @sel_timeout, start_time) do
-          {:ok, servers} ->
+          {:ok, _servers} ->
             select_servers(topology_pid, type, opts, start_time)
           {:error, :selection_timeout} = error ->
             error
