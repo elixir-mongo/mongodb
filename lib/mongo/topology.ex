@@ -49,15 +49,17 @@ defmodule Mongo.Topology do
   end
 
   def wait_for_connection(pid, timeout, start_time) do
-    :ok = GenServer.call(pid, {:wait_for_connection, self()})
     timeout = timeout - System.convert_time_unit(System.monotonic_time - start_time, :native, :milliseconds)
 
-    receive do
-      {:new_connection, server} ->
-        {:ok, [server]}
-      {:connected, servers} ->
-        {:ok, servers}
-    after timeout ->
+    try do
+      case GenServer.call(pid, :wait_for_connection, timeout) do
+        {:new_connection, server} ->
+          {:ok, [server]}
+        {:connected, servers} ->
+          {:ok, servers}
+      end
+    catch
+      :exit, {:timeout, _} ->
         {:error, :selection_timeout}
     end
   end
@@ -141,13 +143,12 @@ defmodule Mongo.Topology do
     {:reply, :ok, new_state}
   end
 
-  def handle_call({:wait_for_connection, pid}, _from, %{connection_pools: pools} = state) when map_size(pools) > 0 do
+  def handle_call(:wait_for_connection, from, %{connection_pools: pools} = state) when map_size(pools) > 0 do
     servers = Enum.map(pools, fn {key, _value} -> key end)
-    send(pid, {:connected, servers})
-    {:reply, :ok, state}
+    {:reply, {:connected, servers}, state}
   end
-  def handle_call({:wait_for_connection, pid}, _from, %{waiting_pids: waiting} = state) do
-    {:reply, :ok, %{state | waiting_pids: [pid | waiting]}}
+  def handle_call(:wait_for_connection, from, %{waiting_pids: waiting} = state) do
+    {:noreply, %{state | waiting_pids: [from | waiting]}}
   end
 
   def handle_cast(:reconcile, state) do
@@ -180,8 +181,8 @@ defmodule Mongo.Topology do
 
         {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
         connection_pools = Map.put(state.connection_pools, host, pool)
-        Enum.each(state.waiting_pids, fn pid ->
-          send(pid, {:new_connection, host})
+        Enum.each(state.waiting_pids, fn from ->
+          GenServer.reply(from, {:new_connection, host})
         end)
         %{ state | connection_pools: connection_pools, waiting_pids: [] }
       end
