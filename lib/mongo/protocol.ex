@@ -58,6 +58,8 @@ defmodule Mongo.Protocol do
         {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
       {:disconnect, {:tcp_send, reason}, _s} ->
         {:error, Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)}
+      {:disconnect, %Mongo.Error{} = reason, _s} ->
+        {:error, reason}
       {:error, reason} ->
         {:error, reason}
     end
