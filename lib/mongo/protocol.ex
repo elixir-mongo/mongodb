@@ -92,7 +92,7 @@ defmodule Mongo.Protocol do
   defp tcp_connect(opts, s) do
     host      = (opts[:hostname] || "localhost") |> to_charlist
     port      = opts[:port] || 27017
-    sock_opts = [:binary, active: false, packet: :raw, send_timeout: s.timeout, nodelay: true]
+    sock_opts = [:binary, active: false, packet: :raw, nodelay: true]
                 ++ (opts[:socket_options] || [])
 
     s = Map.put(s, :host, "#{host}:#{port}")
