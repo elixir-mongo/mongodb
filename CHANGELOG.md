@@ -1,4 +1,4 @@
-## v0.4.4 (2017-09-16)
+## v0.4.4 (2018-02-09)
 
 * Enhancements
   * Added support for using a mongo url via the `:url` key
