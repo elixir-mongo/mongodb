@@ -448,6 +448,16 @@ defmodule Mongo do
          do: direct_command(conn, query, opts)
   end
 
+  @doc """
+  Issue a database admin command.
+  List of admin commands: https://docs.mongodb.com/manual/reference/command/
+  """
+  @spec admin_command(GenServer.server, BSON.document, Keyword.t) :: result(BSON.document)
+  def admin_command(topology_pid, query, opts \\ []) do
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
+      do: direct_command(conn, query, opts)
+  end
+
   @doc false
   @spec direct_command(pid, BSON.document, Keyword.t) :: result(BSON.document)
   def direct_command(conn, query, opts \\ []) do
