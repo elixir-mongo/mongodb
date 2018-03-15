@@ -1,3 +1,12 @@
+## v0.4.5-dev
+
+* Enhancements
+  * Should now be able to send a query to your server before the connection
+    is fully made
+
+* Bug Fixes
+  * Should actually be able to query for longer than 5 seconds
+
 ## v0.4.4 (2018-02-09)
 
 * Enhancements
