@@ -1,4 +1,4 @@
-## v0.4.5-dev
+## v0.4.5 (2018-04-08)
 
 * Enhancements
   * Should now be able to send a query to your server before the connection
