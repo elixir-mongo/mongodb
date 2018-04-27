@@ -27,6 +27,7 @@ defmodule Mongo.Protocol do
       socket: nil,
       request_id: 0,
       timeout: opts[:timeout] || @timeout,
+      connect_timeout_ms: opts[:connect_timeout_ms] || @timeout,
       database: Keyword.fetch!(opts, :database),
       write_concern: Map.new(write_concern),
       wire_version: nil,
@@ -83,7 +84,7 @@ defmodule Mongo.Protocol do
   defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
     host      = (opts[:hostname] || "localhost") |> to_charlist
     ssl_opts = Keyword.put_new(opts[:ssl_opts] || [], :server_name_indication, host)
-    case :ssl.connect(sock, ssl_opts, 5000) do
+    case :ssl.connect(sock, ssl_opts, s.connect_timeout_ms) do
       {:ok, ssl_sock} ->
         {:ok, %{s | socket: {:ssl, ssl_sock}}}
       {:error, reason} ->
@@ -99,7 +100,7 @@ defmodule Mongo.Protocol do
 
     s = Map.put(s, :host, "#{host}:#{port}")
 
-    case :gen_tcp.connect(host, port, sock_opts, s.timeout) do
+    case :gen_tcp.connect(host, port, sock_opts, s.connect_timeout_ms) do
       {:ok, socket} ->
         # A suitable :buffer is only set if :recbuf is included in
         # :socket_options.

@@ -20,6 +20,7 @@ defmodule Mongo do
       a 1-arity fun, `{module, function, args}` with `DBConnection.LogEntry.t`
       prepended to `args` or `nil`. See `DBConnection.LogEntry` (default: `nil`)
     * `:database` - the database to run the operation on
+    * `:connect_timeout_ms` - maximum timeout for connect (default: `5_000`)
 
   ## Read options
 
