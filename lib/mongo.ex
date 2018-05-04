@@ -72,36 +72,52 @@ defmodule Mongo do
     end
   end
 
+  @type initial_type :: :unknown | :single | :replica_set_no_primary | :sharded
+
   @doc """
   Start and link to a database connection process.
 
   ### Options
-    * `:url` - A mongo connection url, options defined separately are used as default values
-    * `:hostname` - Server hostname
-    * `:port` - Server port
-    * `:database` - Database
-    * `:username` - Username
-    * `:password` - User password
-    * `:auth` - Additionally users to authenticate (list of keyword lists
-      with the keys `:username` and `:password`)
-    * `:auth_source` - Database to authenticate against
+    * `:database` - The database to use (required)
+    * `:hostname` - The host to connect to (require)
+    * `:port` - The port to connect to your server (default: 27017)
+    * `:url` - A mongo connection url. Can be used in place of `:hostname` and
+      `:database` (optional)
+    * `:seeds` - A list of host names in the cluster. Can be used in place of
+      `:hostname` (optional)
+    * `:username` - The User to connect with (optional)
+    * `:password` - The password to connect with (optional)
+    * `:auth` - List of additional users to authenticate as a keyword list with
+      `:username` and `:password` keys (optional)
+    * `:auth_source` - The database to authenticate against
+    * `:set_name` - The name of the replica set to connect to (required if
+    connecting to a replica set)
+    * `:type` - a hint of the topology type. See `t:initial_type/0` for
+      valid values (default: `:unknown`)
     * `:pool` - The pool module to use, see `DBConnection` for pool dependent
       options, this option must be included with all requests contacting the
       pool if not `DBConnection.Connection` (default: `DBConnection.Connection`)
     * `:idle` - The idle strategy, `:passive` to avoid checkin when idle and
-      `:active` to checkin when idle (default: `:passive`)
-    * `:idle_timeout` - The idle timeout to ping the database (default:
-      `1_000`)
+      `:active` to checking when idle (default: `:passive`)
+    * `:idle_timeout` - The idle timeout to ping the database (default: `1_000`)
+    * `:connect_timeout_ms` - The maximum timeout for the initial connection
+      (default: `5_000`)
     * `:backoff_min` - The minimum backoff interval (default: `1_000`)
     * `:backoff_max` - The maximum backoff interval (default: `30_000`)
-    * `:backoff_type` - The backoff strategy, `:stop` for no backoff and
-      to stop, `:exp` for exponential, `:rand` for random and `:rand_exp` for
-      random exponential (default: `:rand_exp`)
-    * `:after_connect` - A function to run on connect using `run/3`, either
-      a 1-arity fun, `{module, function, args}` with `DBConnection.t` prepended
+    * `:backoff_type` - The backoff strategy, `:stop` for no backoff and to
+      stop, `:exp` of exponential, `:rand` for random and `:ran_exp` for random
+      exponential (default: `:rand_exp`)
+    * `:after_connect` - A function to run on connect use `run/3`. Either a
+      1-arity fun, `{module, function, args}` with `DBConnection.t`, prepended
       to `args` or `nil` (default: `nil`)
     * `:ssl` - Set to `true` if ssl should be used (default: `false`)
     * `:ssl_opts` - A list of ssl options, see the ssl docs
+
+  ### Error Reasons
+    * `:single_topology_multiple_hosts` - A topology of `:single` was set
+      but multiple hosts were given
+    * `:set_name_bad_topology` - A `:set_name` was given but the topology was
+      set to something other than `:replica_set_no_primary` or `:single`
   """
   @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | term}
   def start_link(opts) do

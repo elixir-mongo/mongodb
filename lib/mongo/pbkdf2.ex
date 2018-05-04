@@ -17,9 +17,11 @@ defmodule Mongo.PBKDF2 do
   @doc """
   Returns a derived key suitable for use.
   ## Options
-    * `:iterations` - defaults to 1000 (increase to at least 2^16 if used for passwords);
-    * `:length`     - a length in octets for the derived key. Defaults to 32;
-    * `:digest`     - an hmac function to use as the pseudo-random function. Defaults to `:sha256`;
+    * `:iterations` - defaults to 1000 (increase to at least 2^16 if used for
+      passwords)
+    * `:length` - a length in octets for the derived key. Defaults to 32
+    * `:digest` - an hmac function to use as the pseudo-random function.
+      Defaults to `:sha256`
   """
   def generate(secret, salt, opts \\ []) do
     iterations = Keyword.get(opts, :iterations, 1000)

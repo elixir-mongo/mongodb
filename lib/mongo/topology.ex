@@ -1,4 +1,6 @@
 defmodule Mongo.Topology do
+  @moduledoc false
+
   use GenServer
   alias Mongo.Events.{ServerDescriptionChangedEvent, ServerOpeningEvent, ServerClosedEvent,
                       TopologyDescriptionChangedEvent, TopologyOpeningEvent, TopologyClosedEvent}
@@ -6,33 +8,9 @@ defmodule Mongo.Topology do
   alias Mongo.ServerDescription
   alias Mongo.Monitor
 
-  @type initial_type :: :unknown | :single | :replica_set_no_primary | :sharded
-
   # https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#heartbeatfrequencyms-defaults-to-10-seconds-or-60-seconds
   @heartbeat_frequency_ms 10_000
 
-  @doc """
-  Starts a new topology connection, which handles pooling and server selection
-  for replica sets.
-
-  ## Options
-
-    * `:database` - **REQUIRED:** database for authentication and default
-    * `:connect_timeout_ms` - maximum timeout for connect
-    * `:seeds` - a seed list of hosts (without the "mongodb://" part) within the
-      cluster, defaults to `["localhost:27017"]`
-    * `:type` - a hint of the topology type, defaults to `:unknown`, see
-      `t:initial_type/0` for valid values
-    * `:set_name` - the expected replica set name, defaults to `nil`
-      to 10 seconds
-
-  ## Error Reasons
-
-    * `:single_topology_multiple_hosts` - a topology of type :single was set but
-      multiple hosts were given
-    * `:set_name_bad_topology` - a `:set_name` was given but the topology was set
-      to something other than `:replica_set_no_primary` or `:single`
-  """
   @spec start_link(Keyword.t, Keyword.t) ::
           {:ok, pid} |
           {:error, reason :: atom}
