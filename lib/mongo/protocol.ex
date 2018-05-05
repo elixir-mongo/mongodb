@@ -1,4 +1,6 @@
 defmodule Mongo.Protocol do
+  @moduledoc false
+
   use DBConnection
   use Mongo.Messages
   alias Mongo.Protocol.Utils

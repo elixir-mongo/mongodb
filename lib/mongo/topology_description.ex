@@ -1,9 +1,8 @@
 defmodule Mongo.TopologyDescription do
-  @moduledoc ~S"""
-  This acts as a single topology consisting of many connections, built on top of
-  the existing connection API's. It implements the Server Discovery and
-  Monitoring specification, along with the `Mongo.ServerMonitor` module.
-  """
+  @moduledoc false
+  # This acts as a single topology consisting of many connections, built on top
+  # of the existing connection API's. It implements the Server Discovery and
+  # Monitoring specification, along with the `Mongo.ServerMonitor` module.
 
   @wire_protocol_range 0..5
 
@@ -540,21 +539,4 @@ defmodule Mongo.TopologyDescription do
       {[], %{topology | type: :replica_set_no_primary}}
     end
   end
-
-
-  # invalid state checks to use before returning the state
-
-  # these don't seem to be used
-  # defp check_topology(topo) do
-  #   cond do
-  #     invalid_set_name?(topo) ->
-  #       :invalid_set_name
-  #     true ->
-  #       :ok
-  #   end
-  # end
-
-  # defp invalid_set_name?(topo) do
-  #   topo.type == :single and topo.set_name != topo.servers[0].set_name
-  # end
 end
