@@ -1,3 +1,9 @@
+## v0.4.6
+
+* Enhancements
+  * Added `:connect_timout_ms` to `Mongo.start_link/1`
+  * Reorganized documentation
+
 ## v0.4.5 (2018-04-08)
 
 * Enhancements
