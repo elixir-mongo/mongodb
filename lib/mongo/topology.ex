@@ -144,8 +144,7 @@ defmodule Mongo.Topology do
 
   def handle_cast({:connected, monitor_pid}, state) do
     {host, ^monitor_pid} = Enum.find(state.monitors, fn {_key, value} -> value == monitor_pid end)
-    arbiters =
-      Enum.flat_map(state.topology.servers, fn {_, s} -> s.arbiters end)
+    arbiters = fetch_arbiters(state)
 
     new_state =
       if host in arbiters do
@@ -207,8 +206,11 @@ defmodule Mongo.Topology do
   end
 
   defp reconcile_servers(state) do
+    arbiters = fetch_arbiters(state)
     old_addrs = Map.keys(state.monitors)
-    new_addrs = Map.keys(state.topology.servers)
+    # remove arbiters from connection pool as descriptions are recieved
+    new_addrs = Map.keys(state.topology.servers) -- arbiters
+
     added = new_addrs -- old_addrs
     removed = old_addrs -- new_addrs
 
@@ -276,5 +278,9 @@ defmodule Mongo.Topology do
   defp rename_key(map, original_key, new_key) do
     value = Keyword.get(map, original_key)
     map |> Keyword.delete(original_key) |> Keyword.put(new_key, value)
+  end
+
+  defp fetch_arbiters(state) do
+    Enum.flat_map(state.topology.servers, fn {_, s} -> s.arbiters end)
   end
 end
