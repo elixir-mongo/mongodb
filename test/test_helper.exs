@@ -11,8 +11,8 @@ ExUnit.start()
 
 IO.puts "[mongod v#{version}]"
 
-{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() --port 27001')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() --port 27001')
+System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() --port 27001')
+System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() --port 27001')
 
 version =
   version
