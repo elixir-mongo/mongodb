@@ -7,6 +7,9 @@
 * Bug Fixes
   * `:timeout` option will now be properly used per query
 
+* Enhancements
+  * Support for MongoDB 3.6 collection [Change Streams](https://docs.mongodb.com/manual/changeStreams/)
+
 ## v0.4.6 (2018-05-20)
 
 * Enhancements

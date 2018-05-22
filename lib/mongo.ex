@@ -100,7 +100,7 @@ defmodule Mongo do
     * `:idle` - The idle strategy, `:passive` to avoid checkin when idle and
       `:active` to checking when idle (default: `:passive`)
     * `:idle_timeout` - The idle timeout to ping the database (default: `1_000`)
-    * `:connect_timeout_ms` - The maximum timeout for the initial connection
+    * `:connect_timeout` - The maximum timeout for the initial connection
       (default: `5_000`)
     * `:backoff_min` - The minimum backoff interval (default: `1_000`)
     * `:backoff_max` - The maximum backoff interval (default: `30_000`)
@@ -138,8 +138,17 @@ defmodule Mongo do
     Mongo.IdServer.new
   end
 
-  def watch_collection(topology_pid, coll, opts \\ []) do
-    aggregate(topology_pid, coll, [%{"$changeStream" => %{fullDocument: "default"}}], opts)
+  @doc """
+  Performs a $changeStream operation
+
+  ## Options
+
+  """
+  @spec watch_collection(GenServer.server, collection, [BSON.document], Keyword.it) :: cursor
+  def watch_collection(topology_pid, coll, pipeline, opts \\ []) do
+    full_document = opts[:full_document] || "default"
+    opts = Keyword.drop(opts, ~w(full_document))
+    aggregate(topology_pid, coll, [%{"$changeStream" => %{fullDocument: full_document}} | pipeline], opts)
   end
 
   @doc """
@@ -160,9 +169,8 @@ defmodule Mongo do
     ] |> filter_nils
     wv_query = %Query{action: :wire_version}
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, version} <- DBConnection.execute(conn, wv_query, [], defaults(opts)) do
-      opts = Keyword.drop(opts, ~w(allow_disk_use max_time use_cursor)a)
+    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts) do
+      opts = Keyword.drop(opts, ~w(allow_disk_use use_cursor)a)
 
       query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
       aggregation_cursor(conn, "$cmd", query, nil, opts)
@@ -436,14 +444,14 @@ defmodule Mongo do
 
   @doc false
   def get_more(conn, coll, cursor, opts) do
-    query = [{"getMore", cursor}, {"collection", coll}]
-    query =
-      case opts[:batch_size] do
-        nil ->
-          query
-        n ->
-          query ++ [{"batchSize", n}]
-      end
+    query = [
+      {"getMore", cursor},
+      {"collection", coll},
+      {"batchSize", opts[:batch_size]},
+      {"maxTimeMS", opts[:max_time]}
+    ]
+    |> filter_nils()
+
     direct_command(conn, query, opts)
   end
 
