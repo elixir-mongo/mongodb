@@ -3,21 +3,22 @@ defmodule Mongo.Protocol.Utils do
   import Kernel, except: [send: 2]
   import Mongo.Messages
 
-  def message(id, ops, s) when is_list(ops) do
+  def message(id, ops, s, timeout) when is_list(ops) do
     with :ok <- send(ops, s),
-         {:ok, ^id, reply} <- recv(s),
+         {:ok, ^id, reply} <- recv(s, timeout),
          do: {:ok, reply}
   end
-  def message(id, op, s) do
+  def message(id, op, s, timeout) do
     with :ok <- send(id, op, s),
-         {:ok, ^id, reply} <- recv(s),
+         {:ok, ^id, reply} <- recv(s, timeout),
          do: {:ok, reply}
   end
 
-  def command(id, command, s) do
+  def command(id, command, s),  do: command(id, command, s, s.timeout)
+  def command(id, command, s, timeout) do
     op = op_query(coll: namespace("$cmd", s, nil), query: BSON.Encoder.document(command),
                   select: "", num_skip: 0, num_return: 1, flags: [])
-    case message(id, op, s) do
+    case message(id, op, s, timeout) do
       {:ok, op_reply(docs: docs)} ->
         case BSON.Decoder.documents(docs) do
           []    -> {:ok, nil}
@@ -68,32 +69,31 @@ defmodule Mongo.Protocol.Utils do
     end
   end
 
-  def recv(s) do
-    recv(nil, "", s)
-  end
+  def recv(s, nil), do: recv(nil, "", s, 5_000)
+  def recv(s, timeout), do: recv(nil, "", s, timeout)
 
   # TODO: Optimize to reduce :gen_tcp.recv and decode_message calls
   #       based on message size in header.
   #       :gen.tcp.recv(socket, min(size, max_packet))
   #       where max_packet = 64mb
-  defp recv(nil, data, %{socket: {mod, sock}} = s) do
+  defp recv(nil, data, %{socket: {mod, sock}} = s, timeout) do
     case decode_header(data) do
       {:ok, header, rest} ->
-        recv(header, rest, s)
+        recv(header, rest, s, timeout)
       :error ->
-        case mod.recv(sock, 0, s.timeout) do
-          {:ok, tail}      -> recv(nil, [data|tail], s)
+        case mod.recv(sock, 0, timeout) do
+          {:ok, tail}      -> recv(nil, [data|tail], s, timeout)
           {:error, reason} -> recv_error(reason, s)
         end
     end
   end
-  defp recv(header, data, %{socket: {mod, sock}} = s) do
+  defp recv(header, data, %{socket: {mod, sock}} = s, timeout) do
     case decode_message(header, data) do
       {:ok, id, reply, ""} ->
         {:ok, id, reply}
       :error ->
-        case mod.recv(sock, 0, s.timeout) do
-          {:ok, tail}      -> recv(header, [data|tail], s)
+        case mod.recv(sock, 0, timeout) do
+          {:ok, tail}      -> recv(header, [data|tail], s, timeout)
           {:error, reason} -> recv_error(reason, s)
         end
     end

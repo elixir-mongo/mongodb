@@ -1,4 +1,13 @@
-## v0.4.6
+## v0.5.0-dev
+
+* Breaking Changes
+  * No longer supporting MongoDB < 3.2
+  * Rename `:connect_timeout_ms` option to `:connect_timeout`
+
+* Bug Fixes
+  * `:timeout` option will now be properly used per query
+
+## v0.4.6 (2018-05-20)
 
 * Enhancements
   * Added `:connect_timout_ms` to `Mongo.start_link/1`

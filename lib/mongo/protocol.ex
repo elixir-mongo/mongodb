@@ -5,7 +5,7 @@ defmodule Mongo.Protocol do
   use Mongo.Messages
   alias Mongo.Protocol.Utils
 
-  @timeout 5000
+  @timeout 5_000
   @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results oplog_replay)a
   @find_one_flags ~w(slave_ok exhaust partial)a
   @insert_flags ~w(continue_on_error)a
@@ -29,7 +29,7 @@ defmodule Mongo.Protocol do
       socket: nil,
       request_id: 0,
       timeout: opts[:timeout] || @timeout,
-      connect_timeout_ms: opts[:connect_timeout_ms] || @timeout,
+      connect_timeout: opts[:connect_timeout] || @timeout,
       database: Keyword.fetch!(opts, :database),
       write_concern: Map.new(write_concern),
       wire_version: nil,
@@ -86,7 +86,7 @@ defmodule Mongo.Protocol do
   defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
     host      = (opts[:hostname] || "localhost") |> to_charlist
     ssl_opts = Keyword.put_new(opts[:ssl_opts] || [], :server_name_indication, host)
-    case :ssl.connect(sock, ssl_opts, s.connect_timeout_ms) do
+    case :ssl.connect(sock, ssl_opts, s.connect_timeout) do
       {:ok, ssl_sock} ->
         {:ok, %{s | socket: {:ssl, ssl_sock}}}
       {:error, reason} ->
@@ -102,7 +102,7 @@ defmodule Mongo.Protocol do
 
     s = Map.put(s, :host, "#{host}:#{port}")
 
-    case :gen_tcp.connect(host, port, sock_opts, s.connect_timeout_ms) do
+    case :gen_tcp.connect(host, port, sock_opts, s.connect_timeout) do
       {:ok, socket} ->
         # A suitable :buffer is only set if :recbuf is included in
         # :socket_options.
@@ -212,15 +212,7 @@ defmodule Mongo.Protocol do
 
     op_query(coll: Utils.namespace(coll, s, opts[:database]), query: query, select: select,
              num_skip: num_skip, num_return: num_return, flags: flags(flags))
-    |> message_reply(s)
-  end
-
-  defp handle_execute(:get_more, {coll, cursor_id}, [], opts, s) do
-    num_return = Keyword.get(opts, :batch_size, 0)
-
-    op_get_more(coll: Utils.namespace(coll, s, opts[:database]), cursor_id: cursor_id,
-                num_return: num_return)
-    |> message_reply(s)
+    |> message_reply(s, opts[:timeout])
   end
 
   defp handle_execute(:kill_cursors, cursor_ids, [], _opts, s) do
@@ -232,57 +224,57 @@ defmodule Mongo.Protocol do
   defp handle_execute(:insert_one, coll, [doc], opts, s) do
     flags  = flags(Keyword.take(opts, @insert_flags))
     op     = op_insert(coll: Utils.namespace(coll, s, opts[:database]), docs: [doc], flags: flags)
-    message_gle(-11, op, opts, s)
+    message_gle(-11, op, opts, s, opts[:timeout])
   end
 
   defp handle_execute(:insert_many, coll, docs, opts, s) do
     flags  = flags(Keyword.take(opts, @insert_flags))
     op     = op_insert(coll: Utils.namespace(coll, s, opts[:database]), docs: docs, flags: flags)
-    message_gle(-12, op, opts, s)
+    message_gle(-12, op, opts, s, opts[:timeout])
   end
 
   defp handle_execute(:delete_one, coll, [query], opts, s) do
     flags = [:single]
     op    = op_delete(coll: Utils.namespace(coll, s, opts[:database]), query: query, flags: flags)
-    message_gle(-13, op, opts, s)
+    message_gle(-13, op, opts, s, opts[:timeout])
   end
 
   defp handle_execute(:delete_many, coll, [query], opts, s) do
     flags = []
     op = op_delete(coll: Utils.namespace(coll, s, opts[:database]), query: query, flags: flags)
-    message_gle(-14, op, opts, s)
+    message_gle(-14, op, opts, s, opts[:timeout])
   end
 
   defp handle_execute(:replace_one, coll, [query, replacement], opts, s) do
     flags  = flags(Keyword.take(opts, @update_flags))
     op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: replacement,
                        flags: flags)
-    message_gle(-15, op, opts, s)
+    message_gle(-15, op, opts, s, opts[:timeout])
   end
 
   defp handle_execute(:update_one, coll, [query, update], opts, s) do
     flags  = flags(Keyword.take(opts, @update_flags))
     op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: update,
                        flags: flags)
-    message_gle(-16, op, opts, s)
+    message_gle(-16, op, opts, s, opts[:timeout])
   end
 
   defp handle_execute(:update_many, coll, [query, update], opts, s) do
     flags  = [:multi | flags(Keyword.take(opts, @update_flags))]
     op     = op_update(coll: Utils.namespace(coll, s, opts[:database]), query: query, update: update,
                        flags: flags)
-    message_gle(-17, op, opts, s)
+    message_gle(-17, op, opts, s, opts[:timeout])
   end
 
   defp handle_execute(:command, nil, [query], opts, s) do
     flags = Keyword.take(opts, @find_one_flags)
     op_query(coll: Utils.namespace("$cmd", s, opts[:database]), query: query, select: "",
              num_skip: 0, num_return: 1, flags: flags(flags))
-    |> message_reply(s)
+    |> message_reply(s, opts[:timeout])
   end
 
-  defp message_reply(op, s) do
-    with {:ok, reply} <- Utils.message(s.request_id, op, s),
+  defp message_reply(op, s, timeout) do
+    with {:ok, reply} <- Utils.message(s.request_id, op, s, timeout),
          s = %{s | request_id: s.request_id + 1},
          do: {:ok, reply, s}
   end
@@ -294,7 +286,7 @@ defmodule Mongo.Protocol do
     end)
   end
 
-  defp message_gle(id, op, opts, s) do
+  defp message_gle(id, op, opts, s, timeout) do
     write_concern = Keyword.take(opts, @write_concern) |> Map.new
     write_concern = Map.merge(s.write_concern, write_concern)
 
@@ -306,7 +298,7 @@ defmodule Mongo.Protocol do
                         select: "", num_skip: 0, num_return: -1, flags: [])
 
       ops = [{id, op}, {s.request_id, gle_op}]
-      message_reply(ops, s)
+      message_reply(ops, s, timeout)
     end
   end
 
