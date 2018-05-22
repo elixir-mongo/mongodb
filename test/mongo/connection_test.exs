@@ -141,8 +141,7 @@ defmodule Mongo.ConnectionTest do
            Mongo.raw_find(conn, coll, %{}, nil, batch_size: 2)
     assert :ok = Mongo.kill_cursors(conn, [cursor_id], [])
 
-    message = "command failed: cursor id #{cursor_id} not found"
-    assert {:error, %Mongo.Error{code: 43, message: ^message}} =
+    assert {:error, %Mongo.Error{code: 43}} =
            Mongo.get_more(conn, coll, cursor_id, [])
   end
 
