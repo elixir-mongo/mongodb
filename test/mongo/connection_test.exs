@@ -120,11 +120,11 @@ defmodule Mongo.ConnectionTest do
 
     assert {:ok, %{cursor_id: cursor_id, from: 0, docs: [%{"foo" => 42}, %{"foo" => 43}]}} =
            Mongo.raw_find(conn, coll, %{}, nil, batch_size: 2)
-    assert {:ok, %{cursor_id: ^cursor_id, from: 2, docs: [%{"foo" => 44}, %{"foo" => 45}]}} =
+    assert {:ok, %{"cursor" => %{"id" => ^cursor_id, "nextBatch" => [%{"foo" => 44}, %{"foo" => 45}]}}} =
            Mongo.get_more(conn, coll, cursor_id, batch_size: 2)
-    assert {:ok, %{cursor_id: ^cursor_id, from: 4, docs: [%{"foo" => 46}, %{"foo" => 47}]}} =
+    assert {:ok, %{"cursor" => %{"id" => ^cursor_id, "nextBatch" => [%{"foo" => 46}, %{"foo" => 47}]}}} =
            Mongo.get_more(conn, coll, cursor_id, batch_size: 2)
-    assert {:ok, %{cursor_id: 0, from: 6, docs: []}} =
+    assert {:ok, %{"cursor" => %{"id" => 0, "nextBatch" => []}}} =
            Mongo.get_more(conn, coll, cursor_id, batch_size: 2)
   end
 
@@ -141,7 +141,8 @@ defmodule Mongo.ConnectionTest do
            Mongo.raw_find(conn, coll, %{}, nil, batch_size: 2)
     assert :ok = Mongo.kill_cursors(conn, [cursor_id], [])
 
-    assert {:error, %Mongo.Error{code: nil, message: "cursor not found"}} =
+    message = "command failed: cursor id #{cursor_id} not found"
+    assert {:error, %Mongo.Error{code: 43, message: ^message}} =
            Mongo.get_more(conn, coll, cursor_id, [])
   end
 

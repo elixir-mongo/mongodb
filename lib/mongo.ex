@@ -138,6 +138,10 @@ defmodule Mongo do
     Mongo.IdServer.new
   end
 
+  def watch_collection(topology_pid, coll, opts \\ []) do
+    aggregate(topology_pid, coll, [%{"$changeStream" => %{fullDocument: "default"}}], opts)
+  end
+
   @doc """
   Performs aggregation operation using the aggregation pipeline.
 
@@ -145,7 +149,6 @@ defmodule Mongo do
 
     * `:allow_disk_use` - Enables writing to temporary files (Default: false)
     * `:max_time` - Specifies a time limit in milliseconds
-    * `:use_cursor` - Use a cursor for a batched response (Default: true)
   """
   @spec aggregate(GenServer.server, collection, [BSON.document], Keyword.t) :: cursor
   def aggregate(topology_pid, coll, pipeline, opts \\ []) do
@@ -159,15 +162,10 @@ defmodule Mongo do
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, version} <- DBConnection.execute(conn, wv_query, [], defaults(opts)) do
-      cursor? = version >= 1 and Keyword.get(opts, :use_cursor, true)
       opts = Keyword.drop(opts, ~w(allow_disk_use max_time use_cursor)a)
 
-      if cursor? do
-        query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
-        aggregation_cursor(conn, "$cmd", query, nil, opts)
-      else
-        singly_cursor(conn, "$cmd", query, nil, opts)
-      end
+      query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
+      aggregation_cursor(conn, "$cmd", query, nil, opts)
     end
   end
 
@@ -438,11 +436,15 @@ defmodule Mongo do
 
   @doc false
   def get_more(conn, coll, cursor, opts) do
-    query = %Query{action: :get_more, extra: {coll, cursor}}
-    with {:ok, reply} <- DBConnection.execute(conn, query, [], defaults(opts)),
-         :ok <- maybe_failure(reply),
-         op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
-         do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
+    query = [{"getMore", cursor}, {"collection", coll}]
+    query =
+      case opts[:batch_size] do
+        nil ->
+          query
+        n ->
+          query ++ [{"batchSize", n}]
+      end
+    direct_command(conn, query, opts)
   end
 
   @doc false

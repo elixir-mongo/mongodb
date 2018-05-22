@@ -61,10 +61,10 @@ defmodule Mongo.Test do
     assert [%{"foo" => 42}] = Mongo.aggregate(c.pid, coll, []) |> Enum.take(1)
     assert [%{"foo" => 45}] = Mongo.aggregate(c.pid, coll, []) |> Enum.drop(3)
 
-    assert []               = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.take(0)
-    assert []               = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.drop(4)
-    assert [%{"foo" => 42}] = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.take(1)
-    assert [%{"foo" => 45}] = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.drop(3)
+    assert []               = Mongo.aggregate(c.pid, coll, []) |> Enum.take(0)
+    assert []               = Mongo.aggregate(c.pid, coll, []) |> Enum.drop(4)
+    assert [%{"foo" => 42}] = Mongo.aggregate(c.pid, coll, []) |> Enum.take(1)
+    assert [%{"foo" => 45}] = Mongo.aggregate(c.pid, coll, []) |> Enum.drop(3)
 
     assert []               = Mongo.aggregate(c.pid, coll, [], batch_size: 1) |> Enum.take(0)
     assert []               = Mongo.aggregate(c.pid, coll, [], batch_size: 1) |> Enum.drop(4)

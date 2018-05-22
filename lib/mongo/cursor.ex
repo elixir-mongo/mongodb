@@ -70,10 +70,10 @@ defmodule Mongo.Cursor do
           opts = batch_size(limit, opts)
 
           case Mongo.get_more(conn, coll, cursor, opts) do
-            {:ok, %{cursor_id: cursor, docs: []}} ->
+            {:ok, %{"cursor" => %{"id" => cusor, "nextBatch" => []}}} ->
               {:halt, state(state, cursor: cursor)}
-            {:ok, %{cursor_id: cursor, docs: docs, num: num}} ->
-              {docs, state(state, cursor: cursor, limit: new_limit(limit, num))}
+            {:ok, %{"cursor" => %{"id" => cursor, "nextBatch" => docs}}} ->
+              {docs, state(state, cursor: cursor, limit: new_limit(limit, length(docs)))}
             {:error, error} ->
               raise error
           end
@@ -163,9 +163,9 @@ defmodule Mongo.AggregationCursor do
 
         state(buffer: [], conn: conn, cursor: cursor, coll: coll) = state ->
           case Mongo.get_more(conn, coll, cursor, opts) do
-            {:ok, %{cursor_id: cursor, docs: []}} ->
+            {:ok, %{"cursor" => %{"id" => cursor, "nextBatch" => []}}} ->
               {:halt, state(state, cursor: cursor)}
-            {:ok, %{cursor_id: cursor, docs: docs}} ->
+            {:ok, %{"cursor" => %{"id" => cursor, "nextBatch" => docs}}} ->
               {docs, state(state, cursor: cursor)}
             {:error, error} ->
               raise error
