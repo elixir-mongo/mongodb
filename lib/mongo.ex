@@ -143,6 +143,10 @@ defmodule Mongo do
 
   ## Options
 
+    * `:full_document` -
+    * `:max_time` - Specifies a time limit in milliseconds
+    * `:batch_size` - Specifies the number of maximum number of documents to
+      return (default: 1)
   """
   @spec watch_collection(GenServer.server, collection, [BSON.document], Keyword.it) :: cursor
   def watch_collection(topology_pid, coll, pipeline, opts \\ []) do
