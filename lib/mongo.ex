@@ -144,6 +144,7 @@ defmodule Mongo do
   ## Options
 
     * `:allow_disk_use` - Enables writing to temporary files (Default: false)
+    * `:collation` - Specifies the collation to use for the operation
     * `:max_time` - Specifies a time limit in milliseconds
     * `:use_cursor` - Use a cursor for a batched response (Default: true)
   """
@@ -153,6 +154,7 @@ defmodule Mongo do
       aggregate: coll,
       pipeline: pipeline,
       allowDiskUse: opts[:allow_disk_use],
+      collation: opts[:collation],
       maxTimeMS: opts[:max_time]
     ] |> filter_nils
     wv_query = %Query{action: :wire_version}
