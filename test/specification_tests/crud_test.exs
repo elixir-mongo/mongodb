@@ -7,6 +7,16 @@ defmodule Mongo.SpecificationTests.CRUDTest do
     end)
   end
 
+  def find(pid, collection, arguments) do
+    filter = arguments["filter"]
+    opts =
+      arguments
+      |> Map.drop(["filter"])
+      |> atomize_keys()
+
+    Mongo.find(pid, collection, filter, opts) |> Enum.to_list
+  end
+
   def distinct(pid, collection, arguments) do
     field_name = arguments["fieldName"]
     filter = arguments["filter"] || %{}
