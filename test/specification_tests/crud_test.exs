@@ -14,7 +14,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
       |> Map.drop(["filter"])
       |> atomize_keys()
 
-    Mongo.find(pid, collection, filter, opts) |> Enum.to_list
+    pid |> Mongo.find(collection, filter, opts) |> Enum.to_list
   end
 
   def distinct(pid, collection, arguments) do
@@ -30,9 +30,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
   end
 
   def estimated_document_count(pid, collection, arguments) do
-    opts =
-      arguments
-      |> atomize_keys()
+    opts = atomize_keys(arguments)
 
     {:ok, result} = Mongo.estimated_document_count(pid, collection, opts)
     result
@@ -67,7 +65,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
       |> Map.drop(["pipeline"])
       |> atomize_keys()
 
-    Mongo.aggregate(pid, collection, pipeline, opts) |> Enum.to_list
+    pid |> Mongo.aggregate(collection, pipeline, opts) |> Enum.to_list
   end
 
   defp match_operation_result?(expected, actual) do
@@ -132,7 +130,10 @@ defmodule Mongo.SpecificationTests.CRUDTest do
             assert match_operation_result?(expected, actual)
 
             if outcome["collection"] do
-              data = Mongo.find(mongo, outcome["collection"]["name"], %{}) |> Enum.to_list
+              data =
+                mongo
+                |> Mongo.find(outcome["collection"]["name"], %{})
+                |> Enum.to_list
               assert ^data = outcome["collection"]["data"]
             end
           end
