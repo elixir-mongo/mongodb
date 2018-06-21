@@ -1,6 +1,17 @@
 defmodule Mongo.SpecificationTests.CRUDTest do
   use Mongo.SpecificationCase
 
+  def estimated_document_count(pid, collection, arguments) do
+    opts =
+      arguments
+      |> Enum.map(fn {key, value} ->
+        {String.to_existing_atom(key), value}
+      end)
+
+    {:ok, result} = Mongo.estimated_document_count(pid, collection, opts)
+    result
+  end
+
   def count_documents(pid, collection, arguments) do
     filter = arguments["filter"]
     opts =
@@ -54,6 +65,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
     mongo_version() >= min_server_version
   end
 
+  defp operation_name("estimatedDocumentCount"), do: :estimated_document_count
   defp operation_name("countDocuments"), do: :count_documents
   defp operation_name(name), do: String.to_existing_atom(name)
 

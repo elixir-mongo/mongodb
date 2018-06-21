@@ -354,6 +354,24 @@ defmodule Mongo do
   end
 
   @doc """
+  Estimate the number of documents in a collection using collection metadata.
+  """
+  @spec estimated_document_count(GenServer.server, collection, Keyword.t) :: result(non_neg_integer)
+  def estimated_document_count(topology_pid, coll, opts) do
+    opts = Keyword.drop(opts, [:skip, :limit, :hint, :collation])
+    count(topology_pid, coll, %{}, opts)
+  end
+
+  @doc """
+  Similar to `estimated_document_count/3` but unwraps the result and raises on
+  error.
+  """
+  @spec estimated_document_count!(GenServer.server, collection, Keyword.t) :: result!(non_neg_integer)
+  def estimated_document_count!(topology_pid, coll, opts) do
+    bangify(estimated_document_count(topology_pid, coll, opts))
+  end
+
+  @doc """
   Finds the distinct values for a specified field across a collection.
 
   ## Options
