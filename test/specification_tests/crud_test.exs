@@ -1,6 +1,21 @@
 defmodule Mongo.SpecificationTests.CRUDTest do
   use Mongo.SpecificationCase
 
+  def match_operation_result?(expected, actual) do
+    actual == [] || expected == actual
+  end
+
+  def min_server_version?(nil), do: true
+  def min_server_version?(number) do
+    min_server_version =
+      number <> ".0"
+      |> String.split(".")
+      |> Enum.map(&elem(Integer.parse(&1), 0))
+      |> List.to_tuple()
+
+    mongo_version() >= min_server_version
+  end
+
   setup_all do
     {:ok, pid} = Mongo.start_link(database: "mongodb_test")
 
@@ -19,25 +34,17 @@ defmodule Mongo.SpecificationTests.CRUDTest do
       setup %{mongo: mongo} do
         collection = unquote(Macro.escape(file_no_suffix))
         Mongo.delete_many!(mongo, collection, %{})
-        :ok
+        %{collection: collection}
       end
 
       Enum.map(json["tests"], fn t ->
         @tag :specification
-        test t["description"], %{mongo: mongo} do
+        test t["description"], %{mongo: mongo, collection: collection} do
           test_json = unquote(Macro.escape(t))
           json = unquote(Macro.escape(json))
-          file_no_suffix = unquote(Macro.escape(file_no_suffix))
 
-          min_server_version =
-            json["minServerVersion"] <> ".0"
-            |> String.split(".")
-            |> Enum.map(&elem(Integer.parse(&1), 0))
-            |> List.to_tuple()
-
-          if mongo_version() >= min_server_version do
+          if min_server_version?(json["minServerVersion"]) do
             data = json["data"]
-            collection = file_no_suffix
             operation = test_json["operation"]
             outcome = test_json["outcome"]
 
@@ -53,19 +60,17 @@ defmodule Mongo.SpecificationTests.CRUDTest do
             end)
 
               expected = outcome["result"]
-              applied =
+              actual =
                 Mongo
                 |> apply(name, [mongo, collection, pipeline, rest])
                 |> Enum.to_list
 
-              actual = if outcome["collection"] do
-                outcome_collection = outcome["collection"]["name"]
-                Mongo.find(mongo, outcome_collection, %{}) |> Enum.to_list
-              else
-                applied
-              end
+              assert match_operation_result?(expected, actual)
 
-              assert ^expected = actual
+              if outcome["collection"] do
+                data = Mongo.find(mongo, outcome["collection"]["name"], %{}) |> Enum.to_list
+                assert ^data = outcome["collection"]["data"]
+              end
           end
         end
       end)
