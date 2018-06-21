@@ -1,12 +1,28 @@
 defmodule Mongo.SpecificationTests.CRUDTest do
   use Mongo.SpecificationCase
 
+  defp atomize_keys(map) do
+    Enum.map(map, fn {key, value} ->
+      {String.to_existing_atom(key), value}
+    end)
+  end
+
+  def distinct(pid, collection, arguments) do
+    field_name = arguments["fieldName"]
+    filter = arguments["filter"] || %{}
+    opts =
+      arguments
+      |> Map.drop(["fieldName", "filter"])
+      |> atomize_keys()
+
+    {:ok, values} = Mongo.distinct(pid, collection, field_name, filter, opts)
+    values
+  end
+
   def estimated_document_count(pid, collection, arguments) do
     opts =
       arguments
-      |> Enum.map(fn {key, value} ->
-        {String.to_existing_atom(key), value}
-      end)
+      |> atomize_keys()
 
     {:ok, result} = Mongo.estimated_document_count(pid, collection, opts)
     result
@@ -17,9 +33,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
     opts =
       arguments
       |> Map.drop(["filter"])
-      |> Enum.map(fn {key, value} ->
-        {String.to_existing_atom(key), value}
-      end)
+      |> atomize_keys()
 
     {:ok, result} = Mongo.count_documents(pid, collection, filter, opts)
     result
@@ -30,9 +44,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
     opts =
       arguments
       |> Map.drop(["filter"])
-      |> Enum.map(fn {key, value} ->
-        {String.to_existing_atom(key), value}
-      end)
+      |> atomize_keys()
 
     {:ok, result} = Mongo.count(pid, collection, filter, opts)
     result
@@ -43,9 +55,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
     opts =
       arguments
       |> Map.drop(["pipeline"])
-      |> Enum.map(fn {key, value} ->
-        {String.to_existing_atom(key), value}
-      end)
+      |> atomize_keys()
 
     Mongo.aggregate(pid, collection, pipeline, opts) |> Enum.to_list
   end

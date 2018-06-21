@@ -144,7 +144,7 @@ defmodule Mongo do
   ## Options
 
     * `:allow_disk_use` - Enables writing to temporary files (Default: false)
-    * `:collation` - Specifies the collation to use for the operation
+    * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
     * `:max_time` - Specifies a time limit in milliseconds
     * `:use_cursor` - Use a cursor for a batched response (Default: true)
   """
@@ -188,6 +188,7 @@ defmodule Mongo do
       selects multiple documents.
     * `:upsert` -  Create a document if no document matches the query or updates
       the document.
+    * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
   """
   @spec find_one_and_update(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
   def find_one_and_update(topology_pid, coll, filter, update, opts \\ []) do
@@ -377,6 +378,7 @@ defmodule Mongo do
   ## Options
 
     * `:max_time` - Specifies a time limit in milliseconds
+    * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
   """
   @spec distinct(GenServer.server, collection, String.t | atom, BSON.document, Keyword.t) :: result([BSON.t])
   def distinct(topology_pid, coll, field, filter, opts \\ []) do
@@ -384,6 +386,7 @@ defmodule Mongo do
       distinct: coll,
       key: field,
       query: filter,
+      collation: opts[:collation],
       maxTimeMS: opts[:max_time]
     ] |> filter_nils
 
