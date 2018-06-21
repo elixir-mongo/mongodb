@@ -282,15 +282,7 @@ defmodule Mongo do
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
-  @doc """
-  Returns the count of documents that would match a `find/4` query.
-
-  ## Options
-
-    * `:limit` - Maximum number of documents to fetch with the cursor
-    * `:skip` - Number of documents to skip before returning the first
-    * `:hint` - Hint which index to use for the query
-  """
+  @doc false
   @spec count(GenServer.server, collection, BSON.document, Keyword.t) :: result(non_neg_integer)
   def count(topology_pid, coll, filter, opts \\ []) do
     query = [
@@ -298,10 +290,11 @@ defmodule Mongo do
       query: filter,
       limit: opts[:limit],
       skip: opts[:skip],
-      hint: opts[:hint]
+      hint: opts[:hint],
+      collation: opts[:collation]
     ] |> filter_nils
 
-    opts = Keyword.drop(opts, ~w(limit skip hint)a)
+    opts = Keyword.drop(opts, ~w(limit skip hint collation)a)
 
     # Mongo 2.4 and 2.6 returns a float
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
@@ -309,12 +302,55 @@ defmodule Mongo do
          do: {:ok, trunc(doc["n"])}
   end
 
-  @doc """
-  Similar to `count/4` but unwraps the result and raises on error.
-  """
+  @doc false
   @spec count!(GenServer.server, collection, BSON.document, Keyword.t) :: result!(non_neg_integer)
   def count!(topology_pid, coll, filter, opts \\ []) do
     bangify(count(topology_pid, coll, filter, opts))
+  end
+
+  @doc """
+  Returns the count of documents that would match a find/4 query.
+
+  ## Options
+    * `:limit` - Maximum number of documents to fetch with the cursor
+    * `:skip` - Number of documents to skip before returning the first
+  """
+  @spec count_documents(GenServer.server, collection, BSON.document, Keyword.t) :: result(non_neg_integer)
+  def count_documents(topology_pid, coll, filter, opts \\ []) do
+    pipeline = [ %{"$group" => %{"_id" => nil, "n" => %{"$sum": 1}}} ]
+
+    pipeline = if opts[:limit] do
+      [ %{"$limit" => opts[:limit]} | pipeline ]
+    else
+      pipeline
+    end
+
+    pipeline = if opts[:skip] do
+      [ %{"$skip" => opts[:skip]} | pipeline ]
+    else
+      pipeline
+    end
+
+    pipeline = [ %{"$match" => filter} | pipeline ]
+
+    documents =
+      topology_pid
+      |> Mongo.aggregate(coll, pipeline, opts)
+      |> Enum.to_list
+
+    case documents do
+      [%{"n" => count}] -> {:ok, count}
+      [] -> {:error, :nothing_returned}
+      _ -> {:error, :too_many_documents_returned}
+    end
+  end
+
+  @doc """
+  Similar to `count_documents/4` but unwraps the result and raises on error.
+  """
+  @spec count_documents!(GenServer.server, collection, BSON.document, Keyword.t) :: result!(non_neg_integer)
+  def count_documents!(topology_pid, coll, filter, opts \\ []) do
+    bangify(count_documents(topology_pid, coll, filter, opts))
   end
 
   @doc """
