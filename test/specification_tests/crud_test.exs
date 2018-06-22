@@ -1,79 +1,9 @@
 defmodule Mongo.SpecificationTests.CRUDTest do
   use Mongo.SpecificationCase
+  import Mongo.Specification.CRUD.Helpers
 
-  defp atomize_keys(map) do
-    Enum.map(map, fn {key, value} ->
-      {String.to_existing_atom(key), value}
-    end)
-  end
-
-  def find(pid, collection, arguments) do
-    filter = arguments["filter"]
-    opts =
-      arguments
-      |> Map.drop(["filter"])
-      |> atomize_keys()
-
-    pid |> Mongo.find(collection, filter, opts) |> Enum.to_list
-  end
-
-  def distinct(pid, collection, arguments) do
-    field_name = arguments["fieldName"]
-    filter = arguments["filter"] || %{}
-    opts =
-      arguments
-      |> Map.drop(["fieldName", "filter"])
-      |> atomize_keys()
-
-    {:ok, values} = Mongo.distinct(pid, collection, field_name, filter, opts)
-    values
-  end
-
-  def estimated_document_count(pid, collection, arguments) do
-    opts = atomize_keys(arguments)
-
-    {:ok, result} = Mongo.estimated_document_count(pid, collection, opts)
-    result
-  end
-
-  def count_documents(pid, collection, arguments) do
-    filter = arguments["filter"]
-    opts =
-      arguments
-      |> Map.drop(["filter"])
-      |> atomize_keys()
-
-    {:ok, result} = Mongo.count_documents(pid, collection, filter, opts)
-    result
-  end
-
-  def count(pid, collection, arguments) do
-    filter = arguments["filter"]
-    opts =
-      arguments
-      |> Map.drop(["filter"])
-      |> atomize_keys()
-
-    {:ok, result} = Mongo.count(pid, collection, filter, opts)
-    result
-  end
-
-  def aggregate(pid, collection, arguments) do
-    pipeline = arguments["pipeline"]
-    opts =
-      arguments
-      |> Map.drop(["pipeline"])
-      |> atomize_keys()
-
-    pid |> Mongo.aggregate(collection, pipeline, opts) |> Enum.to_list
-  end
-
-  defp match_operation_result?(expected, actual) do
-    actual == [] || expected == actual
-  end
-
-  defp min_server_version?(nil), do: true
-  defp min_server_version?(number) do
+  def min_server_version?(nil), do: true
+  def min_server_version?(number) do
     min_server_version =
       number <> ".0"
       |> String.split(".")
@@ -82,10 +12,6 @@ defmodule Mongo.SpecificationTests.CRUDTest do
 
     mongo_version() >= min_server_version
   end
-
-  defp operation_name("estimatedDocumentCount"), do: :estimated_document_count
-  defp operation_name("countDocuments"), do: :count_documents
-  defp operation_name(name), do: String.to_existing_atom(name)
 
   setup_all do
     {:ok, pid} = Mongo.start_link(database: "mongodb_test")
@@ -125,7 +51,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
             arguments = operation["arguments"]
 
             expected = outcome["result"]
-            actual = apply(__MODULE__, name, [mongo, collection, arguments])
+            actual = apply(Mongo.Specification.CRUD.Helpers, name, [mongo, collection, arguments])
 
             assert match_operation_result?(expected, actual)
 
