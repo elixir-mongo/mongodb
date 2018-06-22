@@ -318,21 +318,12 @@ defmodule Mongo do
   """
   @spec count_documents(GenServer.server, collection, BSON.document, Keyword.t) :: result(non_neg_integer)
   def count_documents(topology_pid, coll, filter, opts \\ []) do
-    pipeline = [ %{"$group" => %{"_id" => nil, "n" => %{"$sum": 1}}} ]
-
-    pipeline = if opts[:limit] do
-      [ %{"$limit" => opts[:limit]} | pipeline ]
-    else
-      pipeline
-    end
-
-    pipeline = if opts[:skip] do
-      [ %{"$skip" => opts[:skip]} | pipeline ]
-    else
-      pipeline
-    end
-
-    pipeline = [ %{"$match" => filter} | pipeline ]
+    pipeline = [
+      {"$match", filter},
+      {"$skip", opts[:skip]},
+      {"$limit", opts[:limit]},
+      {"$group", %{"_id" => nil, "n" => %{"$sum" => 1}}}
+    ] |> filter_nils |> Enum.map(&List.wrap/1)
 
     documents =
       topology_pid
