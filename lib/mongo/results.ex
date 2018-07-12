@@ -9,7 +9,7 @@ defmodule Mongo.InsertOneResult do
     inserted_id: nil | BSON.ObjectId.t
   }
 
-  defstruct [:inserted_id]
+  defstruct [acknowledged: true, inserted_id: nil]
 end
 
 defmodule Mongo.InsertManyResult do
@@ -23,7 +23,7 @@ defmodule Mongo.InsertManyResult do
     inserted_ids: %{non_neg_integer => BSON.ObjectId.t}
   }
 
-  defstruct [:inserted_ids]
+  defstruct [acknowledged: true, inserted_ids: nil]
 end
 
 defmodule Mongo.DeleteResult do

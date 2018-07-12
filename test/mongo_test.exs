@@ -289,16 +289,16 @@ defmodule Mongo.Test do
 
     assert [%{"_id" => ^id, "foo" => 42}] = Mongo.find(c.pid, coll, %{_id: id}) |> Enum.to_list
 
-    assert :ok = Mongo.insert_one(c.pid, coll, %{}, w: 0)
+    assert {:ok, %Mongo.InsertOneResult{acknowledged: false}} = Mongo.insert_one(c.pid, coll, %{}, w: 0)
   end
 
   test "insert_one!", c do
     coll = unique_name()
 
     assert %Mongo.InsertOneResult{} = Mongo.insert_one!(c.pid, coll, %{"_id" => 1})
-    assert nil == Mongo.insert_one!(c.pid, coll, %{}, w: 0)
+    assert %Mongo.InsertOneResult{acknowledged: false} == Mongo.insert_one!(c.pid, coll, %{}, w: 0)
 
-    assert_raise Mongo.Error, fn ->
+    assert_raise Mongo.WriteError, fn ->
       Mongo.insert_one!(c.pid, coll, %{_id: 1})
     end
   end
@@ -311,12 +311,13 @@ defmodule Mongo.Test do
     end
 
     assert {:ok, result} = Mongo.insert_many(c.pid, coll, [%{foo: 42}, %{foo: 43}])
-    assert %Mongo.InsertManyResult{inserted_ids: %{0 => id0, 1 => id1}} = result
+
+    assert %Mongo.InsertManyResult{inserted_ids: [id0, id1]} = result
 
     assert [%{"_id" => ^id0, "foo" => 42}] = Mongo.find(c.pid, coll, %{_id: id0}) |> Enum.to_list
     assert [%{"_id" => ^id1, "foo" => 43}] = Mongo.find(c.pid, coll, %{_id: id1}) |> Enum.to_list
 
-    assert :ok = Mongo.insert_many(c.pid, coll, [%{}], w: 0)
+    assert {:ok, %Mongo.InsertManyResult{acknowledged: false}} = Mongo.insert_many(c.pid, coll, [%{}], w: 0)
   end
 
   test "insert_many!", c do
@@ -325,9 +326,9 @@ defmodule Mongo.Test do
     docs = [%{foo: 42}, %{foo: 43}]
     assert %Mongo.InsertManyResult{} = Mongo.insert_many!(c.pid, coll, docs)
 
-    assert nil == Mongo.insert_many!(c.pid, coll, [%{}], w: 0)
+    assert %Mongo.InsertManyResult{acknowledged: false} == Mongo.insert_many!(c.pid, coll, [%{}], w: 0)
 
-    assert_raise Mongo.Error, fn ->
+    assert_raise Mongo.WriteError, fn ->
       Mongo.insert_many!(c.pid, coll, [%{_id: 1}, %{_id: 1}])
     end
   end
