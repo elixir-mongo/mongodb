@@ -32,4 +32,8 @@ end
 
 defmodule Mongo.WriteError do
   defexception [:n, :ok, :write_errors]
+
+  def message(e) do
+    "n: #{e.n}, ok: #{e.ok}, write_errors: #{inspect e.write_errors}"
+  end
 end
