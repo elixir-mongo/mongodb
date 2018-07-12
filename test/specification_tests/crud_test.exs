@@ -1,6 +1,7 @@
 defmodule Mongo.SpecificationTests.CRUDTest do
   use Mongo.SpecificationCase
   import Mongo.Specification.CRUD.Helpers
+  require Mongo.Specification.CRUD
 
   def min_server_version?(nil), do: true
   def min_server_version?(number) do
@@ -34,37 +35,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
         %{collection: collection}
       end
 
-      Enum.map(json["tests"], fn t ->
-        @tag :specification
-        test t["description"], %{mongo: mongo, collection: collection} do
-          test_json = unquote(Macro.escape(t))
-          json = unquote(Macro.escape(json))
-
-          if min_server_version?(json["minServerVersion"]) do
-            data = json["data"]
-            operation = test_json["operation"]
-            outcome = test_json["outcome"]
-
-            Mongo.insert_many!(mongo, collection, data)
-
-            name = operation_name(operation["name"])
-            arguments = operation["arguments"]
-
-            expected = outcome["result"]
-            actual = apply(Mongo.Specification.CRUD.Helpers, name, [mongo, collection, arguments])
-
-            assert match_operation_result?(expected, actual)
-
-            if outcome["collection"] do
-              data =
-                mongo
-                |> Mongo.find(outcome["collection"]["name"], %{})
-                |> Enum.to_list
-              assert ^data = outcome["collection"]["data"]
-            end
-          end
-        end
-      end)
+      Mongo.Specification.CRUD.create_tests(json)
     end
   end)
 end
