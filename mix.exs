@@ -28,12 +28,15 @@ defmodule Mongodb.Mixfile do
   def applications(_), do: [:logger, :connection, :db_connection]
 
   defp deps do
-    [{:connection,    "~> 1.0"},
-     {:db_connection, "~> 1.1"},
-     {:poolboy,       ">= 0.0.0", only: :test},
-     {:ex_doc,        ">= 0.0.0", only: :dev},
-     {:earmark,       ">= 0.0.0", only: :dev},
-     {:dialyxir,      "~> 0.5.1", only: :dev}]
+    [
+      {:connection,    "~> 1.0"},
+      {:db_connection, "~> 1.1"},
+      {:poolboy,       ">= 0.0.0", only: :test},
+      {:jason,         "~> 1.0.0", only: :test},
+      {:ex_doc,        ">= 0.0.0", only: :dev},
+      {:earmark,       ">= 0.0.0", only: :dev},
+      {:dialyxir,      "~> 0.5.1", only: :dev}
+    ]
   end
 
   defp docs do

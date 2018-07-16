@@ -144,6 +144,7 @@ defmodule Mongo do
   ## Options
 
     * `:allow_disk_use` - Enables writing to temporary files (Default: false)
+    * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
     * `:max_time` - Specifies a time limit in milliseconds
     * `:use_cursor` - Use a cursor for a batched response (Default: true)
   """
@@ -153,6 +154,7 @@ defmodule Mongo do
       aggregate: coll,
       pipeline: pipeline,
       allowDiskUse: opts[:allow_disk_use],
+      collation: opts[:collation],
       maxTimeMS: opts[:max_time]
     ] |> filter_nils
     wv_query = %Query{action: :wire_version}
@@ -186,6 +188,7 @@ defmodule Mongo do
       selects multiple documents.
     * `:upsert` -  Create a document if no document matches the query or updates
       the document.
+    * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
   """
   @spec find_one_and_update(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
   def find_one_and_update(topology_pid, coll, filter, update, opts \\ []) do
@@ -280,15 +283,7 @@ defmodule Mongo do
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
-  @doc """
-  Returns the count of documents that would match a `find/4` query.
-
-  ## Options
-
-    * `:limit` - Maximum number of documents to fetch with the cursor
-    * `:skip` - Number of documents to skip before returning the first
-    * `:hint` - Hint which index to use for the query
-  """
+  @doc false
   @spec count(GenServer.server, collection, BSON.document, Keyword.t) :: result(non_neg_integer)
   def count(topology_pid, coll, filter, opts \\ []) do
     query = [
@@ -296,10 +291,11 @@ defmodule Mongo do
       query: filter,
       limit: opts[:limit],
       skip: opts[:skip],
-      hint: opts[:hint]
+      hint: opts[:hint],
+      collation: opts[:collation]
     ] |> filter_nils
 
-    opts = Keyword.drop(opts, ~w(limit skip hint)a)
+    opts = Keyword.drop(opts, ~w(limit skip hint collation)a)
 
     # Mongo 2.4 and 2.6 returns a float
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
@@ -307,12 +303,64 @@ defmodule Mongo do
          do: {:ok, trunc(doc["n"])}
   end
 
-  @doc """
-  Similar to `count/4` but unwraps the result and raises on error.
-  """
+  @doc false
   @spec count!(GenServer.server, collection, BSON.document, Keyword.t) :: result!(non_neg_integer)
   def count!(topology_pid, coll, filter, opts \\ []) do
     bangify(count(topology_pid, coll, filter, opts))
+  end
+
+  @doc """
+  Returns the count of documents that would match a find/4 query.
+
+  ## Options
+    * `:limit` - Maximum number of documents to fetch with the cursor
+    * `:skip` - Number of documents to skip before returning the first
+  """
+  @spec count_documents(GenServer.server, collection, BSON.document, Keyword.t) :: result(non_neg_integer)
+  def count_documents(topology_pid, coll, filter, opts \\ []) do
+    pipeline = [
+      {"$match", filter},
+      {"$skip", opts[:skip]},
+      {"$limit", opts[:limit]},
+      {"$group", %{"_id" => nil, "n" => %{"$sum" => 1}}}
+    ] |> filter_nils |> Enum.map(&List.wrap/1)
+
+    documents =
+      topology_pid
+      |> Mongo.aggregate(coll, pipeline, opts)
+      |> Enum.to_list
+
+    case documents do
+      [%{"n" => count}] -> {:ok, count}
+      [] -> {:error, :nothing_returned}
+      _ -> {:error, :too_many_documents_returned}
+    end
+  end
+
+  @doc """
+  Similar to `count_documents/4` but unwraps the result and raises on error.
+  """
+  @spec count_documents!(GenServer.server, collection, BSON.document, Keyword.t) :: result!(non_neg_integer)
+  def count_documents!(topology_pid, coll, filter, opts \\ []) do
+    bangify(count_documents(topology_pid, coll, filter, opts))
+  end
+
+  @doc """
+  Estimate the number of documents in a collection using collection metadata.
+  """
+  @spec estimated_document_count(GenServer.server, collection, Keyword.t) :: result(non_neg_integer)
+  def estimated_document_count(topology_pid, coll, opts) do
+    opts = Keyword.drop(opts, [:skip, :limit, :hint, :collation])
+    count(topology_pid, coll, %{}, opts)
+  end
+
+  @doc """
+  Similar to `estimated_document_count/3` but unwraps the result and raises on
+  error.
+  """
+  @spec estimated_document_count!(GenServer.server, collection, Keyword.t) :: result!(non_neg_integer)
+  def estimated_document_count!(topology_pid, coll, opts) do
+    bangify(estimated_document_count(topology_pid, coll, opts))
   end
 
   @doc """
@@ -321,6 +369,7 @@ defmodule Mongo do
   ## Options
 
     * `:max_time` - Specifies a time limit in milliseconds
+    * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
   """
   @spec distinct(GenServer.server, collection, String.t | atom, BSON.document, Keyword.t) :: result([BSON.t])
   def distinct(topology_pid, coll, field, filter, opts \\ []) do
@@ -328,6 +377,7 @@ defmodule Mongo do
       distinct: coll,
       key: field,
       query: filter,
+      collation: opts[:collation],
       maxTimeMS: opts[:max_time]
     ] |> filter_nils
 
