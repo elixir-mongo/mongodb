@@ -114,6 +114,7 @@ defmodule Mongo.UrlParser do
     case :os.type() do
       {:win32, _} ->
         :inet_db.add_ns({4, 2, 2, 1})
+      _ ->
     end
 
     with url_char <- String.to_charlist(url),
