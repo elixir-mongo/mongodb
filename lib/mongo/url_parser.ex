@@ -111,10 +111,8 @@ defmodule Mongo.UrlParser do
   defp resolve_srv_url(%{"seeds" => url, "srv" => srv} = frags)
        when is_bitstring(url) and srv == "+srv" do
     # Fix for windows only
-    case :os.type() do
-      {:win32, _} ->
-        :inet_db.add_ns({4, 2, 2, 1})
-      _ ->
+    with {:win32, _} <- :os.type() do
+         :inet_db.add_ns({4, 2, 2, 1})
     end
 
     with url_char <- String.to_charlist(url),
