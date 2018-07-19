@@ -35,27 +35,27 @@ defmodule Mongo.UrlParserTest do
     end
 
     test "url srv" do
-      assert UrlParser.parse_url(url: "mongodb+srv://test.monopolio.org") ==
+      assert UrlParser.parse_url(url: "mongodb+srv://test5.test.build.10gen.cc") ==
                [
                  ssl: true,
-                 auth_source: "authDB",
-                 set_name: "replProduction",
+                 auth_source: "thisDB",
+                 set_name: "repl0",
                  seeds: [
-                   "mongo2.test.monopolio.org:27016","mongo3.test.monopolio.org:27018","mongo1.test.monopolio.org:27017"
+                   "localhost.test.build.10gen.cc:27017"
                  ]
                ]
     end
 
     test "url srv with user" do
-      assert UrlParser.parse_url(url: "mongodb+srv://user:password@test.monopolio.org") ==
+      assert UrlParser.parse_url(url: "mongodb+srv://user:password@test5.test.build.10gen.cc") ==
                [
                  username: "user",
                  password: "password",
                  ssl: true,
-                 auth_source: "authDB",
-                 set_name: "replProduction",
+                 auth_source: "thisDB",
+                 set_name: "repl0",
                  seeds: [
-                   "mongo2.test.monopolio.org:27016","mongo3.test.monopolio.org:27018","mongo1.test.monopolio.org:27017"
+                   "localhost.test.build.10gen.cc:27017"
                  ]
                ]
     end

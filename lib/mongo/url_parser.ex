@@ -99,7 +99,6 @@ defmodule Mongo.UrlParser do
     |> Enum.reduce(opts, &add_option/2)
   end
 
-  require Logger
   defp parse_query_options(opts, _frags), do: opts
 
   defp parse_seeds(opts, %{"seeds" => seeds}) do
@@ -112,7 +111,7 @@ defmodule Mongo.UrlParser do
        when is_bitstring(url) and srv == "+srv" do
     # Fix for windows only
     with {:win32, _} <- :os.type() do
-         :inet_db.add_ns({4, 2, 2, 1})
+      :inet_db.add_ns({4, 2, 2, 1})
     end
 
     with url_char <- String.to_charlist(url),
