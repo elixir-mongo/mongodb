@@ -8,7 +8,7 @@ defmodule BSON.Decimal128 do
   @exponent_mask 0x3fff
   @exponent_bias 6176
 
-  def decode(<<_::signed-little-64, high::signed-little-64>> = bits) do
+  def decode(<<_::little-64, high::little-64>> = bits) do
     is_negative = (high &&& @signed_bit_mask) == (@signed_bit_mask)
     combination = (high >>> 58 &&& @combination_mask)
     two_highest_bits_set = combination >>> 3 == 3
