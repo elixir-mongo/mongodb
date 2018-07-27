@@ -121,7 +121,7 @@ defmodule Mongo.Topology do
     {:reply, :ok, new_state}
   end
 
-  def handle_call(:wait_for_connection, from, %{connection_pools: pools} = state) when map_size(pools) > 0 do
+  def handle_call(:wait_for_connection, _from, %{connection_pools: pools} = state) when map_size(pools) > 0 do
     servers = Enum.map(pools, fn {key, _value} -> key end)
     {:reply, {:connected, servers}, state}
   end
