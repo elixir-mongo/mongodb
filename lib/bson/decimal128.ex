@@ -61,7 +61,7 @@ defmodule BSON.Decimal128 do
     %Decimal{coef: coef, exp: exponent}
   end
 
-  defp coef(<<low::signed-little-64, high::signed-little-64>>) do
+  defp coef(<<low::little-64, high::little-64>>) do
     bor((high &&& 0x1ffffffffffff) <<< 64, low)
   end
 end
