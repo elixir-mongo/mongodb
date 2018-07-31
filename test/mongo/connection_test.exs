@@ -15,6 +15,13 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
+  defp connect_auth_invalid do
+    assert {:ok, pid} =
+           Mongo.start_link(hostname: "localhost", database: "mongodb_test",
+                                 username: "mongodb_user", password: "wrong_password")
+    pid
+  end
+
   defp connect_auth_on_db do
     assert {:ok, pid} =
            Mongo.start_link(hostname: "localhost", database: "mongodb_test",
@@ -157,5 +164,15 @@ defmodule Mongo.ConnectionTest do
     end)
 
     assert {:ok, %{num: 10}} = Mongo.raw_find(conn, coll, %{}, nil, batch_size: 100)
+  end
+
+  test "auth connection leak" do
+    assert length(:recon.tcp()) == 0
+    Enum.each(1..10, fn _ ->
+      connect_auth_invalid()
+    end)
+    :timer.sleep(1000)
+    # there should be 10 connections with connection_type: :monitor
+    assert length(:recon.tcp()) == 10
   end
 end
