@@ -11,6 +11,7 @@ cache:
   - apt
   - directories:
     - ~/.mongodb
+    - ./plt_core_path
 
 before_install:
   - . $HOME/.nvm/nvm.sh
