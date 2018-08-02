@@ -26,6 +26,10 @@ before_script:
   - echo $PATH
   - mongod --fork --logpath mongo.log --dbpath db
 
+script:
+  - mix test
+  - mix dialyzer --halt-exit-status
+
 env:
   matrix:
     - MONGOVERSION=3.0.15 TRAVIS_NODE_VERSION=4

@@ -1,6 +1,11 @@
 defmodule Mongo.Error do
   defexception [:message, :code]
 
+  @type t :: %{
+    message: String.t,
+    code: number
+  }
+
   def message(e) do
     code = if e.code, do: " #{e.code}"
     "#{e.message}#{code}"

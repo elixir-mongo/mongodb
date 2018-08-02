@@ -26,7 +26,7 @@ defmodule Mongo.Auth.SCRAM do
         :ok
       {:ok, %{"ok" => z, "errmsg" => reason, "code" => code}} when z == 0 ->
         {:error, Mongo.Error.exception(message: "auth failed for user #{username}: #{reason}", code: code)}
-      {:error, _} = error ->
+      error ->
         error
     end
   end

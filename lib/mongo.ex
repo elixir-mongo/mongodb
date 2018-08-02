@@ -56,6 +56,8 @@ defmodule Mongo do
 
   @timeout 5000
 
+  @dialyzer [no_match: [count_documents!: 4]]
+
   @type conn :: DbConnection.Conn
   @type collection :: String.t
   @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
@@ -206,7 +208,7 @@ defmodule Mongo do
       collation:                opts[:collation],
     ] |> filter_nils
 
-    opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation))
+    opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation)a)
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
@@ -246,7 +248,7 @@ defmodule Mongo do
       collation:                opts[:collation],
     ] |> filter_nils
 
-    opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation))
+    opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation)a)
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
@@ -277,7 +279,7 @@ defmodule Mongo do
       sort:          opts[:sort],
       collation:     opts[:collation],
     ] |> filter_nils
-    opts = Keyword.drop(opts, ~w(max_time projection sort collation))
+    opts = Keyword.drop(opts, ~w(max_time projection sort collation)a)
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
@@ -381,7 +383,7 @@ defmodule Mongo do
       maxTimeMS: opts[:max_time]
     ] |> filter_nils
 
-    opts = Keyword.drop(opts, ~w(max_time))
+    opts = Keyword.drop(opts, ~w(max_time)a)
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, doc} <- direct_command(conn, query, opts),
@@ -962,25 +964,25 @@ defmodule Mongo do
     {:error, Mongo.Error.exception(message: message, code: code)}
   end
 
-  defp assign_ids(doc) when is_map(doc) do
-    [assign_id(doc)]
-    |> Enum.unzip
-  end
+  # defp assign_ids(doc) when is_map(doc) do
+  #   [assign_id(doc)]
+  #   |> Enum.unzip
+  # end
 
-  defp assign_ids([{_, _} | _] = doc) do
-    [assign_id(doc)]
-    |> Enum.unzip
-  end
+  # defp assign_ids([{_, _} | _] = doc) do
+  #   [assign_id(doc)]
+  #   |> Enum.unzip
+  # end
 
   defp assign_ids(list) when is_list(list) do
     Enum.map(list, &assign_id/1)
     |> Enum.unzip
   end
+
   defp assign_id(%{_id: id} = map) when id != nil,
     do: {id, map}
   defp assign_id(%{"_id" => id} = map) when id != nil,
     do: {id, map}
-
   defp assign_id([{_, _} | _] = keyword) do
     case Keyword.take(keyword, [:_id, "_id"]) do
       [{_key, id} | _] when id != nil ->

@@ -8,7 +8,7 @@ defmodule Mongo.ServerDescription do
     address: String.t | nil,
     error: String.t | nil,
     round_trip_time: non_neg_integer | nil,
-    last_write_date: BSON.DateTime.t,
+    last_write_date: DateTime.t,
     op_time: BSON.ObjectId.t | nil,
     type: type,
     min_wire_version: non_neg_integer,
