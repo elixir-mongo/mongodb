@@ -14,7 +14,7 @@ defmodule Mongodb.Mixfile do
      description: description(),
      package: package(),
      dialyzer: [
-       plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl],
+       plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
        plt_add_deps: :transitive,
        plt_core_path: "plt_core_path"
      ]
