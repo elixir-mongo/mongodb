@@ -1,7 +1,7 @@
 defmodule Mongo.Error do
   defexception [:message, :code]
 
-  @type t :: %{
+  @type t :: %__MODULE__{
     message: String.t,
     code: number
   }
