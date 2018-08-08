@@ -143,26 +143,29 @@ defmodule Mongo.Topology do
   end
 
   def handle_cast({:connected, monitor_pid}, state) do
-    {host, ^monitor_pid} = Enum.find(state.monitors, fn {_key, value} -> value == monitor_pid end)
-    arbiters = fetch_arbiters(state)
-
-    new_state =
-      if host in arbiters do
+    monitor = Enum.find(state.monitors, fn {_key, value} -> value == monitor_pid end)
+    new_state = case monitor do
+      nil ->
         state
-      else
-        conn_opts =
-          state.opts
-          |> Keyword.put(:connection_type, :client)
-          |> Keyword.put(:topology_pid, self())
-          |> connect_opts_from_address(host)
+      {host, ^monitor_pid} ->
+        arbiters = fetch_arbiters(state)
+        if host in arbiters do
+          state
+        else
+          conn_opts =
+            state.opts
+            |> Keyword.put(:connection_type, :client)
+            |> Keyword.put(:topology_pid, self())
+            |> connect_opts_from_address(host)
 
-        {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
-        connection_pools = Map.put(state.connection_pools, host, pool)
-        Enum.each(state.waiting_pids, fn from ->
-          GenServer.reply(from, {:new_connection, host})
-        end)
-        %{ state | connection_pools: connection_pools, waiting_pids: [] }
-      end
+          {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
+          connection_pools = Map.put(state.connection_pools, host, pool)
+          Enum.each(state.waiting_pids, fn from ->
+            GenServer.reply(from, {:new_connection, host})
+          end)
+          %{ state | connection_pools: connection_pools, waiting_pids: [] }
+        end
+    end
     {:noreply, new_state}
   end
 
