@@ -167,9 +167,6 @@ defmodule Mongo.Protocol do
         {:ok, s}
     after
       0 ->
-        # It doesn't work, it should be `:inet.setopts(sock, buffer: 0)` but then
-        # the test `test big response (Mongo.ConnectionTest)` fails
-        # :inet.setopts(sock, buffer: <<>>)
         {:ok, s}
     end
   end
@@ -179,9 +176,6 @@ defmodule Mongo.Protocol do
         {:ok, s}
     after
       0 ->
-        # It doesn't work, it should be `:ssl.setopts(sock, buffer: 0)` but then
-        # the test `test big response (Mongo.ConnectionTest)` fails
-        # :ssl.setopts(sock, buffer: <<>>)
         {:ok, s}
     end
   end
