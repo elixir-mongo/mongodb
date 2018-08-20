@@ -964,16 +964,6 @@ defmodule Mongo do
     {:error, Mongo.Error.exception(message: message, code: code)}
   end
 
-  # defp assign_ids(doc) when is_map(doc) do
-  #   [assign_id(doc)]
-  #   |> Enum.unzip
-  # end
-
-  # defp assign_ids([{_, _} | _] = doc) do
-  #   [assign_id(doc)]
-  #   |> Enum.unzip
-  # end
-
   defp assign_ids(list) when is_list(list) do
     Enum.map(list, &assign_id/1)
     |> Enum.unzip
