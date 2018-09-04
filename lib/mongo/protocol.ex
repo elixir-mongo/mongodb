@@ -157,7 +157,7 @@ defmodule Mongo.Protocol do
   def checkout(%{socket: {mod, sock}} = s) do
     case setopts(mod, sock, [active: :false]) do
       :ok                       -> recv_buffer(s)
-      {:disconnect, _, _} = dis -> dis
+      {:error, _} =             err -> err
     end
   end
 
@@ -167,7 +167,6 @@ defmodule Mongo.Protocol do
         {:ok, s}
     after
       0 ->
-        :inet.setopts(sock, buffer: <<>>)
         {:ok, s}
     end
   end
@@ -177,7 +176,6 @@ defmodule Mongo.Protocol do
         {:ok, s}
     after
       0 ->
-        :ssl.setopts(sock, buffer: <<>>)
         {:ok, s}
     end
   end

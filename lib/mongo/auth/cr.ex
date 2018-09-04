@@ -20,7 +20,7 @@ defmodule Mongo.Auth.CR do
         {:error, Mongo.Error.exception(message: "auth failed for '#{username}': #{reason}", code: code)}
       {:ok, nil} ->
         {:error, Mongo.Error.exception(message: "auth failed for '#{username}'")}
-      {:error, _} = error ->
+      error ->
         error
     end
   end

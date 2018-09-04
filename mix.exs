@@ -12,7 +12,13 @@ defmodule Mongodb.Mixfile do
      deps: deps(),
      docs: docs(),
      description: description(),
-     package: package()]
+     package: package(),
+     dialyzer: [
+       plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
+       plt_add_deps: :transitive,
+       plt_core_path: "plt_core_path"
+     ]
+   ]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
