@@ -502,6 +502,20 @@ defmodule Mongo.Test do
              Mongo.find(c.pid, "coll", %{}, skip: 10, cursor_timeout: false)
   end
 
+  # issue #220
+  @tag :mongo_3_4
+  test "correctly query NumberDecimal", c do
+    coll = "number_decimal_test"
+    Mongo.command(c.pid,
+      %{
+        eval:
+          "db.#{coll}.insert({number: NumberDecimal('123.456')})"
+      }
+    )
+
+    assert %{"number" => %Decimal{coef: 123456, exp: -3}} = Mongo.find(c.pid, coll, %{}, limit: 1) |> Enum.to_list |> List.first()
+  end
+
   test "access multiple databases", c do
     coll = unique_name()
 
