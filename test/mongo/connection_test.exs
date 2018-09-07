@@ -38,8 +38,10 @@ defmodule Mongo.ConnectionTest do
 
   defp tcp_count do
     Enum.count(:erlang.ports(), fn port ->
-      {:name, name} = :erlang.port_info(port, :name)
-      name == 'tcp_inet'
+      case :erlang.port_info(port, :name) do
+        {:name, 'tcp_inet'} -> true
+        _ -> false
+      end
     end)
   end
 
