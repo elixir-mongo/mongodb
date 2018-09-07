@@ -36,6 +36,13 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
+  defp tcp_count do
+    Enum.count(:erlang.ports(), fn port ->
+      {:name, name} = :erlang.port_info(port, :name)
+      name == 'tcp_inet'
+    end)
+  end
+
   test "connect and ping" do
     pid = connect()
     {:ok, conn, _, _} = Mongo.select_server(pid, :read)
@@ -167,12 +174,12 @@ defmodule Mongo.ConnectionTest do
   end
 
   test "auth connection leak" do
-    assert length(:recon.tcp()) == 0
+    assert tcp_count() == 0
     Enum.each(1..10, fn _ ->
       connect_auth_invalid()
     end)
     :timer.sleep(1000)
     # there should be 10 connections with connection_type: :monitor
-    assert length(:recon.tcp()) == 10
+    assert tcp_count() == 10
   end
 end
