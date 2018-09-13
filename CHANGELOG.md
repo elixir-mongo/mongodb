@@ -1,3 +1,10 @@
+## v0.4.7
+
+* Enhancements
+  * Added 4.0 to supported versions
+  * Initial support for mongodb+srv URLs
+  * Support for Decimal128
+
 ## v0.4.6
 
 * Enhancements
