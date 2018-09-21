@@ -57,11 +57,14 @@ defmodule Mongo.Protocol do
     case result do
       {:ok, s} ->
         {:ok, s}
-      {:disconnect, {:tcp_recv, reason}, _s} ->
-        {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
-      {:disconnect, {:tcp_send, reason}, _s} ->
-        {:error, Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)}
-      {:disconnect, %Mongo.Error{} = reason, _s} ->
+      {:disconnect, reason, s} ->
+        reason = case reason do
+          {:tcp_recv, reason} -> Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)
+          {:tcp_send, reason} -> Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)
+          %Mongo.Error{} = reason -> reason
+        end
+        {mod, sock} = s.socket
+        mod.close(sock)
         {:error, reason}
       {:error, reason} ->
         {:error, reason}
@@ -90,6 +93,7 @@ defmodule Mongo.Protocol do
       {:ok, ssl_sock} ->
         {:ok, %{s | socket: {:ssl, ssl_sock}}}
       {:error, reason} ->
+        :gen_tcp.close(sock)
         {:error, Mongo.Error.exception(tag: :ssl, action: "connect", reason: reason)}
     end
   end
