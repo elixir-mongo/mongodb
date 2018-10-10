@@ -28,6 +28,9 @@ defmodule Mongo.GridFs.Download do
     file |> stream_chunk( bucket )
   end
 
+  @doc """
+  Same as above, but returns also the file document.
+  """
   def find_and_stream( %Bucket{conn: conn} = bucket, file_id ) when is_binary(file_id) do
     file = conn |> Mongo.find_one( "fs.files", %{ "_id" => ObjectId.decode!(file_id)} )
     {file |> stream_chunk(bucket), file}
