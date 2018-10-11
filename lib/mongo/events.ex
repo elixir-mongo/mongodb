@@ -2,7 +2,7 @@ defmodule Mongo.Events do
   @doc false
 
   def notify(event) do
-    GenEvent.notify(__MODULE__, event)
+    :gen_event.notify(__MODULE__, event)
   end
 
   # Published when server description changes, but does NOT include changes to
