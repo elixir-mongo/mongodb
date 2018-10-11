@@ -101,7 +101,7 @@ defmodule Mongo.GridFs.Bucket do
   # Creates the indexes for the fs.chunks collection
   #
   defp create_chunks_index({%Bucket{conn: conn, name: fs } = bucket, false} ) do
-    command = "db.#{fs}.files.createIndex({ files_id : 1, n : 1 }, { unique: true })"
+    command = "db.#{fs}.chunks.createIndex({ files_id : 1, n : 1 }, { unique: true })"
     {:ok, _} = Mongo.command( conn, %{eval: command} )
     bucket
   end

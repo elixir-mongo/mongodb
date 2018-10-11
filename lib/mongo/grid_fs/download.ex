@@ -63,7 +63,7 @@ defmodule Mongo.GridFs.Download do
   defp stream_chunk( %{ "_id" => id }, %Bucket{conn: conn} ) do
     stream = conn
              |> Mongo.find( "fs.chunks", %{ files_id: id }, sort: [n: 1] )
-             |> Stream.map( fn map -> map["data"].binary end )
+             |> Stream.map( fn map -> map["data"] end ) #.binary
     {:ok, stream}
   end
 

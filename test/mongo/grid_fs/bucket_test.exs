@@ -12,7 +12,6 @@ defmodule Mongo.GridFs.BucketTest do
 
   test "checks implementation of the protocols Inspect and String.Chars", c do
     b = Bucket.new( c.pid )
-    inspect b
     assert inspect b == to_string(b)
   end
 
