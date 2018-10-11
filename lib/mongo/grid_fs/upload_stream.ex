@@ -29,8 +29,7 @@ defmodule Mongo.GridFs.UploadStream do
       fn
         # case: buffer is full
         state(buffer: bin) = s, {:cont, x } when byte_size(bin) >= chunk_size ->
-
-          state(buffer: rest, number: next) = write_data(stream, s)
+          state(buffer: rest, number: next) = write_buffer(stream, s)
           state(buffer: rest <> x, number: next)
 
         # case: buffer is empty
@@ -65,7 +64,7 @@ defmodule Mongo.GridFs.UploadStream do
     # checks if the buffer is smaller than the chunk-size
     # in this case we do nothing
     #
-    defp write_data(%UploadStream{bucket: %Bucket{chunk_size: chunk_size}},
+    defp write_buffer(%UploadStream{bucket: %Bucket{chunk_size: chunk_size}},
                     state( buffer: buffer) = s ) when byte_size( buffer ) < chunk_size  do
       s
     end
@@ -75,7 +74,7 @@ defmodule Mongo.GridFs.UploadStream do
     # write the data to the chunk collections and call the function again with the rest of the buffer
     # for the case that the buffer size is still greater than the chunk size
     #
-    defp write_data(%UploadStream{bucket: %Bucket{ conn: conn, chunk_size: chunk_size}, id: file_id} = stream,
+    defp write_buffer(%UploadStream{bucket: %Bucket{ conn: conn, chunk_size: chunk_size}, id: file_id} = stream,
                   state(buffer: buffer, number: chunk_number)) do
 
       fun = fn ( <<data::bytes-size(chunk_size), rest :: binary>> ) ->
@@ -87,7 +86,7 @@ defmodule Mongo.GridFs.UploadStream do
       new_state = fun.(buffer)
 
       # try to write the rest of the buffer
-      write_data(stream, new_state)
+      write_buffer(stream, new_state)
     end
 
     ##
