@@ -3,7 +3,7 @@ defmodule Mongo.GridFs.Upload do
 
   alias Mongo.GridFs.UploadStream
 
-  def open_upload_stream(bucket, opts \\ []) do
-    UploadStream.new(bucket)
+  def open_upload_stream(bucket, filename, opts \\ []) do
+    UploadStream.new(bucket, filename, opts)
   end
 end

@@ -28,6 +28,38 @@ defmodule Mongo.GridFs.Bucket do
 
   end
 
+  @doc """
+  Returns the collection name for the files collection, default is fs.files.
+  """
+  def files_collection_name(%Bucket{name: fs}), do: "#{fs}.files"
+
+  @doc """
+  Returns the collection name for the chunks collection, default is fs.chunks.
+  """
+  def chunks_collection_name(%Bucket{name: fs}), do: "#{fs}.chunks"
+
+
+  @doc """
+  Renames the stored file with the specified @id.
+  """
+  def rename(%Bucket{conn: conn} = bucket, id, new_filename) do
+    query = %{_id: id}
+    update = %{ "$set" => %{filename: new_filename}}
+    with collection <- files_collection_name(bucket) do
+         {:ok, value} = Mongo.find_one_and_update(conn,collection,query,update)
+    end
+  end
+
+  def find_one_file( %Bucket{} = bucket, file_id) when is_binary(file_id) do
+    find_one_file(bucket,ObjectId.decode!(file_id))
+  end
+
+
+  def find_one_file( %Bucket{conn: conn} = bucket, %BSON.ObjectId{} = oid ) do
+    collection = files_collection_name(bucket)
+    conn |> Mongo.find_one(collection, %{"_id" => oid} )
+  end
+
   ##
   # checks and creates indexes for the *.files and *.chunks collections
   #
