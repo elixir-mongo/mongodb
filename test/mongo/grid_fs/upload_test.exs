@@ -18,7 +18,7 @@ defmodule Mongo.GridFs.UploadTest do
     |> Base.encode16
   end
 
-  test "uploads a jpeg file, checks download, length and checksum", c do
+  test "upload a jpeg file, check download, length and checksum", c do
     b = Bucket.new( c.pid )
     upload_stream = Upload.open_upload_stream(b, "test.jpg")
 
@@ -46,7 +46,7 @@ defmodule Mongo.GridFs.UploadTest do
     assert calc_checksum(dest_filename) == calc_checksum(src_filename)
   end
 
-  test "uploads a text file, checks download, length and checksum", c do
+  test "upload a text file, check download, length and checksum", c do
 
     b = Bucket.new( c.pid )
     upload_stream = b |> Upload.open_upload_stream( "my-example-file.txt", meta: %{tag: "checked"} )
@@ -75,25 +75,5 @@ defmodule Mongo.GridFs.UploadTest do
     assert calc_checksum(dest_filename) == calc_checksum(src_filename)
   end
 
-  test "rename a file",c do
-
-    bucket        = Bucket.new(c.pid)
-    new_filename  = "my-new-filename.txt"
-    upload_stream = bucket |> Upload.open_upload_stream( "my-example-file.txt" )
-    src_filename  = "./test/data/test.txt"
-
-    File.stream!(src_filename, [], 512) |> Stream.into(upload_stream) |> Stream.run()
-
-    file_id = upload_stream.id
-
-    file = Bucket.find_one_file(bucket,file_id)
-    assert file != nil
-
-    Bucket.rename(bucket,file_id,new_filename)
-
-    new_file = Bucket.find_one_file(bucket,file_id)
-
-    assert new_filename == new_file["filename"]
-  end
 
 end

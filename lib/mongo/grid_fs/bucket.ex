@@ -2,6 +2,7 @@ defmodule Mongo.GridFs.Bucket do
   @moduledoc false
 
   alias Mongo.GridFs.Bucket
+  alias BSON.ObjectId
 
   ##
   # constants used in this module
@@ -46,14 +47,31 @@ defmodule Mongo.GridFs.Bucket do
     query = %{_id: id}
     update = %{ "$set" => %{filename: new_filename}}
     with collection <- files_collection_name(bucket) do
-         {:ok, value} = Mongo.find_one_and_update(conn,collection,query,update)
+         {:ok, _} = Mongo.find_one_and_update(conn,collection,query,update)
     end
+  end
+
+  @doc """
+  Given a @id, delete this stored file’s files collection document and
+  associated chunks from a GridFS bucket.
+  """
+  def delete(%Bucket{} = bucket, file_id) when is_binary(file_id) do
+    delete(bucket,ObjectId.decode!(file_id))
+  end
+
+  def delete(%Bucket{conn: conn} = bucket, %BSON.ObjectId{} = oid) do
+    # first delete files document
+    collection = files_collection_name(bucket)
+    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_one(conn, collection, %{_id: oid})
+
+    # then delete all chunk documents
+    collection = chunks_collection_name(bucket)
+    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_many(conn, collection, %{files_id: oid})
   end
 
   def find_one_file( %Bucket{} = bucket, file_id) when is_binary(file_id) do
     find_one_file(bucket,ObjectId.decode!(file_id))
   end
-
 
   def find_one_file( %Bucket{conn: conn} = bucket, %BSON.ObjectId{} = oid ) do
     collection = files_collection_name(bucket)
