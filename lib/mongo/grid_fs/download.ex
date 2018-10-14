@@ -31,16 +31,16 @@ defmodule Mongo.GridFs.Download do
   @doc """
   Same as above, but returns also the file document.
   """
-  def find_and_stream( %Bucket{conn: conn} = bucket, file_id ) when is_binary(file_id) do
-    file = conn |> Mongo.find_one( "fs.files", %{ "_id" => ObjectId.decode!(file_id)} )
+  def find_and_stream( %Bucket{topology_pid: topology_pid} = bucket, file_id ) when is_binary(file_id) do
+    file = topology_pid |> Mongo.find_one( "fs.files", %{ "_id" => ObjectId.decode!(file_id)} )
     {file |> stream_chunk(bucket), file}
   end
 
   ##
   # finds the file map and if found the chunks are streamed
   #
-  defp find_one_file( %Bucket{conn: conn} = bucket, query ) do
-    conn
+  defp find_one_file( %Bucket{topology_pid: topology_pid} = bucket, query ) do
+    topology_pid
     |> Mongo.find_one( "fs.files", query )
     |> stream_chunk( bucket )
   end
@@ -60,8 +60,8 @@ defmodule Mongo.GridFs.Download do
   ##
   # Streaming the chunks with `file_id` sorted ascending by n
   #
-  defp stream_chunk( %{ "_id" => id }, %Bucket{conn: conn} ) do
-    stream = conn
+  defp stream_chunk( %{ "_id" => id }, %Bucket{topology_pid: topology_pid} ) do
+    stream = topology_pid
              |> Mongo.find( "fs.chunks", %{ files_id: id }, sort: [n: 1] )
              |> Stream.map( fn map -> map["data"] end ) #.binary
     {:ok, stream}

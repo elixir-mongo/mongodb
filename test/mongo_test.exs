@@ -28,6 +28,23 @@ defmodule Mongo.Test do
     end
   end
 
+  test "show_collections", c do
+
+    coll_1 = unique_name()
+    coll_2 = unique_name()
+
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 1})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 2})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 3})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 4})
+
+    command = %{ createIndexes: coll_1,
+                 indexes: [%{ key: %{}] }
+
+    Mongo.command(c.pid, crateIndex)
+
+  end
+
   test "aggregate", c do
     coll = unique_name()
 

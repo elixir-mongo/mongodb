@@ -11,7 +11,7 @@ defmodule Mongo.GridFs.Bucket do
   @chunks_index_name "files_id_1_n_1"
   @defaults [name: "fs", chunk_size: 255*1024]
 
-  defstruct name: "fs", chunk_size: 255*1024, conn: nil
+  defstruct name: "fs", chunk_size: 255*1024, topology_pid: nil
 
   @doc """
   Creates a new Bucket with a existing connection using the default values. It just contains the
@@ -21,10 +21,10 @@ defmodule Mongo.GridFs.Bucket do
   upload or downloads just create only one bucket and resuse it.
 
   """
-  def new( conn, options \\ [] ) do
+  def new( topology_pid, options \\ [] ) do
 
     Keyword.merge(@defaults, options)
-    |> Enum.reduce( %Bucket{ conn: conn }, fn {k,v},bucket -> Map.put(bucket, k, v) end)
+    |> Enum.reduce( %Bucket{topology_pid: topology_pid}, fn {k,v},bucket -> Map.put(bucket, k, v) end)
     |> check_indexes
 
   end
@@ -39,16 +39,14 @@ defmodule Mongo.GridFs.Bucket do
   """
   def chunks_collection_name(%Bucket{name: fs}), do: "#{fs}.chunks"
 
-
   @doc """
   Renames the stored file with the specified @id.
   """
-  def rename(%Bucket{conn: conn} = bucket, id, new_filename) do
-    query = %{_id: id}
-    update = %{ "$set" => %{filename: new_filename}}
-    with collection <- files_collection_name(bucket) do
-         {:ok, _} = Mongo.find_one_and_update(conn,collection,query,update)
-    end
+  def rename(%Bucket{topology_pid: topology_pid} = bucket, id, new_filename) do
+    query      = %{_id: id}
+    update     = %{ "$set" => %{filename: new_filename}}
+    collection = files_collection_name(bucket)
+    {:ok, _}   = Mongo.find_one_and_update(topology_pid, collection, query, update)
   end
 
   @doc """
@@ -59,23 +57,32 @@ defmodule Mongo.GridFs.Bucket do
     delete(bucket,ObjectId.decode!(file_id))
   end
 
-  def delete(%Bucket{conn: conn} = bucket, %BSON.ObjectId{} = oid) do
+  def delete(%Bucket{topology_pid: topology_pid} = bucket, %BSON.ObjectId{} = oid) do
     # first delete files document
     collection = files_collection_name(bucket)
-    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_one(conn, collection, %{_id: oid})
+    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_one(topology_pid, collection, %{_id: oid})
 
     # then delete all chunk documents
     collection = chunks_collection_name(bucket)
-    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_many(conn, collection, %{files_id: oid})
+    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_many(topology_pid, collection, %{files_id: oid})
+  end
+
+  @doc """
+  Drops the files and chunks collections associated with
+  this bucket.
+  """
+  def drop(%Bucket{topology_pid: topology_pid} = bucket) do
+    {:ok, _} = Mongo.command(topology_pid, %{drop: files_collection_name(bucket)})
+    {:ok, _} = Mongo.command(topology_pid, %{drop: chunks_collection_name(bucket)})
   end
 
   def find_one_file( %Bucket{} = bucket, file_id) when is_binary(file_id) do
-    find_one_file(bucket,ObjectId.decode!(file_id))
+    find_one_file(bucket, ObjectId.decode!(file_id))
   end
 
-  def find_one_file( %Bucket{conn: conn} = bucket, %BSON.ObjectId{} = oid ) do
+  def find_one_file( %Bucket{topology_pid: topology_pid} = bucket, %BSON.ObjectId{} = oid ) do
     collection = files_collection_name(bucket)
-    conn |> Mongo.find_one(collection, %{"_id" => oid} )
+    topology_pid |> Mongo.find_one(collection, %{"_id" => oid} )
   end
 
   ##
@@ -105,12 +112,12 @@ defmodule Mongo.GridFs.Bucket do
   #
   # db.fs.files.findOne({}, { _id : 1 })
   #
-  defp files_collection_empty?( %Bucket{conn: conn, name: fs } ) do
+  defp files_collection_empty?( %Bucket{topology_pid: topology_pid} = bucket ) do
 
-    collection = "#{fs}.files"
+    collection = files_collection_name(bucket)
 
-    conn
-    |> Mongo.find_one( collection, %{}, projection: %{ _id: 1} )
+    topology_pid
+    |> Mongo.find_one(collection, %{}, projection: %{_id: 1} )
     |> is_nil()
 
   end
@@ -118,15 +125,15 @@ defmodule Mongo.GridFs.Bucket do
   ##
   # Checks the indexes for the fs.files collection
   #
-  defp check_files_index( %Bucket{conn: conn, name: fs } = bucket ) do
+  defp check_files_index( %Bucket{topology_pid: topology_pid} = bucket ) do
 
-    command = "db.#{fs}.files.getIndexes()"
+    result = with coll              <- files_collection_name(bucket),
+                  {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read ) do
 
-    {:ok, %{ "retval" => indexes}} = Mongo.command( conn, %{eval: command} )
-
-    result = indexes
-             |> Enum.map( fn %{"name" => name } -> name end)
-             |> Enum.member?( @files_index_name )
+      aggregation_cursor(conn, "$cmd",  [listIndexes: coll], nil, [] )
+      |> Enum.map( fn %{"name" => name } -> name end)
+      |> Enum.member?( @files_index_name )
+    end
 
     {bucket, result}
   end
@@ -134,15 +141,15 @@ defmodule Mongo.GridFs.Bucket do
   ##
   # Checks the indexes for the fs.chunks collection
   #
-  defp check_chunks_index( %Bucket{conn: conn, name: fs } = bucket ) do
+  defp check_chunks_index( %Bucket{topology_pid: topology_pid} = bucket ) do
 
-    command = "db.#{fs}.chunks.getIndexes()"
+    result = with coll              <- chunks_collection_name(bucket),
+                  {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read ) do
 
-    {:ok, %{ "retval" => indexes}} = Mongo.command( conn, %{eval: command} )
-
-    result = indexes
-             |> Enum.map( fn %{"name" => name } -> name end)
-             |> Enum.member?( @chunks_index_name )
+      aggregation_cursor(conn, "$cmd",  [listIndexes: coll], nil, [] )
+      |> Enum.map( fn %{"name" => name } -> name end)
+      |> Enum.member?( @chunks_index_name )
+    end
 
     {bucket, result}
   end
@@ -150,9 +157,12 @@ defmodule Mongo.GridFs.Bucket do
   ##
   # Creates the indexes for the fs.chunks collection
   #
-  defp create_chunks_index({%Bucket{conn: conn, name: fs } = bucket, false} ) do
-    command = "db.#{fs}.chunks.createIndex({ files_id : 1, n : 1 }, { unique: true })"
-    {:ok, _} = Mongo.command( conn, %{eval: command} )
+  defp create_chunks_index({%Bucket{topology_pid: topology_pid} = bucket, false} ) do
+
+    coll     = chunks_collection_name(bucket)
+    cmd      = [createIndexes: coll, indexes: [[key: [files_id: 1, n: 1], name: @chunks_index_name, unique: true]]]
+    {:ok, _} = Mongo.command(topology_pid, cmd)
+
     bucket
   end
 
@@ -164,9 +174,12 @@ defmodule Mongo.GridFs.Bucket do
   ##
   # Creates the indexes for the fs.files collection
   #
-  defp create_files_index( {%Bucket{conn: conn, name: fs } = bucket, false} ) do
-    command = "db.#{fs}.files.createIndex({ filename : 1, uploadDate : 1 })"
-    {:ok, _} = Mongo.command( conn, %{eval: command} )
+  defp create_files_index( {%Bucket{topology_pid: topology_pid} = bucket, false} ) do
+
+    coll     = files_collection_name(bucket)
+    cmd      = [createIndexes: coll, indexes: [[key: [filename: 1, uploadDate: 1], name: @files_index_name]]]
+    {:ok, _} = Mongo.command(topology_pid, cmd)
+
     bucket
   end
 
@@ -175,17 +188,27 @@ defmodule Mongo.GridFs.Bucket do
   #
   defp create_files_index({bucket, true}), do: bucket
 
+  defp aggregation_cursor(conn, coll, query, select, opts) do
+    %Mongo.AggregationCursor{
+      conn: conn,
+      coll: coll,
+      query: query,
+      select: select,
+      opts: opts}
+  end
+
+
   defimpl Inspect, for: Bucket do
 
-    def inspect( %Bucket{ name: fs, chunk_size: size, conn: conn }, _opts ) do
-      "#Bucket(#{fs}, #{size}, conn: #{inspect conn})"
+    def inspect( %Bucket{ name: fs, chunk_size: size, topology_pid: topology_pid }, _opts ) do
+      "#Bucket(#{fs}, #{size}, topology_pid: #{inspect topology_pid})"
     end
 
   end
 
   defimpl String.Chars, for: Bucket do
-    def to_string(%Bucket{ name: fs, chunk_size: size, conn: conn }) do
-      "#Bucket(#{fs}, #{size}, conn: #{inspect conn})"
+    def to_string(%Bucket{ name: fs, chunk_size: size, topology_pid: topology_pid }) do
+      "#Bucket(#{fs}, #{size}, topology_pid: #{inspect topology_pid})"
     end
   end
 

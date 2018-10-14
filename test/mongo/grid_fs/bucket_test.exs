@@ -7,7 +7,7 @@ defmodule Mongo.GridFs.BucketTest do
   setup_all do
     #assert {:ok, pid} = Mongo.TestConnection.connect
     #{:ok, [pid: pid]}
-    {:ok, pid} = Mongo.start_link(url: "mongodb://localhost:27017/grid-test")
+    {:ok, pid} = Mongo.start_link(url: "mongodb://localhost:27017/grid_test")
     {:ok, [pid: pid]}
   end
 
