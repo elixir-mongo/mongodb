@@ -5,10 +5,10 @@ defmodule Mongo.GridFs.UploadTest do
   alias Mongo.GridFs.Upload
 
   setup_all do
-    #assert {:ok, pid} = Mongo.TestConnection.connect
-    #{:ok, [pid: pid]}
-    {:ok, pid} = Mongo.start_link(url: "mongodb://localhost:27017/grid-test")
+    assert {:ok, pid} = Mongo.TestConnection.connect
     {:ok, [pid: pid]}
+    #{:ok, pid} = Mongo.start_link(url: "mongodb://localhost:27017/grid-test")
+    #{:ok, [pid: pid]}
   end
 
   def calc_checksum(path) do

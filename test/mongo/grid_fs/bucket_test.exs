@@ -5,10 +5,10 @@ defmodule Mongo.GridFs.BucketTest do
   alias Mongo.GridFs.Upload
 
   setup_all do
-    #assert {:ok, pid} = Mongo.TestConnection.connect
-    #{:ok, [pid: pid]}
-    {:ok, pid} = Mongo.start_link(url: "mongodb://localhost:27017/grid_test")
+    assert {:ok, pid} = Mongo.TestConnection.connect
     {:ok, [pid: pid]}
+    #{:ok, pid} = Mongo.start_link(url: "mongodb://localhost:27017/grid_test")
+    #{:ok, [pid: pid]}
   end
 
   test "check implementation of the protocols Inspect and String.Chars", c do
@@ -37,12 +37,12 @@ defmodule Mongo.GridFs.BucketTest do
 
     file_id = upload_stream.id
 
-    file = Bucket.find_one_file(bucket,file_id)
+    file = Bucket.find_one(bucket,file_id)
     assert file != nil
 
     Bucket.delete(bucket,file_id)
 
-    file = Bucket.find_one_file(bucket,file_id)
+    file = Bucket.find_one(bucket,file_id)
     assert file == nil
 
     chunk = Mongo.find_one(c.pid,Bucket.chunks_collection_name(bucket), %{files_id: file_id})
@@ -60,12 +60,12 @@ defmodule Mongo.GridFs.BucketTest do
 
     file_id = upload_stream.id
 
-    file = Bucket.find_one_file(bucket,file_id)
+    file = Bucket.find_one(bucket,file_id)
     assert file != nil
 
     Bucket.rename(bucket,file_id,new_filename)
 
-    new_file = Bucket.find_one_file(bucket,file_id)
+    new_file = Bucket.find_one(bucket,file_id)
 
     assert new_filename == new_file["filename"]
   end
@@ -79,7 +79,7 @@ defmodule Mongo.GridFs.BucketTest do
     File.stream!(src_filename, [], 512) |> Stream.into(upload_stream) |> Stream.run()
 
     file_id = upload_stream.id
-    file = Bucket.find_one_file(bucket,file_id)
+    file = Bucket.find_one(bucket,file_id)
     assert file != nil
 
     Bucket.drop(bucket)
