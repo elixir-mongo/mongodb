@@ -36,7 +36,7 @@ defmodule Mongo do
   All write operations take the following options for controlling the
   write concern.
 
-    * `:w` - The number of servers to replicate to before returning from write
+    * `:w` - The number of servers to replicate to before returning from ^
       operators, a 0 value will return immediately, :majority will wait until
       the operation propagates to a majority of members in the replica set
       (Default: 1)
@@ -815,6 +815,25 @@ defmodule Mongo do
       end
     end
 
+  end
+
+  @doc """
+  Returns a cursor to enumerate all indexes
+
+  :full returns the full index information instead of the name only
+  """
+  def list_indexes(topology_pid, coll, opts \\ [] ) do
+
+    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read) do
+
+      c = aggregation_cursor(conn, "$cmd",  [listIndexes: coll], nil, [])
+
+      case Keyword.get(opts, :full, false) do
+        true -> c
+           _ -> c |> Stream.map( fn %{"name" => name } -> name end)
+      end
+
+    end
   end
 
   ##

@@ -70,4 +70,26 @@ defmodule Mongo.GridFs.BucketTest do
     assert new_filename == new_file["filename"]
   end
 
+  test "drop bucket", c do
+
+    bucket        = Bucket.new(c.pid, fs: "killme" )
+    upload_stream = bucket |> Upload.open_upload_stream( "my-example-file.txt" )
+    src_filename  = "./test/data/test.txt"
+
+    File.stream!(src_filename, [], 512) |> Stream.into(upload_stream) |> Stream.run()
+
+    file_id = upload_stream.id
+    file = Bucket.find_one_file(bucket,file_id)
+    assert file != nil
+
+    Bucket.drop(bucket)
+
+    file = Mongo.find_one(c.pid, Bucket.files_collection_name(bucket), %{_id: file_id})
+    assert file == nil
+
+    file = Mongo.find_one(c.pid, Bucket.chunks_collection_name(bucket), %{file_id: file_id})
+    assert file == nil
+
+  end
+
 end
