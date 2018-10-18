@@ -15,31 +15,30 @@ defmodule Mongo.GridFs.Download do
   """
   @spec open_download_stream(Bucket.t, String.t | BSON.ObjectId.t | map()) :: result
   def open_download_stream(bucket, file_id) when is_binary(file_id) do
-    bucket
-    |> find_one_file( %{ "_id" => ObjectId.decode!(file_id)} )
+    find_one_file(bucket, %{"_id" => ObjectId.decode!(file_id)})
   end
 
   @doc """
   Same as above, accepting an OID
   """
   def open_download_stream( bucket, %BSON.ObjectId{} = oid ) do
-    bucket |> find_one_file( %{ "_id" => oid } )
+     find_one_file(bucket, %{"_id" => oid})
   end
 
   @doc """
   Same as above, accepting an fs.files map
   """
-  def open_download_stream( bucket, %{ "length" => _, "_id" => _} = file ) do
-    file |> stream_chunk( bucket )
+  def open_download_stream(bucket, %{"length" => _, "_id" => _} = file) do
+    stream_chunk(file, bucket)
   end
 
   @doc """
   Same as above, but returns also the file document.
   """
   @spec find_and_stream(Bucket.t, String.t) :: {result,BSON.document}
-  def find_and_stream( %Bucket{topology_pid: topology_pid} = bucket, file_id ) when is_binary(file_id) do
-    file = topology_pid |> Mongo.find_one( "fs.files", %{ "_id" => ObjectId.decode!(file_id)} )
-    {file |> stream_chunk(bucket), file}
+  def find_and_stream(%Bucket{topology_pid: topology_pid} = bucket, file_id) when is_binary(file_id) do
+    file = Mongo.find_one(topology_pid, "fs.files", %{ "_id" => ObjectId.decode!(file_id)})
+    {stream_chunk(file, bucket), file}
   end
 
   ##
@@ -47,8 +46,8 @@ defmodule Mongo.GridFs.Download do
   #
   defp find_one_file(%Bucket{topology_pid: topology_pid} = bucket, query) do
     topology_pid
-    |> Mongo.find_one( "fs.files", query )
-    |> stream_chunk( bucket )
+    |> Mongo.find_one("fs.files", query)
+    |> stream_chunk(bucket)
   end
 
   ##
@@ -61,15 +60,15 @@ defmodule Mongo.GridFs.Download do
   # collection, since that query is not necessary. For a zero length file, drivers return either an empty
   # stream or send nothing to the provided stream (depending on the download method).
   ##
-  defp stream_chunk(%{ "length" => 0 }, _bucket), do: {:error, :length_is_zero}
+  defp stream_chunk(%{ "length" => 0}, _bucket), do: {:error, :length_is_zero}
 
   ##
   # Streaming the chunks with `file_id` sorted ascending by n
   #
   defp stream_chunk(%{ "_id" => id}, %Bucket{topology_pid: topology_pid}) do
     stream = topology_pid
-             |> Mongo.find( "fs.chunks", %{ files_id: id }, sort: [n: 1] )
-             |> Stream.map( fn map -> map["data"] end ) #.binary
+             |> Mongo.find("fs.chunks", %{files_id: id}, sort: [n: 1])
+             |> Stream.map(fn map -> map["data"] end )
     {:ok, stream}
   end
 

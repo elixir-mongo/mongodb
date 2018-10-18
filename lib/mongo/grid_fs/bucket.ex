@@ -63,7 +63,7 @@ defmodule Mongo.GridFs.Bucket do
   @spec rename(Bucket.t, BSON.ObjectId.t, String.t) :: Mongo.result(BSON.document)
   def rename(%Bucket{topology_pid: topology_pid} = bucket, file_id, new_filename) do
     query       = %{_id: file_id}
-    update      = %{ "$set" => %{filename: new_filename}}
+    update      = %{"$set" => %{filename: new_filename}}
     collection  = files_collection_name(bucket)
     {:ok, _doc} = Mongo.find_one_and_update(topology_pid, collection, query, update)
   end
@@ -118,19 +118,19 @@ defmodule Mongo.GridFs.Bucket do
   Finds one file document with the file_id as an ObjectID-struct
   """
   @spec find_one(Bucket.t, BSON.ObjectId.t) :: BSON.document | nil
-  def find_one(%Bucket{topology_pid: topology_pid} = bucket, %BSON.ObjectId{} = oid ) do
-    topology_pid |> Mongo.find_one(files_collection_name(bucket), %{"_id" => oid} )
+  def find_one(%Bucket{topology_pid: topology_pid} = bucket, %BSON.ObjectId{} = oid) do
+     Mongo.find_one(topology_pid, files_collection_name(bucket), %{"_id" => oid})
   end
 
   ##
   # checks and creates indexes for the *.files and *.chunks collections
   #
-  defp check_indexes( bucket ) do
+  defp check_indexes(bucket) do
 
     case files_collection_empty?(bucket)do
       true ->
-        {bucket, false} |> create_files_index()
-        {bucket, false} |> create_chunks_index()
+        create_files_index({bucket, false})
+        create_chunks_index({bucket, false})
 
       false ->
         bucket
@@ -149,10 +149,10 @@ defmodule Mongo.GridFs.Bucket do
   #
   # db.fs.files.findOne({}, { _id : 1 })
   #
-  defp files_collection_empty?(%Bucket{topology_pid: topology_pid} = bucket ) do
+  defp files_collection_empty?(%Bucket{topology_pid: topology_pid} = bucket) do
 
     topology_pid
-    |> Mongo.find_one(files_collection_name(bucket), %{}, projection: %{_id: 1} )
+    |> Mongo.find_one(files_collection_name(bucket), %{}, projection: %{_id: 1})
     |> is_nil()
 
   end
@@ -160,14 +160,14 @@ defmodule Mongo.GridFs.Bucket do
   ##
   # Checks the indexes for the fs.files collection
   #
-  defp check_files_index(%Bucket{topology_pid: topology_pid} = bucket ) do
+  defp check_files_index(%Bucket{topology_pid: topology_pid} = bucket) do
     {bucket, index_member?(topology_pid, files_collection_name(bucket), @files_index_name)}
   end
 
   ##
   # Checks the indexes for the fs.chunks collection
   #
-  defp check_chunks_index(%Bucket{topology_pid: topology_pid} = bucket ) do
+  defp check_chunks_index(%Bucket{topology_pid: topology_pid} = bucket) do
     {bucket, index_member?(topology_pid, chunks_collection_name(bucket), @chunks_index_name)}
   end
 
@@ -197,7 +197,7 @@ defmodule Mongo.GridFs.Bucket do
   ##
   # Creates the indexes for the fs.files collection
   #
-  defp create_files_index( {%Bucket{topology_pid: topology_pid} = bucket, false} ) do
+  defp create_files_index({%Bucket{topology_pid: topology_pid} = bucket, false}) do
 
     cmd      = [createIndexes: files_collection_name(bucket), indexes: [[key: [filename: 1, uploadDate: 1], name: @files_index_name]]]
     {:ok, _} = Mongo.command(topology_pid, cmd)
@@ -212,7 +212,7 @@ defmodule Mongo.GridFs.Bucket do
 
   defimpl Inspect, for: Bucket do
 
-    def inspect( %Bucket{ name: fs, chunk_size: size, topology_pid: topology_pid }, _opts ) do
+    def inspect(%Bucket{name: fs, chunk_size: size, topology_pid: topology_pid}, _opts) do
       "#Bucket(#{fs}, #{size}, topology_pid: #{inspect topology_pid})"
     end
 
@@ -220,7 +220,7 @@ defmodule Mongo.GridFs.Bucket do
 
   defimpl String.Chars, for: Bucket do
 
-    def to_string(%Bucket{ name: fs, chunk_size: size, topology_pid: topology_pid }) do
+    def to_string(%Bucket{name: fs, chunk_size: size, topology_pid: topology_pid}) do
       "#Bucket(#{fs}, #{size}, topology_pid: #{inspect topology_pid})"
     end
 

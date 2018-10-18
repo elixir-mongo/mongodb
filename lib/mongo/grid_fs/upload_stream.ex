@@ -49,7 +49,7 @@ defmodule Mongo.GridFs.UploadStream do
       {state(buffer: <<>>, number: 0), make_fun(stream)}
     end
 
-    def make_fun( %UploadStream{bucket: %{chunk_size: chunk_size}} = stream) do
+    def make_fun(%UploadStream{bucket: %{chunk_size: chunk_size}} = stream) do
       fn
         # case: buffer is full
         state(buffer: bin) = s, {:cont, x } when byte_size(bin) >= chunk_size ->
@@ -75,12 +75,12 @@ defmodule Mongo.GridFs.UploadStream do
     ##
     # flushes the buffer and creates the files document
     #
-    defp flush_buffer(%UploadStream{ bucket: %Bucket{ topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
-                                     filename: filename,
-                                     id: file_id,
-                                     metadata: metadata,
-                                     opts: opts},
-                    state( buffer: buffer, number: chunk_number) ) do
+    defp flush_buffer(%UploadStream{bucket: %Bucket{ topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
+                                    filename: filename,
+                                    id: file_id,
+                                    metadata: metadata,
+                                    opts: opts},
+                    state(buffer: buffer, number: chunk_number)) do
 
       collection = Bucket.chunks_collection_name(bucket)
       length = chunk_number * chunk_size + byte_size(buffer)
@@ -96,7 +96,7 @@ defmodule Mongo.GridFs.UploadStream do
     # in this case we do nothing
     #
     defp write_buffer(%UploadStream{bucket: %Bucket{chunk_size: chunk_size}},
-                    state( buffer: buffer) = s ) when byte_size( buffer ) < chunk_size  do
+                    state(buffer: buffer) = s) when byte_size(buffer) < chunk_size  do
       s
     end
 
@@ -110,7 +110,7 @@ defmodule Mongo.GridFs.UploadStream do
                   state(buffer: buffer, number: chunk_number)) do
 
       collection = Bucket.chunks_collection_name(bucket)
-      fun = fn ( <<data::bytes-size(chunk_size), rest :: binary>> ) ->
+      fun = fn (<<data::bytes-size(chunk_size), rest :: binary>>) ->
         next = insert_one_chunk_document(topology_pid, collection, file_id, data, chunk_number, opts)
         state(buffer: rest, number: next)
       end

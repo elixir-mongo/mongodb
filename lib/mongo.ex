@@ -800,15 +800,15 @@ defmodule Mongo do
   :full returns the full index information instead of the name only
   """
   @spec list_indexes(GenServer.server, String.t, Keyword.t) :: cursor
-  def list_indexes(topology_pid, coll, opts \\ [] ) do
+  def list_indexes(topology_pid, coll, opts \\ []) do
 
     with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read) do
 
-      c = aggregation_cursor(conn, "$cmd",  [listIndexes: coll], nil, [])
+      c = aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, [])
 
       case Keyword.get(opts, :full, false) do
         true -> c
-        _ -> c |> Stream.map( fn %{"name" => name } -> name end)
+        _    -> Stream.map(c, fn %{"name" => name } -> name end)
       end
 
     end
@@ -857,9 +857,9 @@ defmodule Mongo do
   defp show_collections_v2(topology_pid) do
 
     Mongo.find(topology_pid, "system.namespaces", %{})
-    |> Stream.map( fn coll -> coll["name"] end)
-    |> Stream.filter( fn name -> not (String.contains?(name, "$") && String.contains?(name, ".oplog.$")) end)
-    |> Stream.map( fn coll ->
+    |> Stream.map(fn coll -> coll["name"] end)
+    |> Stream.filter(fn name -> not (String.contains?(name, "$") && String.contains?(name, ".oplog.$")) end)
+    |> Stream.map(fn coll ->
       [_db, coll] = String.split(coll, ".", parts: 2)
       coll
     end)
@@ -874,9 +874,9 @@ defmodule Mongo do
   #
   defp show_collections_v3(conn, opts) do
 
-    aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts )
-    |> Stream.filter( fn coll -> coll["type"] == "collection" end)
-    |> Stream.map( fn coll -> coll["name"] end)
+    aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts)
+    |> Stream.filter(fn coll -> coll["type"] == "collection" end)
+    |> Stream.map(fn coll -> coll["name"] end)
 
   end
 
