@@ -33,7 +33,7 @@ defmodule Mongo.GridFs.Bucket do
   name of the collections (fs) and the chunk size (255KB).
 
   The bucket checks the index for both collections as well. In case of multiple
-  upload or downloads just create only one bucket and resuse it.
+  upload or downloads just create only one bucket and reuse it.
 
   """
   @spec new(GenServer.server, Keyword.t) :: Bucket.t
@@ -69,7 +69,7 @@ defmodule Mongo.GridFs.Bucket do
   end
 
   @doc """
-  Given a @id, delete this stored file’s files collection document and
+  Given a `id`, delete this stored file’s files collection document and
   associated chunks from a GridFS bucket.
   """
   @spec delete(Bucket.t, String.t) :: Mongo.result(BSON.document)

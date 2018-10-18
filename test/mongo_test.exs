@@ -28,22 +28,56 @@ defmodule Mongo.Test do
     end
   end
 
-#  test "show_collections", c do
-#
-#    coll_1 = unique_name()
-#    coll_2 = unique_name()
-#
-#    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 1})
-#    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 2})
-#    assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 3})
-#    assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 4})
-#
-#    command = %{ createIndexes: coll_1,
-#                 indexes: [%{ key: %{}] }
-#
-#    Mongo.command(c.pid, crateIndex)
-#
-#  end
+  test "show_collections", c do
+
+    coll_1 = unique_name() <> "_1"
+    coll_2 = unique_name() <> "_2"
+
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 1})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 2})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 3})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 4})
+
+    cmd      = [createIndexes: coll_1, indexes: [[key: [foo: 1], name: "not-a-collection"]]]
+    assert {:ok, _} = Mongo.command(c.pid, cmd)
+
+    cmd      = [createIndexes: coll_2, indexes: [[key: [foo: 1, bar: 1], name: "not-a-collection"]]]
+    assert {:ok, _} = Mongo.command(c.pid, cmd)
+
+    colls = c.pid
+    |> Mongo.show_collections()
+    |> Enum.to_list()
+
+    assert Enum.member?(colls, coll_1)
+    assert Enum.member?(colls, coll_2)
+    assert not Enum.member?(colls, "not-a-collection")
+
+  end
+
+  test "list_indexes", c do
+
+    coll_1 = unique_name()
+
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 1})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 2})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 3})
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 4})
+
+    cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1], name: "foo"]]]
+    assert {:ok, _} = Mongo.command(c.pid, cmd)
+
+    cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1, bar: 1], name: "foo-bar"]]]
+    assert {:ok, _} = Mongo.command(c.pid, cmd)
+
+    indexes = c.pid
+    |> Mongo.list_indexes(coll_1)
+    |> Enum.to_list()
+
+    assert Enum.count(indexes) == 3
+    assert Enum.member?(indexes, "_id_")
+    assert Enum.member?(indexes, "foo")
+    assert Enum.member?(indexes, "foo-bar")
+  end
 
   test "aggregate", c do
     coll = unique_name()

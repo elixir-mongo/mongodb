@@ -105,7 +105,7 @@ defmodule Mongo.GridFs.UploadStream do
     # write the data to the chunk collections and call the function again with the rest of the buffer
     # for the case that the buffer size is still greater than the chunk size
     #
-    defp write_buffer(%UploadStream{bucket: %Bucket{ topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
+    defp write_buffer(%UploadStream{bucket: %Bucket{topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
                                    id: file_id, opts: opts} = stream,
                   state(buffer: buffer, number: chunk_number)) do
 

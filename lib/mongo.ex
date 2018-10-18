@@ -798,14 +798,14 @@ defmodule Mongo do
   @doc """
   Returns a cursor to enumerate all indexes
 
-  :full returns the full index information instead of the name only
+  :full returns the full index information instead of the name only (default is false)
   """
   @spec list_indexes(GenServer.server, String.t, Keyword.t) :: cursor
   def list_indexes(topology_pid, coll, opts \\ []) do
 
-    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read) do
+    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read, opts) do
 
-      c = aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, [])
+      c = aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, opts)
 
       case Keyword.get(opts, :full, false) do
         true -> c
@@ -821,64 +821,17 @@ defmodule Mongo do
   @spec show_collections(GenServer.server, Keyword.t) :: cursor
   def show_collections(topology_pid, opts \\ []) do
 
+    ##
+    # from the specs
+    # https://github.com/mongodb/specifications/blob/f4bb783627e7ed5c4095c5554d35287956ef8970/source/enumerate-collections.rst#post-mongodb-280-rc3-versions
     #
-    # todo:
-    #    listCollections can be run on a secondary
-    #    querying system.namespaces on a secondary requires slaveOkay to be set.
-    #    Drivers MUST run listCollections on the primary node in "replicaset" mode, unless directly connected to a
-    #    secondary node in "standalone" mode.
+    # In versions 2.8.0-rc3 and later, the listCollections command returns a cursor!
     #
-    #
-    wv_query = %Query{action: :wire_version}
-
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, version}    <- DBConnection.execute(conn, wv_query, [], defaults(opts)) do
-
-      case version do
-        v when v > 2 -> show_collections_v3(conn, opts)
-        _            -> show_collections_v2(topology_pid)
-
-      end
+    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read, opts) do
+      aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts)
+      |> Stream.filter(fn coll -> coll["type"] == "collection" end)
+      |> Stream.map(fn coll -> coll["name"] end)
     end
-
-  end
-
-  ##
-  # from the specs:
-  # https://github.com/mongodb/specifications/blob/f4bb783627e7ed5c4095c5554d35287956ef8970/source/enumerate-collections.rst#pre-mongodb-276-versions
-  #
-  # Each document describes a namespace. Among collections, these namespaces also include special collections
-  # (containing .system. or .oplog. in the name). The returned documents also include indexes
-  # (containing a $ in the name). Index names MUST NOT be returned while enumerating collections
-  # through db.system.namespaces.find().
-  #
-  # When returning information, drivers MUST strip the database name from the returned namespace,
-  # and only leave the collection name.
-  #
-  defp show_collections_v2(topology_pid) do
-
-    Mongo.find(topology_pid, "system.namespaces", %{})
-    |> Stream.map(fn coll -> coll["name"] end)
-    |> Stream.filter(fn name -> not (String.contains?(name, "$") && String.contains?(name, ".oplog.$")) end)
-    |> Stream.map(fn coll ->
-      [_db, coll] = String.split(coll, ".", parts: 2)
-      coll
-    end)
-
-  end
-
-  ##
-  # from the specs
-  # https://github.com/mongodb/specifications/blob/f4bb783627e7ed5c4095c5554d35287956ef8970/source/enumerate-collections.rst#post-mongodb-280-rc3-versions
-  #
-  # In versions 2.8.0-rc3 and later, the listCollections command returns a cursor!
-  #
-  defp show_collections_v3(conn, opts) do
-
-    aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts)
-    |> Stream.filter(fn coll -> coll["type"] == "collection" end)
-    |> Stream.map(fn coll -> coll["name"] end)
-
   end
 
   @doc false

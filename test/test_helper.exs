@@ -17,8 +17,6 @@ options = if version < {3, 4, 0} do [mongo_3_4: true] ++ options else options en
 ExUnit.configure exclude: options
 ExUnit.start()
 
-### currently disabled
-
 {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() --port 27001')
 {_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() --port 27001')
 

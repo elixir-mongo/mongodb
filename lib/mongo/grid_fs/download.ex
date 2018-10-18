@@ -10,7 +10,10 @@ defmodule Mongo.GridFs.Download do
 
   @doc """
   Opens a Stream from which the application can read the contents of the stored file
-  specified by fileId.
+  specified by fileId. The fileId can be a string, an ObjectId or just a map with the
+  keys `length` and `_id`. In case of the map the function tries to stream the chunks
+  described by the `length` and the `_id` values.
+
   Returns a Stream.
   """
   @spec open_download_stream(Bucket.t, String.t | BSON.ObjectId.t | map()) :: result
@@ -18,16 +21,10 @@ defmodule Mongo.GridFs.Download do
     find_one_file(bucket, %{"_id" => ObjectId.decode!(file_id)})
   end
 
-  @doc """
-  Same as above, accepting an OID
-  """
   def open_download_stream(bucket, %BSON.ObjectId{} = oid) do
      find_one_file(bucket, %{"_id" => oid})
   end
 
-  @doc """
-  Same as above, accepting an fs.files map
-  """
   def open_download_stream(bucket, %{"length" => _, "_id" => _} = file) do
     stream_chunk(file, bucket)
   end
