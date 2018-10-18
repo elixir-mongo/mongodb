@@ -17,8 +17,8 @@ defmodule Mongo.GridFs.UploadStream do
 
   import Record, only: [defrecordp: 2]
 
-  alias Mongo.GridFs.UploadStream
   alias Mongo.GridFs.Bucket
+  alias Mongo.GridFs.UploadStream
 
   @type t :: %__MODULE__{
                bucket: Bucket.t,
@@ -75,7 +75,7 @@ defmodule Mongo.GridFs.UploadStream do
     ##
     # flushes the buffer and creates the files document
     #
-    defp flush_buffer(%UploadStream{bucket: %Bucket{ topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
+    defp flush_buffer(%UploadStream{bucket: %Bucket{topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
                                     filename: filename,
                                     id: file_id,
                                     metadata: metadata,

@@ -10,15 +10,15 @@ defmodule Mongo.GridFs.Bucket do
 
   """
 
-  alias Mongo.GridFs.Bucket
   alias BSON.ObjectId
+  alias Mongo.GridFs.Bucket
 
   ##
   # constants used in this module
   #
   @files_index_name "filename_1_uploadDate_1"
   @chunks_index_name "files_id_1_n_1"
-  @defaults [name: "fs", chunk_size: 255*1024]
+  @defaults [name: "fs", chunk_size: 255 * 1024]
 
   @type t :: %__MODULE__{
                name: String.t,
@@ -26,7 +26,7 @@ defmodule Mongo.GridFs.Bucket do
                topology_pid: GenServer.server
              }
 
-  defstruct name: "fs", chunk_size: 255*1024, topology_pid: nil
+  defstruct name: "fs", chunk_size: 255 * 1024, topology_pid: nil
 
   @doc """
   Creates a new Bucket with a existing connection using the default values. It just contains the
@@ -40,7 +40,7 @@ defmodule Mongo.GridFs.Bucket do
   def new(topology_pid, options \\ []) do
 
     Keyword.merge(@defaults, options)
-    |> Enum.reduce(%Bucket{topology_pid: topology_pid}, fn {k,v},bucket -> Map.put(bucket, k, v) end)
+    |> Enum.reduce(%Bucket{topology_pid: topology_pid}, fn {k, v}, bucket -> Map.put(bucket, k, v) end)
     |> check_indexes
 
   end
@@ -227,4 +227,3 @@ defmodule Mongo.GridFs.Bucket do
   end
 
 end
-

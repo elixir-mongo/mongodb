@@ -16,12 +16,12 @@ defmodule Mongo.GridFs.BucketTest do
 
   test "check if the name can be overridden", c do
     new_name = "my_fs"
-    %Bucket{ name: fs} = Bucket.new(c.pid, name: "my_fs")
+    %Bucket{name: fs} = Bucket.new(c.pid, name: "my_fs")
     assert fs == new_name
   end
 
   test "check if the chunk_size can be overridden", c do
-    new_chunk_size = 30*1024
+    new_chunk_size = 30 * 1024
     %Bucket{chunk_size: chunk_size} = Bucket.new(c.pid, chunk_size: new_chunk_size)
     assert chunk_size == new_chunk_size
   end
@@ -43,11 +43,11 @@ defmodule Mongo.GridFs.BucketTest do
     file = Bucket.find_one(bucket, file_id)
     assert file == nil
 
-    chunk = Mongo.find_one(c.pid,Bucket.chunks_collection_name(bucket), %{files_id: file_id})
+    chunk = Mongo.find_one(c.pid, Bucket.chunks_collection_name(bucket), %{files_id: file_id})
     assert chunk == nil
   end
 
-  test "rename a file",c do
+  test "rename a file", c do
 
     bucket        = Bucket.new(c.pid)
     new_filename  = "my-new-filename.txt"
@@ -61,7 +61,7 @@ defmodule Mongo.GridFs.BucketTest do
     file = Bucket.find_one(bucket, file_id)
     assert file != nil
 
-    Bucket.rename(bucket, file_id,new_filename)
+    Bucket.rename(bucket, file_id, new_filename)
 
     new_file = Bucket.find_one(bucket, file_id)
 

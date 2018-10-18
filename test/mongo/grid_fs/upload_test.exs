@@ -11,7 +11,7 @@ defmodule Mongo.GridFs.UploadTest do
 
   def calc_checksum(path) do
     File.stream!(path, [], 2048)
-    |> Enum.reduce(:crypto.hash_init(:sha256), fn(line, acc) -> :crypto.hash_update(acc,line) end)
+    |> Enum.reduce(:crypto.hash_init(:sha256), fn(line, acc) -> :crypto.hash_update(acc, line) end)
     |> :crypto.hash_final
     |> Base.encode16
   end
@@ -60,7 +60,7 @@ defmodule Mongo.GridFs.UploadTest do
 
     with {:ok, stream} <- Mongo.GridFs.Download.open_download_stream(b, file_id) do
       stream
-      |> Stream.into( File.stream!(dest_filename))
+      |> Stream.into(File.stream!(dest_filename))
       |> Stream.run
     end
 
@@ -89,6 +89,5 @@ defmodule Mongo.GridFs.UploadTest do
     %{"metadata" => %{"tag" => "checked", "chk_sum" => x}} = Mongo.find_one(c.pid, Bucket.files_collection_name(bucket), %{_id: file_id})
     assert x == chksum
   end
-
 
 end
