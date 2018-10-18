@@ -20,7 +20,7 @@ defmodule Mongo.GridFs.UploadTest do
 
   test "upload a jpeg file, check download, length and checksum", c do
     b = Bucket.new( c.pid )
-    upload_stream = Upload.open_upload_stream(b, "test.jpg")
+    upload_stream = Upload.open_upload_stream(b, "test.jpg", nil, j: true, w: :majority)
 
     src_filename = "./test/data/test.jpg"
     File.stream!(src_filename, [], 512) |> Stream.into(upload_stream) |> Stream.run()
@@ -49,7 +49,7 @@ defmodule Mongo.GridFs.UploadTest do
   test "upload a text file, check download, length and checksum", c do
 
     b = Bucket.new( c.pid )
-    upload_stream = b |> Upload.open_upload_stream( "my-example-file.txt", meta: %{tag: "checked"} )
+    upload_stream = b |> Upload.open_upload_stream( "my-example-file.txt", meta: %{tag: "checked"}, j: true, w: :majority)
 
     src_filename = "./test/data/test.txt"
     File.stream!(src_filename, [], 512) |> Stream.into( upload_stream ) |> Stream.run()
@@ -80,7 +80,7 @@ defmodule Mongo.GridFs.UploadTest do
     src_filename  = "./test/data/test.txt"
     bucket        = Bucket.new( c.pid )
     chksum        = calc_checksum(src_filename)
-    upload_stream = bucket |> Upload.open_upload_stream( "my-example-file.txt", %{tag: "checked", chk_sum: chksum} )
+    upload_stream = bucket |> Upload.open_upload_stream( "my-example-file.txt", %{tag: "checked", chk_sum: chksum}, j: true, w: :majority )
 
     File.stream!(src_filename, [], 512) |> Stream.into( upload_stream ) |> Stream.run()
 

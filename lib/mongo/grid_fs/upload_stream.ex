@@ -8,7 +8,7 @@ defmodule Mongo.GridFs.UploadStream do
   streaming the file `./test/data/test.jpg` into the grid fs using the upload-stream
 
       bucket = Bucket.new( pid )
-      upload_stream = Upload.open_upload_stream(bucket, "test.jpg")
+      upload_stream = Upload.open_upload_stream(bucket, "test.jpg", j: true)
 
       src_filename = "./test/data/test.jpg"
       File.stream!(src_filename, [], 512) |> Stream.into(upload_stream) |> Stream.run()
@@ -20,13 +20,21 @@ defmodule Mongo.GridFs.UploadStream do
   alias Mongo.GridFs.UploadStream
   alias Mongo.GridFs.Bucket
 
-  defstruct bucket: nil, id: nil, filename: nil, metadata: nil
+  @type t :: %__MODULE__{
+               bucket: Bucket.t,
+               id: BSON.ObjectId.t,
+               filename: String.t,
+               metadata: {BSON.document | nil},
+               opts: Keyword.t
+             }
+  defstruct bucket: nil, id: nil, filename: nil, metadata: nil, opts: []
 
   @doc """
   Creates a new upload stream to insert a file into the grid-fs.
   """
-  def new(bucket, filename, metadata \\ nil) do
-    %UploadStream{bucket: bucket, filename: filename, id: Mongo.IdServer.new(), metadata: metadata}
+  @spec new(Bucket.t, String.t, BSON.document | nil, Keyword.t) :: UploadStream.t
+  def new(bucket, filename, metadata \\ nil, opts \\ []) do
+    %UploadStream{bucket: bucket, filename: filename, id: Mongo.object_id(), metadata: metadata, opts: opts}
   end
 
   defimpl Collectable, for: UploadStream do
@@ -69,15 +77,17 @@ defmodule Mongo.GridFs.UploadStream do
     #
     defp flush_buffer(%UploadStream{ bucket: %Bucket{ topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
                                      filename: filename,
-                                     id: file_id, metadata: metadata},
+                                     id: file_id,
+                                     metadata: metadata,
+                                     opts: opts},
                     state( buffer: buffer, number: chunk_number) ) do
 
       collection = Bucket.chunks_collection_name(bucket)
       length = chunk_number * chunk_size + byte_size(buffer)
-      insert_one_chunk_document(topology_pid, collection, file_id, buffer, chunk_number)
+      insert_one_chunk_document(topology_pid, collection, file_id, buffer, chunk_number, opts)
 
       collection = Bucket.files_collection_name(bucket)
-      insert_one_file_document(topology_pid, collection, file_id, length, chunk_size, filename, metadata)
+      insert_one_file_document(topology_pid, collection, file_id, length, chunk_size, filename, metadata, opts)
 
     end
 
@@ -95,12 +105,13 @@ defmodule Mongo.GridFs.UploadStream do
     # write the data to the chunk collections and call the function again with the rest of the buffer
     # for the case that the buffer size is still greater than the chunk size
     #
-    defp write_buffer(%UploadStream{bucket: %Bucket{ topology_pid: topology_pid, chunk_size: chunk_size} = bucket, id: file_id} = stream,
+    defp write_buffer(%UploadStream{bucket: %Bucket{ topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
+                                   id: file_id, opts: opts} = stream,
                   state(buffer: buffer, number: chunk_number)) do
 
       collection = Bucket.chunks_collection_name(bucket)
       fun = fn ( <<data::bytes-size(chunk_size), rest :: binary>> ) ->
-        next = insert_one_chunk_document(topology_pid, collection, file_id, data, chunk_number)
+        next = insert_one_chunk_document(topology_pid, collection, file_id, data, chunk_number, opts)
         state(buffer: rest, number: next)
       end
 
@@ -114,22 +125,21 @@ defmodule Mongo.GridFs.UploadStream do
     ##
     # inserts one chunk document
     #
-    defp insert_one_chunk_document(_topology_pid, _collection, _file_id, data, chunk_number) when byte_size(data) == 0 do
+    defp insert_one_chunk_document(_topology_pid, _collection, _file_id, data, chunk_number, _opts) when byte_size(data) == 0 do
       chunk_number
     end
 
-    defp insert_one_chunk_document(topology_pid, collection, file_id, data, chunk_number) do
-      {:ok, _} = Mongo.insert_one(topology_pid, collection, %{files_id: file_id, n: chunk_number, data: data})
+    defp insert_one_chunk_document(topology_pid, collection, file_id, data, chunk_number, opts) do
+      {:ok, _} = Mongo.insert_one(topology_pid, collection, %{files_id: file_id, n: chunk_number, data: data}, opts)
       chunk_number + 1
     end
 
     ##
     # inserts one file document
     #
-    defp insert_one_file_document(topology_pid, collection, file_id, length, chunk_size, filename, metadata) do
-
+    defp insert_one_file_document(topology_pid, collection, file_id, length, chunk_size, filename, metadata, opts) do
       doc = %{_id: file_id, length: length, filename: filename, chunkSize: chunk_size, uploadDate: now(), metadata: metadata}
-      {:ok, _} = Mongo.insert_one(topology_pid, collection, doc)
+      {:ok, _} = Mongo.insert_one(topology_pid, collection, doc, opts)
     end
 
     defp now(), do: DateTime.from_unix!(:os.system_time(), :native)

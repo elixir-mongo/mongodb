@@ -170,7 +170,12 @@ defmodule Mongo do
         query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
         aggregation_cursor(conn, "$cmd", query, nil, opts)
       else
-        singly_cursor(conn, "$cmd", query, nil, opts)
+        if version >= 3 do
+          query = query ++ [cursor: %{}]
+          aggregation_cursor(conn, "$cmd", query, nil, opts)
+        else
+          singly_cursor(conn, "$cmd", query, nil, opts)
+        end
       end
     end
   end
@@ -790,9 +795,29 @@ defmodule Mongo do
   end
 
   @doc """
+  Returns a cursor to enumerate all indexes
+
+  :full returns the full index information instead of the name only
+  """
+  @spec list_indexes(GenServer.server, String.t, Keyword.t) :: cursor
+  def list_indexes(topology_pid, coll, opts \\ [] ) do
+
+    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read) do
+
+      c = aggregation_cursor(conn, "$cmd",  [listIndexes: coll], nil, [])
+
+      case Keyword.get(opts, :full, false) do
+        true -> c
+        _ -> c |> Stream.map( fn %{"name" => name } -> name end)
+      end
+
+    end
+  end
+
+  @doc """
   Getting Collection Names
   """
-  ## todo @spec show_collections(GenServer.server, Keyword.t) :: result!(Mongo.UpdateResult.t)
+  @spec show_collections(GenServer.server, Keyword.t) :: cursor
   def show_collections(topology_pid, opts \\ []) do
 
     #
@@ -809,31 +834,12 @@ defmodule Mongo do
          {:ok, version}    <- DBConnection.execute(conn, wv_query, [], defaults(opts)) do
 
       case version do
-        v when v > 2 -> show_collections_v3(conn)
+        v when v > 2 -> show_collections_v3(conn, opts)
         _            -> show_collections_v2(topology_pid)
 
       end
     end
 
-  end
-
-  @doc """
-  Returns a cursor to enumerate all indexes
-
-  :full returns the full index information instead of the name only
-  """
-  def list_indexes(topology_pid, coll, opts \\ [] ) do
-
-    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read) do
-
-      c = aggregation_cursor(conn, "$cmd",  [listIndexes: coll], nil, [])
-
-      case Keyword.get(opts, :full, false) do
-        true -> c
-           _ -> c |> Stream.map( fn %{"name" => name } -> name end)
-      end
-
-    end
   end
 
   ##
@@ -866,14 +872,13 @@ defmodule Mongo do
   #
   # In versions 2.8.0-rc3 and later, the listCollections command returns a cursor!
   #
-  defp show_collections_v3(conn) do
+  defp show_collections_v3(conn, opts) do
 
-    aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, [] )
+    aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts )
     |> Stream.filter( fn coll -> coll["type"] == "collection" end)
     |> Stream.map( fn coll -> coll["name"] end)
 
   end
-
 
   @doc false
   def select_server(topology_pid, type, opts \\ []) do

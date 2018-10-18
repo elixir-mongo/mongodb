@@ -5,10 +5,9 @@ defmodule Mongo.GridFs.Bucket do
     * `:chunk_size` - The chunk size in bytes. Defaults to `255*1024`
     * `:name` - The bucket name. Defaults to `fs`
 
-  ## todo:
-    writeConcern : WriteConcern optional;
-    readConcern : ReadConcern optional;
-    readPreference : ReadPreference optional;
+  The bucket checks whether the indexes already exist before attempting to create them. The names of the
+  created indexes are "filename_1_uploadDate_1" and "files_id_1_n_1"
+
   """
 
   alias Mongo.GridFs.Bucket
@@ -21,6 +20,12 @@ defmodule Mongo.GridFs.Bucket do
   @chunks_index_name "files_id_1_n_1"
   @defaults [name: "fs", chunk_size: 255*1024]
 
+  @type t :: %__MODULE__{
+               name: String.t,
+               chunk_size: non_neg_integer,
+               topology_pid: GenServer.server
+             }
+
   defstruct name: "fs", chunk_size: 255*1024, topology_pid: nil
 
   @doc """
@@ -31,6 +36,7 @@ defmodule Mongo.GridFs.Bucket do
   upload or downloads just create only one bucket and resuse it.
 
   """
+  @spec new(GenServer.server, Keyword.t) :: Bucket.t
   def new(topology_pid, options \\ []) do
 
     Keyword.merge(@defaults, options)
@@ -42,31 +48,36 @@ defmodule Mongo.GridFs.Bucket do
   @doc """
   Returns the collection name for the files collection, default is fs.files.
   """
+  @spec files_collection_name(Bucket.t) :: String.t
   def files_collection_name(%Bucket{name: fs}), do: "#{fs}.files"
 
   @doc """
   Returns the collection name for the chunks collection, default is fs.chunks.
   """
+  @spec chunks_collection_name(Bucket.t) :: String.t
   def chunks_collection_name(%Bucket{name: fs}), do: "#{fs}.chunks"
 
   @doc """
   Renames the stored file with the specified file_id.
   """
+  @spec rename(Bucket.t, BSON.ObjectId.t, String.t) :: Mongo.result(BSON.document)
   def rename(%Bucket{topology_pid: topology_pid} = bucket, file_id, new_filename) do
-    query      = %{_id: file_id}
-    update     = %{ "$set" => %{filename: new_filename}}
-    collection = files_collection_name(bucket)
-    {:ok, _}   = Mongo.find_one_and_update(topology_pid, collection, query, update)
+    query       = %{_id: file_id}
+    update      = %{ "$set" => %{filename: new_filename}}
+    collection  = files_collection_name(bucket)
+    {:ok, _doc} = Mongo.find_one_and_update(topology_pid, collection, query, update)
   end
 
   @doc """
   Given a @id, delete this stored file’s files collection document and
   associated chunks from a GridFS bucket.
   """
+  @spec delete(Bucket.t, String.t) :: Mongo.result(BSON.document)
   def delete(%Bucket{} = bucket, file_id) when is_binary(file_id) do
-    delete(bucket,ObjectId.decode!(file_id))
+    delete(bucket, ObjectId.decode!(file_id))
   end
 
+  @spec delete(Bucket.t, BSON.ObjectId.t) :: Mongo.result(BSON.document)
   def delete(%Bucket{topology_pid: topology_pid} = bucket, %BSON.ObjectId{} = oid) do
     # first delete files document
     collection = files_collection_name(bucket)
@@ -81,23 +92,32 @@ defmodule Mongo.GridFs.Bucket do
   Drops the files and chunks collections associated with
   this bucket.
   """
+  @spec drop(Bucket.t) :: Mongo.result(BSON.document)
   def drop(%Bucket{topology_pid: topology_pid} = bucket) do
     {:ok, _} = Mongo.command(topology_pid, %{drop: files_collection_name(bucket)})
     {:ok, _} = Mongo.command(topology_pid, %{drop: chunks_collection_name(bucket)})
   end
 
-  # todo @spec find(Bucket.t, BSON.document, Keyword.t) :: cursor
+  @doc """
+  Returns a cursor from the fs.files collection.
+  """
+  @spec find(Bucket.t, BSON.document, Keyword.t) :: Mongo.cursor
   def find(%Bucket{topology_pid: topology_pid} = bucket, filter, opts \\ []) do
     Mongo.find(topology_pid, files_collection_name(bucket), filter, opts)
   end
 
   @doc """
-  Finds one file document with the file_id
+  Finds one file document with the file_id as a string
   """
+  @spec find_one(Bucket.t, String.t) :: BSON.document | nil
   def find_one(%Bucket{} = bucket, file_id) when is_binary(file_id) do
     find_one(bucket, ObjectId.decode!(file_id))
   end
 
+  @doc """
+  Finds one file document with the file_id as an ObjectID-struct
+  """
+  @spec find_one(Bucket.t, BSON.ObjectId.t) :: BSON.document | nil
   def find_one(%Bucket{topology_pid: topology_pid} = bucket, %BSON.ObjectId{} = oid ) do
     topology_pid |> Mongo.find_one(files_collection_name(bucket), %{"_id" => oid} )
   end
