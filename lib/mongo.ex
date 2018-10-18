@@ -479,7 +479,8 @@ defmodule Mongo do
       |> Keyword.put(:limit, 1)
       |> Keyword.put(:batch_size, 1)
     find(conn, coll, filter, opts)
-    |> Enum.at(0)
+    |> Enum.to_list   # TODO: Can be changed to Enum.at(0) if Elixir 1.4.0+
+    |> List.first
   end
 
   @doc false
