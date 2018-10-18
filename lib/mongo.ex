@@ -36,7 +36,7 @@ defmodule Mongo do
   All write operations take the following options for controlling the
   write concern.
 
-    * `:w` - The number of servers to replicate to before returning from ^
+    * `:w` - The number of servers to replicate to before returning from write
       operators, a 0 value will return immediately, :majority will wait until
       the operation propagates to a majority of members in the replica set
       (Default: 1)
