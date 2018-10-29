@@ -24,17 +24,16 @@ defmodule Mongo.GridFs.UploadStream do
                bucket: Bucket.t,
                id: BSON.ObjectId.t,
                filename: String.t,
-               metadata: {BSON.document | nil},
-               opts: Keyword.t
+               metadata: {BSON.document | nil}
              }
-  defstruct bucket: nil, id: nil, filename: nil, metadata: nil, opts: []
+  defstruct bucket: nil, id: nil, filename: nil, metadata: nil
 
   @doc """
   Creates a new upload stream to insert a file into the grid-fs.
   """
-  @spec new(Bucket.t, String.t, BSON.document | nil, Keyword.t) :: UploadStream.t
-  def new(bucket, filename, metadata \\ nil, opts \\ []) do
-    %UploadStream{bucket: bucket, filename: filename, id: Mongo.object_id(), metadata: metadata, opts: opts}
+  @spec new(Bucket.t, String.t, BSON.document | nil) :: UploadStream.t
+  def new(bucket, filename, metadata \\ nil) do
+    %UploadStream{bucket: bucket, filename: filename, id: Mongo.object_id(), metadata: metadata}
   end
 
   defimpl Collectable, for: UploadStream do
@@ -75,11 +74,10 @@ defmodule Mongo.GridFs.UploadStream do
     ##
     # flushes the buffer and creates the files document
     #
-    defp flush_buffer(%UploadStream{bucket: %Bucket{topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
+    defp flush_buffer(%UploadStream{bucket: %Bucket{topology_pid: topology_pid, chunk_size: chunk_size, opts: opts} = bucket,
                                     filename: filename,
                                     id: file_id,
-                                    metadata: metadata,
-                                    opts: opts},
+                                    metadata: metadata},
                     state(buffer: buffer, number: chunk_number)) do
 
       collection = Bucket.chunks_collection_name(bucket)
@@ -105,8 +103,8 @@ defmodule Mongo.GridFs.UploadStream do
     # write the data to the chunk collections and call the function again with the rest of the buffer
     # for the case that the buffer size is still greater than the chunk size
     #
-    defp write_buffer(%UploadStream{bucket: %Bucket{topology_pid: topology_pid, chunk_size: chunk_size} = bucket,
-                                   id: file_id, opts: opts} = stream,
+    defp write_buffer(%UploadStream{bucket: %Bucket{topology_pid: topology_pid, chunk_size: chunk_size, opts: opts} = bucket,
+                                   id: file_id} = stream,
                   state(buffer: buffer, number: chunk_number)) do
 
       collection = Bucket.chunks_collection_name(bucket)
@@ -128,9 +126,9 @@ defmodule Mongo.GridFs.UploadStream do
     defp insert_one_chunk_document(_topology_pid, _collection, _file_id, data, chunk_number, _opts) when byte_size(data) == 0 do
       chunk_number
     end
-
-    defp insert_one_chunk_document(topology_pid, collection, file_id, data, chunk_number, opts) do
-      {:ok, _} = Mongo.insert_one(topology_pid, collection, %{files_id: file_id, n: chunk_number, data: data}, opts)
+    defp insert_one_chunk_document(topology_pid, collection, file_id, binary, chunk_number, opts) do
+      bson_binary = %BSON.Binary{binary: binary}
+      {:ok, _}    = Mongo.insert_one(topology_pid, collection, %{files_id: file_id, n: chunk_number, data: bson_binary}, opts)
       chunk_number + 1
     end
 

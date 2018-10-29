@@ -26,7 +26,7 @@ defmodule Mongo.GridFs.Bucket do
                topology_pid: GenServer.server
              }
 
-  defstruct name: "fs", chunk_size: 255 * 1024, topology_pid: nil
+  defstruct name: "fs", chunk_size: 255 * 1024, topology_pid: nil, opts: []
 
   @doc """
   Creates a new Bucket with a existing connection using the default values. It just contains the
@@ -40,7 +40,7 @@ defmodule Mongo.GridFs.Bucket do
   def new(topology_pid, options \\ []) do
 
     Keyword.merge(@defaults, options)
-    |> Enum.reduce(%Bucket{topology_pid: topology_pid}, fn {k, v}, bucket -> Map.put(bucket, k, v) end)
+    |> Enum.reduce(%Bucket{topology_pid: topology_pid, opts: options}, fn {k, v}, bucket -> Map.put(bucket, k, v) end)
     |> check_indexes
 
   end
@@ -149,10 +149,10 @@ defmodule Mongo.GridFs.Bucket do
   #
   # db.fs.files.findOne({}, { _id : 1 })
   #
-  defp files_collection_empty?(%Bucket{topology_pid: topology_pid} = bucket) do
+  defp files_collection_empty?(%Bucket{topology_pid: topology_pid, opts: opts} = bucket) do
 
     topology_pid
-    |> Mongo.find_one(files_collection_name(bucket), %{}, projection: %{_id: 1})
+    |> Mongo.find_one(files_collection_name(bucket), %{}, Keyword.merge(opts, projection: %{_id: 1}))
     |> is_nil()
 
   end
@@ -160,31 +160,31 @@ defmodule Mongo.GridFs.Bucket do
   ##
   # Checks the indexes for the fs.files collection
   #
-  defp check_files_index(%Bucket{topology_pid: topology_pid} = bucket) do
-    {bucket, index_member?(topology_pid, files_collection_name(bucket), @files_index_name)}
+  defp check_files_index(%Bucket{topology_pid: topology_pid, opts: opts} = bucket) do
+    {bucket, index_member?(topology_pid, files_collection_name(bucket), @files_index_name, opts)}
   end
 
   ##
   # Checks the indexes for the fs.chunks collection
   #
-  defp check_chunks_index(%Bucket{topology_pid: topology_pid} = bucket) do
-    {bucket, index_member?(topology_pid, chunks_collection_name(bucket), @chunks_index_name)}
+  defp check_chunks_index(%Bucket{topology_pid: topology_pid, opts: opts} = bucket) do
+    {bucket, index_member?(topology_pid, chunks_collection_name(bucket), @chunks_index_name, opts)}
   end
 
   # returns true if the collection contains a index with the given name
-  defp index_member?(topology_pid, coll, index) do
+  defp index_member?(topology_pid, coll, index, opts) do
     topology_pid
-    |> Mongo.list_indexes(coll)
+    |> Mongo.list_indexes(coll, opts)
     |> Enum.member?(index)
   end
 
   ##
   # Creates the indexes for the fs.chunks collection
   #
-  defp create_chunks_index({%Bucket{topology_pid: topology_pid} = bucket, false} ) do
+  defp create_chunks_index({%Bucket{topology_pid: topology_pid, opts: opts} = bucket, false} ) do
 
     cmd      = [createIndexes: chunks_collection_name(bucket), indexes: [[key: [files_id: 1, n: 1], name: @chunks_index_name, unique: true]]]
-    {:ok, _} = Mongo.command(topology_pid, cmd)
+    {:ok, _} = Mongo.command(topology_pid, cmd, opts)
 
     bucket
   end
@@ -197,10 +197,10 @@ defmodule Mongo.GridFs.Bucket do
   ##
   # Creates the indexes for the fs.files collection
   #
-  defp create_files_index({%Bucket{topology_pid: topology_pid} = bucket, false}) do
+  defp create_files_index({%Bucket{topology_pid: topology_pid, opts: opts} = bucket, false}) do
 
     cmd      = [createIndexes: files_collection_name(bucket), indexes: [[key: [filename: 1, uploadDate: 1], name: @files_index_name]]]
-    {:ok, _} = Mongo.command(topology_pid, cmd)
+    {:ok, _} = Mongo.command(topology_pid, cmd, opts)
 
     bucket
   end
