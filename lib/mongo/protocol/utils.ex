@@ -15,14 +15,14 @@ defmodule Mongo.Protocol.Utils do
   end
 
   def command(id, command, s) do
-    op = case command do
-      [authenticate: 1, user: _username, mechanism: "MONGODB-X509"] ->
-        op_query(coll: namespace("$cmd", nil, "$external"), query: BSON.Encoder.document(command),
-                  select: "", num_skip: 0, num_return: 1, flags: [])
-      _command ->
-        op_query(coll: namespace("$cmd", s, nil), query: BSON.Encoder.document(command),
-                  select: "", num_skip: 0, num_return: 1, flags: [])
+    ns =
+      if Keyword.get(command, :mechanism) == "MONGODB-X509" && Keyword.get(command, :authenticate) == 1 do
+        namespace("$cmd", nil, "$external")
+      else
+        namespace("$cmd", s, nil)
     end
+    op = op_query(coll: ns, query: BSON.Encoder.document(command),
+                  select: "", num_skip: 0, num_return: 1, flags: [])
     case message(id, op, s) do
       {:ok, op_reply(docs: docs)} ->
         case BSON.Decoder.documents(docs) do

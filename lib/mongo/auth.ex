@@ -39,7 +39,7 @@ defmodule Mongo.Auth do
     if username && password, do: auth ++ [{username, password}], else: auth
   end
 
-  defp mechanism(%{wire_version: version, auth_mechanism: "MONGODB-X509"}) when version >= 3,
+  defp mechanism(%{wire_version: version, auth_mechanism: :x509}) when version >= 3,
     do: Mongo.Auth.X509
   defp mechanism(%{wire_version: version}) when version >= 3,
     do: Mongo.Auth.SCRAM

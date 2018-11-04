@@ -90,7 +90,6 @@ defmodule Mongo.Protocol do
   defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
     host      = (opts[:hostname] || "localhost") |> to_charlist
     ssl_opts = Keyword.put_new(opts[:ssl_opts] || [], :server_name_indication, host)
-    ssl_opts = Keyword.put_new(ssl_opts, :ciphers, ['AES256-GCM-SHA384'])
     case :ssl.connect(sock, ssl_opts, s.connect_timeout_ms) do
       {:ok, ssl_sock} ->
         {:ok, %{s | socket: {:ssl, ssl_sock}}}
