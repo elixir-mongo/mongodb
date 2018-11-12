@@ -139,26 +139,6 @@ defmodule Mongo.Protocol do
     end
   end
 
-  def handle_info({:tcp, data}, s) do
-    err = Mongo.Error.exception(message: "unexpected async recv: #{inspect data}")
-    {:disconnect, err, s}
-  end
-
-  def handle_info({:tcp_closed, _}, s) do
-    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: :closed)
-    {:disconnect, err, s}
-  end
-
-  def handle_info({:tcp_error, _, reason}, s) do
-    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: reason)
-    {:disconnect, err, s}
-  end
-
-  def handle_info({:ssl_closed, _}, s) do
-    err = Mongo.Error.exception(tag: :ssl, action: "async recv", reason: :closed)
-    {:disconnect, err, s}
-  end
-
   def handle_status(_, %{status: status} = state) do
     {status, state}
   end
