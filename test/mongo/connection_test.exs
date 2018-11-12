@@ -1,5 +1,6 @@
 defmodule Mongo.ConnectionTest do
   use MongoTest.Case, async: true
+  import ExUnit.CaptureLog
   alias Mongo
 
   defp connect do
@@ -81,10 +82,10 @@ defmodule Mongo.ConnectionTest do
             username: "mongodb_user", password: "wrong",
             backoff_type: :stop]
 
-    capture_log fn ->
-      assert {:ok, pid} = Mongo.start_link(opts)
-      assert_receive {:EXIT, ^pid, {%Mongo.Error{code: 18}, _}}
-    end
+    assert capture_log(fn ->
+      {:ok, pid} = Mongo.start_link(opts)
+      assert_receive {:EXIT, ^pid, :killed}, 5000
+    end) =~ "(Mongo.Error) auth failed for user mongodb_user"
   end
 
   test "auth wrong on db" do
@@ -94,10 +95,10 @@ defmodule Mongo.ConnectionTest do
             username: "mongodb_admin_user", password: "wrong",
             backoff_type: :stop, auth_source: "admin_test"]
 
-    capture_log fn ->
-      assert {:ok, pid} = Mongo.start_link(opts)
-      assert_receive {:EXIT, ^pid, {%Mongo.Error{code: 18}, _}}
-    end
+    assert capture_log(fn ->
+      {:ok, pid} = Mongo.start_link(opts)
+      assert_receive {:EXIT, ^pid, :killed}, 5000
+    end) =~ "(Mongo.Error) auth failed for user mongodb_admin_user"
   end
 
   test "insert_one flags" do
