@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.org/ankhers/mongodb.svg?branch=master)](https://travis-ci.org/ankhers/mongodb)
 
+[Documentation for Mongodb is available online](http://hexdocs.pm/mongodb/).
+
 ## Features
 
   * Supports MongoDB versions 3.0, 3.2, 3.4, 3.6, 4.0
