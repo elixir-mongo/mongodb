@@ -114,6 +114,30 @@ To connect to a Mongo cluster that is using replica sets, it is recommended to u
 
 This will allow for scenarios where the first `"hostname1.net:27017"` is unreachable for any reason and will automatically try to connect to each of the following entries in the list to connect to the cluster.
 
+### Auth mechanisms
+
+For versions of Mongo 3.0 and greater, the auth mechanism defaults to SCRAM. If you'd like to use [MONGODB-X509](https://docs.mongodb.com/manual/tutorial/configure-x509-client-authentication/#authenticate-with-a-x-509-certificate) 
+authentication, you can specify that as a `start_link` option.
+
+```elixir
+{:ok, pid} = Mongo.start_link(database: "test", auth_mechanism: :x509)
+```
+
+### AWS, TLS and Erlang SSL ciphers
+
+Some MongoDB cloud providers (notably AWS) require a particular TLS cipher that isn't enabled by default in the Erlang SSL module. In order to connect to these services,
+you'll want to add this cipher to your `ssl_opts`: 
+
+```elixir
+{:ok, pid} = Mongo.start_link(database: "test", 
+      ssl_opts: [
+        ciphers: ['AES256-GCM-SHA384'],
+        cacertfile: "...",
+        certfile: "...")
+      ]
+)
+```
+
 ### Examples
 
 Using `$and`
