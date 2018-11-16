@@ -112,6 +112,8 @@ defmodule Mongo do
     * `:after_connect` - A function to run on connect use `run/3`. Either a
       1-arity fun, `{module, function, args}` with `DBConnection.t`, prepended
       to `args` or `nil` (default: `nil`)
+    * `:auth_mechanism` - options for the mongo authentication mechanism,
+      currently only supports `:x509` atom as a value
     * `:ssl` - Set to `true` if ssl should be used (default: `false`)
     * `:ssl_opts` - A list of ssl options, see the ssl docs
 

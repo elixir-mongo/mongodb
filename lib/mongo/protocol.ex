@@ -33,6 +33,7 @@ defmodule Mongo.Protocol do
       database: Keyword.fetch!(opts, :database),
       write_concern: Map.new(write_concern),
       wire_version: nil,
+      auth_mechanism: opts[:auth_mechanism] || nil,
       connection_type: Keyword.fetch!(opts, :connection_type),
       topology_pid: Keyword.fetch!(opts, :topology_pid),
       ssl: opts[:ssl] || false
