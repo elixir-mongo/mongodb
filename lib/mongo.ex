@@ -196,7 +196,7 @@ defmodule Mongo do
   """
   @spec find_one_and_update(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
   def find_one_and_update(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
     query = [
       findAndModify:            coll,
       query:                    filter,
@@ -236,7 +236,7 @@ defmodule Mongo do
   """
   @spec find_one_and_replace(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
   def find_one_and_replace(topology_pid, coll, filter, replacement, opts \\ []) do
-    modifier_docs(replacement, :replace)
+    _ = modifier_docs(replacement, :replace)
     query = [
       findAndModify:            coll,
       query:                    filter,
@@ -682,7 +682,7 @@ defmodule Mongo do
   """
   @spec replace_one(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def replace_one(topology_pid, coll, filter, replacement, opts \\ []) do
-    modifier_docs(replacement, :replace)
+    _ = modifier_docs(replacement, :replace)
 
     params = [filter, replacement]
     query = %Query{action: :replace_one, extra: coll}
@@ -728,7 +728,7 @@ defmodule Mongo do
   """
   @spec update_one(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def update_one(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
 
     params = [filter, update]
     query = %Query{action: :update_one, extra: coll}
@@ -767,7 +767,7 @@ defmodule Mongo do
   """
   @spec update_many(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def update_many(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
 
     params = [filter, update]
     query = %Query{action: :update_many, extra: coll}
