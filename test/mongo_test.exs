@@ -207,6 +207,20 @@ defmodule Mongo.Test do
       %{"$set" => %{baz: 1}},
       [upsert: true, return_document: :after])
     assert %{"foo" => 43, "baz" => 1} = value, "Should upsert"
+
+    # don't find return {:ok, nil}
+    assert {:ok, nil} == Mongo.find_one_and_update(c.pid, coll,
+      %{"number" => 666},
+      %{"$set" => %{title: "the number of the beast"}})
+
+    assert {:ok, nil} == Mongo.find_one_and_update(c.pid, "coll_that_doesnt_exist",
+      %{"number" => 666},
+      %{"$set" => %{title: "the number of the beast"}})
+
+    # wrong parameter
+    assert {:error, %Mongo.Error{}} = Mongo.find_one_and_update(c.pid, 2,
+      %{"number" => 666},
+      %{"$set" => %{title: "the number of the beast"}})
   end
 
   test "find_one_and_replace", c do

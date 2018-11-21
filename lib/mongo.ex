@@ -61,7 +61,7 @@ defmodule Mongo do
   @type conn :: DbConnection.Conn
   @type collection :: String.t
   @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
-  @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t}
+  @type result(t) :: :ok | {:ok, t} | {:ok, nil}| {:error, Mongo.Error.t}
   @type result!(t) :: nil | t | no_return
 
   defmacrop bangify(result) do
@@ -123,7 +123,7 @@ defmodule Mongo do
     * `:set_name_bad_topology` - A `:set_name` was given but the topology was
       set to something other than `:replica_set_no_primary` or `:single`
   """
-  @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | term}
+  @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | atom}
   def start_link(opts) do
     opts
     |> UrlParser.parse_url()
@@ -520,7 +520,7 @@ defmodule Mongo do
   end
 
   @doc false
-  @spec direct_command(pid, BSON.document, Keyword.t) :: result(BSON.document)
+  @spec direct_command(pid, BSON.document, Keyword.t) :: {:ok, BSON.document | nil} | {:error, Mongo.Error.t}
   def direct_command(conn, query, opts \\ []) do
     params = [query]
     query = %Query{action: :command}
