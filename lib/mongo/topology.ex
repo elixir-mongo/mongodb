@@ -69,7 +69,7 @@ defmodule Mongo.Topology do
     cond do
       type == :single and length(seeds) > 1 ->
         {:stop, :single_topology_multiple_hosts}
-      set_name != nil and not type in [:unknown, :replica_set_no_primary, :single] ->
+      set_name != nil and not(type in [:unknown, :replica_set_no_primary, :single]) ->
         {:stop, :set_name_bad_topology}
       true ->
         servers = servers_from_seeds(seeds)
