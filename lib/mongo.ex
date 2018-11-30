@@ -806,10 +806,10 @@ defmodule Mongo do
   @doc """
   Convenient function that returns a cursor with the names of the indexes.
   """
-  @spec list_index_names(GenServer.server, String.t, Keyword.t) :: cursor
+  @spec list_index_names(GenServer.server, String.t, Keyword.t) :: %Stream{}
   def list_index_names(topology_pid, coll, opts \\ []) do
-    cursor = list_indexes(topology_pid, coll, opts)
-    Stream.map(cursor, fn %{"name" => name } -> name end)
+    list_indexes(topology_pid, coll, opts)
+    |> Stream.map(fn %{"name" => name } -> name end)
   end
 
 
