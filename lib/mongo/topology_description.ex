@@ -340,7 +340,7 @@ defmodule Mongo.TopologyDescription do
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#actions
 
   defp not_in_servers?(topology, server_description) do
-    not server_description.address in Map.keys(topology.servers)
+    not(server_description.address in Map.keys(topology.servers))
   end
 
   def invalid_set_name?(topology, server_description) do
@@ -394,7 +394,7 @@ defmodule Mongo.TopologyDescription do
     all_hosts =
       server_description.hosts ++ server_description.passives ++ server_description.arbiters
     topology = Enum.reduce(all_hosts, topology, fn (host, topology) ->
-      if not host in Map.keys(topology.servers) do
+      if not(host in Map.keys(topology.servers)) do
         # this is kinda like an "upsert"
         put_in(topology.servers[host], ServerDescription.defaults(%{address: host}))
       else
