@@ -9,3 +9,4 @@ erl_crash.dump
 plt_core_path/*.plt
 .idea/
 *.iml
+*.code-workspace

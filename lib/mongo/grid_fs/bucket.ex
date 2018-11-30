@@ -61,11 +61,11 @@ defmodule Mongo.GridFs.Bucket do
   Renames the stored file with the specified file_id.
   """
   @spec rename(Bucket.t, BSON.ObjectId.t, String.t) :: Mongo.result(BSON.document)
-  def rename(%Bucket{topology_pid: topology_pid} = bucket, file_id, new_filename) do
+  def rename(%Bucket{topology_pid: topology_pid, opts: opts} = bucket, file_id, new_filename) do
     query       = %{_id: file_id}
     update      = %{"$set" => %{filename: new_filename}}
     collection  = files_collection_name(bucket)
-    {:ok, _doc} = Mongo.find_one_and_update(topology_pid, collection, query, update)
+    {:ok, _doc} = Mongo.find_one_and_update(topology_pid, collection, query, update, opts)
   end
 
   @doc """
@@ -78,14 +78,14 @@ defmodule Mongo.GridFs.Bucket do
   end
 
   @spec delete(Bucket.t, BSON.ObjectId.t) :: Mongo.result(BSON.document)
-  def delete(%Bucket{topology_pid: topology_pid} = bucket, %BSON.ObjectId{} = oid) do
+  def delete(%Bucket{topology_pid: topology_pid, opts: opts} = bucket, %BSON.ObjectId{} = oid) do
     # first delete files document
     collection = files_collection_name(bucket)
-    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_one(topology_pid, collection, %{_id: oid})
+    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_one(topology_pid, collection, %{_id: oid}, opts)
 
     # then delete all chunk documents
     collection = chunks_collection_name(bucket)
-    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_many(topology_pid, collection, %{files_id: oid})
+    {:ok, %Mongo.DeleteResult{deleted_count: _}} = Mongo.delete_many(topology_pid, collection, %{files_id: oid}, opts)
   end
 
   @doc """
@@ -93,9 +93,9 @@ defmodule Mongo.GridFs.Bucket do
   this bucket.
   """
   @spec drop(Bucket.t) :: Mongo.result(BSON.document)
-  def drop(%Bucket{topology_pid: topology_pid} = bucket) do
-    {:ok, _} = Mongo.command(topology_pid, %{drop: files_collection_name(bucket)})
-    {:ok, _} = Mongo.command(topology_pid, %{drop: chunks_collection_name(bucket)})
+  def drop(%Bucket{topology_pid: topology_pid, opts: opts} = bucket) do
+    {:ok, _} = Mongo.command(topology_pid, %{drop: files_collection_name(bucket)}, opts)
+    {:ok, _} = Mongo.command(topology_pid, %{drop: chunks_collection_name(bucket)}, opts)
   end
 
   @doc """
@@ -118,8 +118,8 @@ defmodule Mongo.GridFs.Bucket do
   Finds one file document with the file_id as an ObjectID-struct
   """
   @spec find_one(Bucket.t, BSON.ObjectId.t) :: BSON.document | nil
-  def find_one(%Bucket{topology_pid: topology_pid} = bucket, %BSON.ObjectId{} = oid) do
-     Mongo.find_one(topology_pid, files_collection_name(bucket), %{"_id" => oid})
+  def find_one(%Bucket{topology_pid: topology_pid, opts: opts} = bucket, %BSON.ObjectId{} = oid) do
+     Mongo.find_one(topology_pid, files_collection_name(bucket), %{"_id" => oid}, opts)
   end
 
   ##

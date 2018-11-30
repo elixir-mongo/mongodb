@@ -170,12 +170,8 @@ defmodule Mongo do
         query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
         aggregation_cursor(conn, "$cmd", query, nil, opts)
       else
-        if version >= 3 do
-          query = query ++ [cursor: %{}]
-          aggregation_cursor(conn, "$cmd", query, nil, opts)
-        else
-          singly_cursor(conn, "$cmd", query, nil, opts)
-        end
+        query = query ++ [cursor: %{}]
+        aggregation_cursor(conn, "$cmd", query, nil, opts)
       end
     end
   end
@@ -797,23 +793,23 @@ defmodule Mongo do
 
   @doc """
   Returns a cursor to enumerate all indexes
-
-  :full returns the full index information instead of the name only (default is false)
   """
   @spec list_indexes(GenServer.server, String.t, Keyword.t) :: cursor
   def list_indexes(topology_pid, coll, opts \\ []) do
-
     with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read, opts) do
-
-      c = aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, opts)
-
-      case Keyword.get(opts, :full, false) do
-        true -> c
-        _    -> Stream.map(c, fn %{"name" => name } -> name end)
-      end
-
+      aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, opts)
     end
   end
+
+  @doc """
+  Convenient function that returns a cursor with the names of the indexes.
+  """
+  @spec list_index_names(GenServer.server, String.t, Keyword.t) :: cursor
+  def list_index_names(topology_pid, coll, opts \\ []) do
+    cursor = list_indexes(topology_pid, coll, opts)
+    Stream.map(cursor, fn %{"name" => name } -> name end)
+  end
+
 
   @doc """
   Getting Collection Names

@@ -45,7 +45,10 @@ defmodule Mongo.GridFs.Download do
     {stream_chunk(file, bucket), file}
   end
 
-  def find_one_file(%Bucket{topology_pid: topology_pid, opts: opts} = bucket, file_id) do
+  def find_one_file(%Bucket{topology_pid: topology_pid, opts: opts} = bucket, filename) when is_binary(filename) do
+    Mongo.find_one(topology_pid, Bucket.files_collection_name(bucket), %{"filename" => filename}, opts)
+  end
+  def find_one_file(%Bucket{topology_pid: topology_pid, opts: opts} = bucket, %BSON.ObjectId{} = file_id) do
     Mongo.find_one(topology_pid, Bucket.files_collection_name(bucket), %{"_id" => file_id}, opts)
   end
 

@@ -70,7 +70,7 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.command(c.pid, cmd)
 
     indexes = c.pid
-    |> Mongo.list_indexes(coll_1)
+    |> Mongo.list_index_names(coll_1)
     |> Enum.to_list()
 
     assert Enum.count(indexes) == 3
