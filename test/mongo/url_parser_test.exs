@@ -59,5 +59,18 @@ defmodule Mongo.UrlParserTest do
                  ]
                ]
     end
+
+    test "write concern" do
+      for w <- [2, "majority"] do
+        assert UrlParser.parse_url(url: "mongodb://seed1.domain.com:27017,seed2.domain.com:27017/db_name?w=#{w}") == [
+          database: "db_name",
+          w: w,
+          seeds: [
+            "seed1.domain.com:27017",
+            "seed2.domain.com:27017",
+          ]
+        ]
+      end
+    end
   end
 end
