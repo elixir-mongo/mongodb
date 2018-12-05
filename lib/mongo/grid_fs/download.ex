@@ -67,12 +67,12 @@ defmodule Mongo.GridFs.Download do
   ##
   # Streaming the chunks with `file_id` sorted ascending by n
   #
-  defp stream_chunk(%{"_id" => id}, %Bucket{topology_pid: topology_pid, opts: opts}) do
+  defp stream_chunk(%{"_id" => id}, %Bucket{topology_pid: topology_pid, opts: opts} = bucket) do
 
     opts = Keyword.merge(opts, [sort: [n: 1]])
     stream = topology_pid
-             |> Mongo.find("fs.chunks", %{files_id: id}, opts)
-             |> Stream.map(fn map -> map["data"].binary end) # todo: typ checken und ggf. binary aufrufen!
+             |> Mongo.find(Bucket.chunks_collection_name(bucket), %{files_id: id}, opts)
+             |> Stream.map(fn map -> map["data"].binary end)
     {:ok, stream}
   end
 
