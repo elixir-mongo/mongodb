@@ -19,7 +19,7 @@ defmodule Mongo.UrlParser do
     "maxIdleTimeMS" => :number,
     "waitQueueMultiple" => :number,
     "waitQueueTimeoutMS" => :number,
-    "w" => :string,
+    "w" => :number_or_string,
     "wtimeoutMS" => :number,
     "journal" => ["true", "false"],
     "readConcernLevel" => ["local", "majority", "linearizable", "available"],
@@ -60,6 +60,15 @@ defmodule Mongo.UrlParser do
 
       :string ->
         value
+
+      :number_or_string ->
+        case Integer.parse(value) do
+          {num, ""} ->
+            num
+
+          _string ->
+            value
+        end
 
       enum when is_list(enum) ->
         if Enum.member?(enum, value) do
