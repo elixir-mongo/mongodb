@@ -191,4 +191,35 @@ defmodule Mongo.TopologyTestData do
       }
     }
   }
+  def repl_set_only_master, do: %{
+    compatibility_error: nil,
+    compatible: true,
+    local_threshold_ms: 15,
+    set_name: "replset1",
+    type: :replica_set_with_primary,
+    max_election_id: nil,
+    max_set_version: 3,
+    servers: %{
+      "localhost:27018" => %{
+        address: "localhost:27018",
+        arbiters: [],
+        election_id: nil,
+        error: nil,
+        last_update_time: nil,
+        last_write_date: nil,
+        max_wire_version: 0,
+        me: nil,
+        min_wire_version: 0,
+        op_time: nil,
+        passives: [],
+        primary: nil,
+        round_trip_time: 15,
+        set_name: nil,
+        set_version: nil,
+        tag_set: %{},
+        type: :rs_primary,
+        hosts: ["localhost:27018"]
+      }
+    }
+  }
 end

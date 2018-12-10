@@ -92,32 +92,39 @@ defmodule Mongo.TopologyDescription do
 
   ## Private Functions
 
-  defp select_replica_set_server(topology, mode, read_preference)
-      when mode in [:primary, :primary_preferred] do
-    primary = Enum.filter(topology.servers, fn {_, server} ->
+  defp select_replica_set_server(topology, :primary, read_preference) do
+    Enum.filter(topology.servers, fn {_, server} ->
       server.type == :rs_primary
     end)
+  end
 
-    if mode == :primary_preferred && Enum.empty? primary do
+  defp select_replica_set_server(topology, :primary_preferred, read_preference) do
+    preferred = select_replica_set_server(topology, :primary, read_preference)
+
+    if Enum.empty?(preferred) do
       select_replica_set_server(topology, :secondary, read_preference)
     else
-      primary
+      preferred
+    end
+  end
+
+  defp select_replica_set_server(topology, :secondary_preferred, read_preference) do
+    preferred = select_replica_set_server(topology, :secondary, read_preference)
+
+    if Enum.empty?(preferred) do
+      select_replica_set_server(topology, :primary, read_preference)
+    else
+      preferred
     end
   end
 
   defp select_replica_set_server(topology, mode, read_preference)
-         when mode in [:secondary, :secondary_preferred, :nearest] do
-    initial = if mode in [:secondary, :secondary_preferred] do
-      topology.servers
-      |> Enum.filter(fn {_, server} ->
-        server.type == :rs_secondary
-      end)
-      |> Enum.into(%{})
-    else
-      topology.servers
-    end
-
-    initial
+    when mode in [:secondary, :nearest] do
+    topology.servers
+    |> Enum.filter(fn {_, server} ->
+        server.type == :rs_secondary || mode == :nearest
+    end)
+    |> Enum.into(%{})
     |> filter_out_stale(topology, read_preference.max_staleness_ms)
     |> select_tag_sets(read_preference.tag_sets)
     |> filter_latency_window(topology.local_threshold_ms)
