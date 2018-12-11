@@ -92,7 +92,7 @@ defmodule Mongo.TopologyDescription do
 
   ## Private Functions
 
-  defp select_replica_set_server(topology, :primary, read_preference) do
+  defp select_replica_set_server(topology, :primary, _read_preference) do
     Enum.filter(topology.servers, fn {_, server} ->
       server.type == :rs_primary
     end)
