@@ -212,7 +212,7 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation)a)
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
@@ -252,7 +252,7 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation)a)
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
@@ -283,7 +283,7 @@ defmodule Mongo do
     ] |> filter_nils
     opts = Keyword.drop(opts, ~w(max_time projection sort collation)a)
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
@@ -302,8 +302,7 @@ defmodule Mongo do
     opts = Keyword.drop(opts, ~w(limit skip hint collation)a)
 
     # Mongo 2.4 and 2.6 returns a float
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, doc} <- direct_command(conn, query, opts),
+    with {:ok, doc} <- command(topology_pid, query, opts),
          do: {:ok, trunc(doc["n"])}
   end
 
@@ -515,7 +514,8 @@ defmodule Mongo do
   def command(topology_pid, query, opts \\ []) do
     rp = ReadPreference.defaults(%{mode: :primary})
     rp_opts = [read_preference: Keyword.get(opts, :read_preference, rp)]
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, rp_opts),
+    with {:ok, conn, slave_ok, _} <- select_server(topology_pid, :read, rp_opts),
+         opts = Keyword.put(opts, :slave_ok, slave_ok),
          do: direct_command(conn, query, opts)
   end
 
