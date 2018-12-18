@@ -9,11 +9,15 @@ defmodule Mongo.ReadPreference do
     max_staleness_ms: non_neg_integer
   }
 
-  def defaults(map \\ %{}) do
-    Map.merge(%{
-      mode: :primary,
-      tag_sets: [%{}],
-      max_staleness_ms: 0
-    }, map)
+  @default %{
+    mode: :primary,
+    tag_sets: [%{}],
+    max_staleness_ms: 0
+  }
+
+  def defaults(map \\ nil)
+  def defaults(map) when is_map(map) do
+    Map.merge(@default, map)
   end
+  def defaults(_), do: @default
 end

@@ -51,8 +51,8 @@ defmodule Mongo.TopologyDescription do
 
   # steps 3-4
   def select_servers(topology, type, opts \\ []) do
-    read_preference = Keyword.get(opts, :read_preference,
-                                  ReadPreference.defaults)
+    read_preference = Keyword.get(opts, :read_preference)
+                      |> ReadPreference.defaults()
     if topology[:compatible] == false do
       {:error, :invalid_wire_version}
     else

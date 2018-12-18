@@ -80,5 +80,16 @@ defmodule Mongo.TopologyDescriptionTest do
     ]
     assert {:ok, all_hosts, true, false} ==
            TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
+
+  end
+
+  test "Simplified server selection" do
+    single_server = ["localhost:27017"]
+
+    opts = [
+      read_preference: %{mode: :secondary}
+    ]
+    assert {:ok, single_server, true, false} ==
+           TopologyDescription.select_servers(single(), :read, opts)
   end
 end
