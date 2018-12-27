@@ -60,8 +60,8 @@ defmodule Mongo.Protocol do
         {:ok, s}
       {:disconnect, reason, s} ->
         reason = case reason do
-          {:tcp_recv, reason} -> Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)
-          {:tcp_send, reason} -> Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)
+          {:tcp_recv, reason} -> Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason, host: s.hostname, port: s.port)
+          {:tcp_send, reason} -> Mongo.Error.exception(tag: :tcp, action: "send", reason: reason, host: s.hostname, port: s.port)
           %Mongo.Error{} = reason -> reason
         end
         {mod, sock} = s.socket
@@ -95,7 +95,7 @@ defmodule Mongo.Protocol do
         {:ok, %{s | socket: {:ssl, ssl_sock}}}
       {:error, reason} ->
         :gen_tcp.close(sock)
-        {:error, Mongo.Error.exception(tag: :ssl, action: "connect", reason: reason)}
+        {:error, Mongo.Error.exception(tag: :ssl, action: "connect", reason: reason, host: s.hostname, port: s.port)}
     end
   end
 
@@ -119,7 +119,7 @@ defmodule Mongo.Protocol do
         {:ok, %{s | socket: {:gen_tcp, socket}}}
 
       {:error, reason} ->
-        {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: reason)}
+        {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: reason, host: s.hostname, port: s.port)}
     end
   end
 
@@ -145,17 +145,17 @@ defmodule Mongo.Protocol do
   end
 
   def handle_info({:tcp_closed, _}, s) do
-    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: :closed)
+    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: :closed, host: s.hostname, port: s.port)
     {:disconnect, err, s}
   end
 
   def handle_info({:tcp_error, _, reason}, s) do
-    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: reason)
+    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: reason, host: s.hostname, port: s.port)
     {:disconnect, err, s}
   end
 
   def handle_info({:ssl_closed, _}, s) do
-    err = Mongo.Error.exception(tag: :ssl, action: "async recv", reason: :closed)
+    err = Mongo.Error.exception(tag: :ssl, action: "async recv", reason: :closed, host: s.hostname, port: s.port)
     {:disconnect, err, s}
   end
 
