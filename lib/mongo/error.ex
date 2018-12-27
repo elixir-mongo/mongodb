@@ -1,11 +1,10 @@
 defmodule Mongo.Error do
-  defexception [:message, :code, :host, :port]
+  defexception [:message, :code, :host]
 
   @type t :: %__MODULE__{
     message: String.t,
     code: number,
-    host: String.t,
-    port: number
+    host: String.t
   }
 
   def message(e) do
@@ -13,14 +12,14 @@ defmodule Mongo.Error do
     "#{e.message}#{code}"
   end
 
-  def exception(tag: :tcp, action: action, reason: reason, host: host, port: port) do
+  def exception(tag: :tcp, action: action, reason: reason, host: host) do
     formatted_reason = :inet.format_error(reason)
-    %Mongo.Error{message: "#{host}:#{port} tcp #{action}: #{formatted_reason} - #{inspect(reason)}"}
+    %Mongo.Error{message: "#{host} tcp #{action}: #{formatted_reason} - #{inspect(reason)}"}
   end
 
-  def exception(tag: :ssl, action: action, reason: reason, host: host, post: port) do
+  def exception(tag: :ssl, action: action, reason: reason, host: host) do
     formatted_reason = :ssl.format_error(reason)
-    %Mongo.Error{message: "#{host}:#{port} ssl #{action}: #{formatted_reason} - #{inspect(reason)}"}
+    %Mongo.Error{message: "#{host} ssl #{action}: #{formatted_reason} - #{inspect(reason)}"}
   end
 
   def exception(message: message, code: code) do
