@@ -7,7 +7,7 @@ defmodule Mongodb.Mixfile do
     [app: :mongodb,
      version: @version,
      elixirc_paths: elixirc_paths(Mix.env),
-     elixir: "~> 1.3",
+     elixir: "~> 1.4",
      name: "Mongodb",
      deps: deps(),
      docs: docs(),
