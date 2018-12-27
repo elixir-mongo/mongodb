@@ -474,9 +474,10 @@ defmodule Mongo do
       |> Keyword.delete(:sort)
       |> Keyword.put(:limit, 1)
       |> Keyword.put(:batch_size, 1)
-    find(conn, coll, filter, opts)
-    |> Enum.to_list   # TODO: Can be changed to Enum.at(0) if Elixir 1.4.0+
-    |> List.first
+
+    conn
+    |> find(coll, filter, opts)
+    |> Enum.at(0)
   end
 
   @doc false
@@ -595,12 +596,13 @@ defmodule Mongo do
 
     * `:continue_on_error` - even if insert fails for one of the documents
       continue inserting the remaining ones (default: `false`)
+    * `:ordered` - A boolean specifying whether the mongod instance should
+      perform an ordered or unordered insert. (default: `true`)
 
   ## Examples
 
       Mongo.insert_many(pid, "users", [%{first_name: "John", last_name: "Smith"}, %{first_name: "Jane", last_name: "Doe"}])
   """
-  # TODO describe the ordered option
   @spec insert_many(GenServer.server, collection, [BSON.document], Keyword.t) :: result(Mongo.InsertManyResult.t)
   def insert_many(topology_pid, coll, docs, opts \\ []) do
     assert_many_docs!(docs)
