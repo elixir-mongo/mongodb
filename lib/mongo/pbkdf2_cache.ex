@@ -22,7 +22,7 @@ defmodule Mongo.PBKDF2Cache do
       list = s.pending[key] ->
         {:noreply, put_in(s.pending[key], [from|list])}
       true ->
-        run_task(key)
+        _ = run_task(key)
         {:noreply, put_in(s.pending[key], [from])}
     end
   end

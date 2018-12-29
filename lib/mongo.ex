@@ -123,7 +123,7 @@ defmodule Mongo do
     * `:set_name_bad_topology` - A `:set_name` was given but the topology was
       set to something other than `:replica_set_no_primary` or `:single`
   """
-  @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | term}
+  @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | atom}
   def start_link(opts) do
     opts
     |> UrlParser.parse_url()
@@ -195,9 +195,9 @@ defmodule Mongo do
       the document.
     * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
   """
-  @spec find_one_and_update(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
+  @spec find_one_and_update(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document) | {:ok, nil}
   def find_one_and_update(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
     query = [
       findAndModify:            coll,
       query:                    filter,
@@ -213,7 +213,7 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation)a)
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
@@ -237,7 +237,7 @@ defmodule Mongo do
   """
   @spec find_one_and_replace(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
   def find_one_and_replace(topology_pid, coll, filter, replacement, opts \\ []) do
-    modifier_docs(replacement, :replace)
+    _ = modifier_docs(replacement, :replace)
     query = [
       findAndModify:            coll,
       query:                    filter,
@@ -253,7 +253,7 @@ defmodule Mongo do
 
     opts = Keyword.drop(opts, ~w(bypass_document_validation max_time projection return_document sort upsert collation)a)
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
@@ -284,7 +284,7 @@ defmodule Mongo do
     ] |> filter_nils
     opts = Keyword.drop(opts, ~w(max_time projection sort collation)a)
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts), do: {:ok, doc["value"]}
   end
 
@@ -303,8 +303,7 @@ defmodule Mongo do
     opts = Keyword.drop(opts, ~w(limit skip hint collation)a)
 
     # Mongo 2.4 and 2.6 returns a float
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, doc} <- direct_command(conn, query, opts),
+    with {:ok, doc} <- command(topology_pid, query, opts),
          do: {:ok, trunc(doc["n"])}
   end
 
@@ -476,9 +475,10 @@ defmodule Mongo do
       |> Keyword.delete(:sort)
       |> Keyword.put(:limit, 1)
       |> Keyword.put(:batch_size, 1)
-    find(conn, coll, filter, opts)
-    |> Enum.to_list   # TODO: Can be changed to Enum.at(0) if Elixir 1.4.0+
-    |> List.first
+
+    conn
+    |> find(coll, filter, opts)
+    |> Enum.at(0)
   end
 
   @doc false
@@ -516,12 +516,13 @@ defmodule Mongo do
   def command(topology_pid, query, opts \\ []) do
     rp = ReadPreference.defaults(%{mode: :primary})
     rp_opts = [read_preference: Keyword.get(opts, :read_preference, rp)]
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, rp_opts),
+    with {:ok, conn, slave_ok, _} <- select_server(topology_pid, :read, rp_opts),
+         opts = Keyword.put(opts, :slave_ok, slave_ok),
          do: direct_command(conn, query, opts)
   end
 
   @doc false
-  @spec direct_command(pid, BSON.document, Keyword.t) :: result(BSON.document)
+  @spec direct_command(pid, BSON.document, Keyword.t) :: {:ok, BSON.document | nil} | {:error, Mongo.Error.t}
   def direct_command(conn, query, opts \\ []) do
     params = [query]
     query = %Query{action: :command}
@@ -596,12 +597,13 @@ defmodule Mongo do
 
     * `:continue_on_error` - even if insert fails for one of the documents
       continue inserting the remaining ones (default: `false`)
+    * `:ordered` - A boolean specifying whether the mongod instance should
+      perform an ordered or unordered insert. (default: `true`)
 
   ## Examples
 
       Mongo.insert_many(pid, "users", [%{first_name: "John", last_name: "Smith"}, %{first_name: "Jane", last_name: "Doe"}])
   """
-  # TODO describe the ordered option
   @spec insert_many(GenServer.server, collection, [BSON.document], Keyword.t) :: result(Mongo.InsertManyResult.t)
   def insert_many(topology_pid, coll, docs, opts \\ []) do
     assert_many_docs!(docs)
@@ -683,7 +685,7 @@ defmodule Mongo do
   """
   @spec replace_one(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def replace_one(topology_pid, coll, filter, replacement, opts \\ []) do
-    modifier_docs(replacement, :replace)
+    _ = modifier_docs(replacement, :replace)
 
     params = [filter, replacement]
     query = %Query{action: :replace_one, extra: coll}
@@ -729,7 +731,7 @@ defmodule Mongo do
   """
   @spec update_one(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def update_one(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
 
     params = [filter, update]
     query = %Query{action: :update_one, extra: coll}
@@ -768,7 +770,7 @@ defmodule Mongo do
   """
   @spec update_many(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def update_many(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
 
     params = [filter, update]
     query = %Query{action: :update_many, extra: coll}

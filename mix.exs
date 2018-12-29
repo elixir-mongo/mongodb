@@ -7,13 +7,14 @@ defmodule Mongodb.Mixfile do
     [app: :mongodb,
      version: @version,
      elixirc_paths: elixirc_paths(Mix.env),
-     elixir: "~> 1.3",
+     elixir: "~> 1.4",
      name: "Mongodb",
      deps: deps(),
      docs: docs(),
      description: description(),
      package: package(),
      dialyzer: [
+       flags: [:underspecs, :unknown, :unmatched_returns],
        plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
        plt_add_deps: :transitive,
        plt_core_path: "plt_core_path"
@@ -42,7 +43,7 @@ defmodule Mongodb.Mixfile do
       {:jason,         "~> 1.0.0", only: :test},
       {:ex_doc,        ">= 0.0.0", only: :dev},
       {:earmark,       ">= 0.0.0", only: :dev},
-      {:dialyxir,      "~> 1.0.0-rc.3", only: :dev}
+      {:dialyxir, "~> 1.0.0-rc.4", only: [:dev], runtime: false}
     ]
   end
 

@@ -1,3 +1,15 @@
+## v0.4.8-dev
+
+* Enhancements
+  * Added hostname and port to exceptions
+  * Added support for x509 authentication
+  * Allow passing only partial `read_preference` information
+
+* Bug Fixes
+  * Fixed a connection leak
+  * Properly parse write concern for URL
+  * Properly follow read preference for `secondary_preferred`
+
 ## v0.4.7
 
 * Enhancements
