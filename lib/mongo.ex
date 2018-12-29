@@ -172,7 +172,8 @@ defmodule Mongo do
         query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
         aggregation_cursor(conn, "$cmd", query, nil, opts)
       else
-        singly_cursor(conn, "$cmd", query, nil, opts)
+        query = query ++ [cursor: %{}]
+        aggregation_cursor(conn, "$cmd", query, nil, opts)
       end
     end
   end
@@ -792,6 +793,45 @@ defmodule Mongo do
   @spec update_many!(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result!(Mongo.UpdateResult.t)
   def update_many!(topology_pid, coll, filter, update, opts \\ []) do
     bangify(update_many(topology_pid, coll, filter, update, opts))
+  end
+
+  @doc """
+  Returns a cursor to enumerate all indexes
+  """
+  @spec list_indexes(GenServer.server, String.t, Keyword.t) :: cursor
+  def list_indexes(topology_pid, coll, opts \\ []) do
+    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read, opts) do
+      aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, opts)
+    end
+  end
+
+  @doc """
+  Convenient function that returns a cursor with the names of the indexes.
+  """
+  @spec list_index_names(GenServer.server, String.t, Keyword.t) :: %Stream{}
+  def list_index_names(topology_pid, coll, opts \\ []) do
+    list_indexes(topology_pid, coll, opts)
+    |> Stream.map(fn %{"name" => name } -> name end)
+  end
+
+
+  @doc """
+  Getting Collection Names
+  """
+  @spec show_collections(GenServer.server, Keyword.t) :: cursor
+  def show_collections(topology_pid, opts \\ []) do
+
+    ##
+    # from the specs
+    # https://github.com/mongodb/specifications/blob/f4bb783627e7ed5c4095c5554d35287956ef8970/source/enumerate-collections.rst#post-mongodb-280-rc3-versions
+    #
+    # In versions 2.8.0-rc3 and later, the listCollections command returns a cursor!
+    #
+    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read, opts) do
+      aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts)
+      |> Stream.filter(fn coll -> coll["type"] == "collection" end)
+      |> Stream.map(fn coll -> coll["name"] end)
+    end
   end
 
   @doc false
