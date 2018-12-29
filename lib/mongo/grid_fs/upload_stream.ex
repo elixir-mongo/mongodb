@@ -61,12 +61,12 @@ defmodule Mongo.GridFs.UploadStream do
 
         # stream stops, write the rest
         state() = s, :done ->
-          flush_buffer(stream, s)
+          _ = flush_buffer(stream, s)
           stream
 
         # steam halts, write the rest
         state() = s, :halt ->
-          flush_buffer(stream, s)
+          _ = flush_buffer(stream, s)
           :ok
       end
     end
