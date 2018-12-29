@@ -4,6 +4,7 @@
   * Added hostname and port to exceptions
   * Added support for x509 authentication
   * Allow passing only partial `read_preference` information
+  * Add support for GridFS
 
 * Bug Fixes
   * Fixed a connection leak
