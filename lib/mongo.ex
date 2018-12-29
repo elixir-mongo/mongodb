@@ -61,7 +61,7 @@ defmodule Mongo do
   @type conn :: DbConnection.Conn
   @type collection :: String.t
   @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
-  @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t}
+  @type result(t) :: :ok | {:ok, t} | {:ok, nil}| {:error, Mongo.Error.t}
   @type result!(t) :: nil | t | no_return
 
   defmacrop bangify(result) do
@@ -123,7 +123,7 @@ defmodule Mongo do
     * `:set_name_bad_topology` - A `:set_name` was given but the topology was
       set to something other than `:replica_set_no_primary` or `:single`
   """
-  @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | term}
+  @spec start_link(Keyword.t) :: {:ok, pid} | {:error, Mongo.Error.t | atom}
   def start_link(opts) do
     opts
     |> UrlParser.parse_url()
@@ -196,7 +196,7 @@ defmodule Mongo do
   """
   @spec find_one_and_update(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
   def find_one_and_update(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
     query = [
       findAndModify:            coll,
       query:                    filter,
@@ -236,7 +236,7 @@ defmodule Mongo do
   """
   @spec find_one_and_replace(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
   def find_one_and_replace(topology_pid, coll, filter, replacement, opts \\ []) do
-    modifier_docs(replacement, :replace)
+    _ = modifier_docs(replacement, :replace)
     query = [
       findAndModify:            coll,
       query:                    filter,
@@ -521,7 +521,7 @@ defmodule Mongo do
   end
 
   @doc false
-  @spec direct_command(pid, BSON.document, Keyword.t) :: result(BSON.document)
+  @spec direct_command(pid, BSON.document, Keyword.t) :: {:ok, BSON.document | nil} | {:error, Mongo.Error.t}
   def direct_command(conn, query, opts \\ []) do
     params = [query]
     query = %Query{action: :command}
@@ -684,7 +684,7 @@ defmodule Mongo do
   """
   @spec replace_one(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def replace_one(topology_pid, coll, filter, replacement, opts \\ []) do
-    modifier_docs(replacement, :replace)
+    _ = modifier_docs(replacement, :replace)
 
     params = [filter, replacement]
     query = %Query{action: :replace_one, extra: coll}
@@ -730,7 +730,7 @@ defmodule Mongo do
   """
   @spec update_one(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def update_one(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
 
     params = [filter, update]
     query = %Query{action: :update_one, extra: coll}
@@ -769,7 +769,7 @@ defmodule Mongo do
   """
   @spec update_many(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(Mongo.UpdateResult.t)
   def update_many(topology_pid, coll, filter, update, opts \\ []) do
-    modifier_docs(update, :update)
+    _ = modifier_docs(update, :update)
 
     params = [filter, update]
     query = %Query{action: :update_many, extra: coll}

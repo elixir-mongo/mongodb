@@ -29,11 +29,11 @@ defmodule Mongo.IdServer do
   end
 
   def init([]) do
-    :ets.new(@name, [:named_table, :public, write_concurrency: true])
-    :ets.insert(@name, [machineprocid: {machine_id(), process_id()}])
-    :ets.insert(@name, gen_counters(0..@num_counters))
+    @name = :ets.new(@name, [:named_table, :public, write_concurrency: true])
+    true = :ets.insert(@name, [machineprocid: {machine_id(), process_id()}])
+    true = :ets.insert(@name, gen_counters(0..@num_counters))
 
-    Process.send_after(self(), :reset_counters, @reset_timer)
+    _ = Process.send_after(self(), :reset_counters, @reset_timer)
 
     {:ok, opposite_on_window(:calendar.universal_time)}
   end

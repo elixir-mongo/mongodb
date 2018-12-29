@@ -139,7 +139,7 @@ defmodule Mongo.UrlParser do
 
   defp resolve_srv_url(frags), do: frags
 
-  @spec get_host_srv([tuple]) :: {:ok, String.t()}
+  @spec get_host_srv([{term, term, term, term}]) :: {:ok, String.t()}
   defp get_host_srv(srv) when is_list(srv) do
     hosts =
       srv
