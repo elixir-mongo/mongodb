@@ -61,7 +61,7 @@ defmodule Mongo do
   @type conn :: DbConnection.Conn
   @type collection :: String.t
   @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
-  @type result(t) :: :ok | {:ok, t} | {:ok, nil}| {:error, Mongo.Error.t}
+  @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t}
   @type result!(t) :: nil | t | no_return
 
   defmacrop bangify(result) do
@@ -194,7 +194,7 @@ defmodule Mongo do
       the document.
     * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
   """
-  @spec find_one_and_update(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document)
+  @spec find_one_and_update(GenServer.server, collection, BSON.document, BSON.document, Keyword.t) :: result(BSON.document) | {:ok, nil}
   def find_one_and_update(topology_pid, coll, filter, update, opts \\ []) do
     _ = modifier_docs(update, :update)
     query = [
