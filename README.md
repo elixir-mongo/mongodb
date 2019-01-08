@@ -100,7 +100,13 @@ def start(_type, _args) do
 end
 ```
 
-Then you can use the pool as following:
+DBConnection defaults to [10 Poolboy connections](https://hexdocs.pm/db_connection/1.1.3/DBConnection.Poolboy.html#content), but you can change that with the `:pool_size` option:
+```elixir
+{:ok, conn} = Mongo.start_link(name: :mongo, database: "test", pool: DBConnection.Poolboy, pool_size: 2)
+```
+ 
+
+Remember to specify the pool in each query. There is [some discussion](https://github.com/ankhers/mongodb/issues/175) on how to change this requirement.
 
 ```elixir
 Mongo.find(:mongo, "collection", %{}, limit: 20, pool: DBConnection.Poolboy)
