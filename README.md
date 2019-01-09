@@ -100,7 +100,7 @@ def start(_type, _args) do
 end
 ```
 
-DBConnection defaults to [10 Poolboy connections](https://hexdocs.pm/db_connection/1.1.3/DBConnection.Poolboy.html#content), but you can change that with the `:pool_size` option:
+DBConnection.Poolboy defaults to [10 Poolboy connections](https://hexdocs.pm/db_connection/1.1.3/DBConnection.Poolboy.html#content), but you can change that with the `:pool_size` option:
 ```elixir
 {:ok, conn} = Mongo.start_link(name: :mongo, database: "test", pool: DBConnection.Poolboy, pool_size: 2)
 ```
