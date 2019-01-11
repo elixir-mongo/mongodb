@@ -79,7 +79,8 @@ defmodule Mongo.Topology do
               type: type,
               set_name: set_name,
               servers: servers,
-              local_threshold_ms: local_threshold_ms
+              local_threshold_ms: local_threshold_ms,
+              heartbeat_frequency_ms: @heartbeat_frequency_ms
             }),
             seeds: seeds,
             opts: opts,
