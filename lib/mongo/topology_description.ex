@@ -146,7 +146,7 @@ defmodule Mongo.TopologyDescription do
             end)
           server
         :replica_set_with_primary ->
-          servers
+          topology.servers
           |> Enum.filter(fn {_, server} ->
             server.type == :rs_primary
           end)
@@ -160,13 +160,13 @@ defmodule Mongo.TopologyDescription do
             case topology.type do
               :replica_set_no_primary ->
                 staleness =
-                  extra.last_write_date + (server.last_update_time - extra.last_update_time) -
-                  server.last_write_date + topology.heartbeat_frequency_ms
+                  DateTime.diff(extra.last_write_date, server.last_write_date, :milliseconds) + DateTime.diff(server.last_update_time, extra.last_update_time, :milliseconds) + topology.heartbeat_frequency_ms
                 staleness <= max_staleness_ms
 
               :replica_set_with_primary ->
+                {_, extra_props} = extra
                 staleness =
-                  extra.last_write_date - server.last_write_date + topology.heartbeat_frequency_ms
+                  DateTime.diff(extra_props.last_write_date, server.last_write_date, :milliseconds) + topology.heartbeat_frequency_ms
                 staleness <= max_staleness_ms
             end
           _ ->
