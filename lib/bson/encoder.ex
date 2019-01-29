@@ -26,7 +26,7 @@ defmodule BSON.Encoder do
     do: value
 
   def encode(%DateTime{} = datetime) do
-    unix_ms = DateTime.to_unix(datetime, :milliseconds)
+    unix_ms = DateTime.to_unix(datetime, :millisecond)
     <<unix_ms::int64>>
   end
 

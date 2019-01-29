@@ -86,7 +86,7 @@ defmodule Mongo.Monitor do
   ## Private functions
 
   defp check(state) do
-    diff = :os.system_time(:milli_seconds) - state.server_description.last_update_time
+    diff = :os.system_time(:millisecond) - state.server_description.last_update_time
     if diff < @min_heartbeat_frequency_ms do
       {:noreply, state, diff}
     else
@@ -107,8 +107,8 @@ defmodule Mongo.Monitor do
         {:error, e}
     end
     finish_time = System.monotonic_time
-    rtt = System.convert_time_unit(finish_time - start_time, :native, :milliseconds)
-    finish_time = System.convert_time_unit(finish_time, :native, :milliseconds)
+    rtt = System.convert_time_unit(finish_time - start_time, :native, :millisecond)
+    finish_time = System.convert_time_unit(finish_time, :native, :millisecond)
 
     {result, finish_time, rtt}
   end

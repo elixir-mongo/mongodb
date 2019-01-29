@@ -69,7 +69,7 @@ defmodule BSON.Decoder do
   end
 
   defp type(@type_datetime, <<unix_ms::int64, rest::binary>>) do
-    {DateTime.from_unix!(unix_ms, :milliseconds), rest}
+    {DateTime.from_unix!(unix_ms, :millisecond), rest}
   end
 
   defp type(@type_undefined, rest) do
