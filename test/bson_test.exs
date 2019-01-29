@@ -45,7 +45,7 @@ defmodule BSONTest do
   @map11 %{"g" => true}
   @bin11 <<9, 0, 0, 0, 8, 103, 0, 1, 0>>
 
-  @map12 %{"h" => DateTime.from_unix!(12345, :milliseconds)}
+  @map12 %{"h" => DateTime.from_unix!(12345, :millisecond)}
   @bin12 <<16, 0, 0, 0, 9, 104, 0, 57, 48, 0, 0, 0, 0, 0, 0, 0>>
 
   @map13 %{"i" => nil}
