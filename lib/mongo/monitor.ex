@@ -107,8 +107,8 @@ defmodule Mongo.Monitor do
         {:error, e}
     end
     finish_time = System.monotonic_time
-    rtt = System.convert_time_unit(finish_time - start_time, :native, :milliseconds)
-    finish_time = System.convert_time_unit(finish_time, :native, :milliseconds)
+    rtt = System.convert_time_unit(finish_time - start_time, :native, :millisecond)
+    finish_time = System.convert_time_unit(finish_time, :native, :millisecond)
 
     {result, finish_time, rtt}
   end
