@@ -29,6 +29,10 @@ defmodule Mongo.Topology do
   def wait_for_connection(pid, timeout, start_time) do
     timeout = timeout - System.convert_time_unit(System.monotonic_time - start_time, :native, :milliseconds)
 
+    wait_for_connection(pid, timeout)
+  end
+
+  defp wait_for_connection(pid, timeout) when timeout >= 0 do
     try do
       case GenServer.call(pid, :wait_for_connection, timeout) do
         {:new_connection, server} ->
@@ -40,6 +44,9 @@ defmodule Mongo.Topology do
       :exit, {:timeout, _} ->
         {:error, :selection_timeout}
     end
+  end
+  defp wait_for_connection(pid, _timeout) do
+    wait_for_connection(pid, 0)
   end
 
   def topology(pid) do
