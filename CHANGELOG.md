@@ -10,6 +10,7 @@
   * Fixed a connection leak
   * Properly parse write concern for URL
   * Properly follow read preference for `secondary_preferred`
+  * Fixed an issue where the topology could crash due to a negative timeout
 
 ## v0.4.7
 

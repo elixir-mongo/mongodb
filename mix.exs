@@ -1,13 +1,13 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.4.7"
+  @version "0.4.8-dev"
 
   def project do
     [app: :mongodb,
      version: @version,
      elixirc_paths: elixirc_paths(Mix.env),
-     elixir: "~> 1.4",
+     elixir: "~> 1.5",
      name: "Mongodb",
      deps: deps(),
      docs: docs(),
