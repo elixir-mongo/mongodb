@@ -231,7 +231,7 @@ defmodule Mongo.Topology do
         server_description,
         self(),
         @heartbeat_frequency_ms,
-        Keyword.put(connopts, :pool, DBConnection.Connection)
+        Keyword.put(connopts, :pool, DBConnection.ConnectionPool)
       ]
 
       :ok = Mongo.Events.notify(%ServerOpeningEvent{address: address, topology_pid: self()})
