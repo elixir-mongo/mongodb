@@ -417,7 +417,7 @@ defmodule Mongo.Test do
 
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_one!(c.pid, coll, %{foo: 42})
 
-    assert nil == Mongo.delete_one!(c.pid, coll, %{}, w: 0)
+    assert %Mongo.DeleteResult{acknowledged: false} == Mongo.delete_one!(c.pid, coll, %{}, w: 0)
   end
 
   test "delete_many", c do
@@ -437,7 +437,7 @@ defmodule Mongo.Test do
 
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_many!(c.pid, coll, %{foo: 42})
 
-    assert nil == Mongo.delete_many!(c.pid, coll, %{}, w: 0)
+    assert %Mongo.DeleteResult{acknowledged: false} == Mongo.delete_many!(c.pid, coll, %{}, w: 0)
   end
 
   test "replace_one", c do

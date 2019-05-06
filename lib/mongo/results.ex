@@ -37,10 +37,11 @@ defmodule Mongo.DeleteResult do
   """
 
   @type t :: %__MODULE__{
+    acknowledged: boolean,
     deleted_count: non_neg_integer
   }
 
-  defstruct [:deleted_count]
+  defstruct [acknowledged: true, deleted_count: 0]
 end
 
 defmodule Mongo.UpdateResult do

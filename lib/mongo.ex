@@ -670,13 +670,7 @@ defmodule Mongo do
   """
   @spec delete_one(GenServer.server, collection, BSON.document, Keyword.t) :: result(Mongo.DeleteResult.t)
   def delete_one(topology_pid, coll, filter, opts \\ []) do
-    params = [filter]
-    query = %Query{action: :delete_one, extra: coll}
-    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, _query, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-         :ok <- maybe_failure(reply),
-         {:ok, %{"n" => n}} <- get_last_error(reply),
-         do: {:ok, %Mongo.DeleteResult{deleted_count: n}}
+    do_delete(topology_pid, coll, filter, 1, opts)
   end
 
   @doc """
@@ -692,13 +686,7 @@ defmodule Mongo do
   """
   @spec delete_many(GenServer.server, collection, BSON.document, Keyword.t) :: result(Mongo.DeleteResult.t)
   def delete_many(topology_pid, coll, filter, opts \\ []) do
-    params = [filter]
-    query = %Query{action: :delete_many, extra: coll}
-    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, _query, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-         :ok <- maybe_failure(reply),
-         {:ok, %{"n" => n}} <- get_last_error(reply),
-         do: {:ok, %Mongo.DeleteResult{deleted_count: n}}
+    do_delete(topology_pid, coll, filter, 0, opts)
   end
 
   @doc """
@@ -707,6 +695,39 @@ defmodule Mongo do
   @spec delete_many!(GenServer.server, collection, BSON.document, Keyword.t) :: result!(Mongo.DeleteResult.t)
   def delete_many!(topology_pid, coll, filter, opts \\ []) do
     bangify(delete_many(topology_pid, coll, filter, opts))
+  end
+
+  defp do_delete(topology_pid, coll, filter, limit, opts) do
+    write_concern = filter_nils(%{
+      w: Keyword.get(opts, :w),
+      j: Keyword.get(opts, :j),
+      wtimeout: Keyword.get(opts, :wtimeout)
+    })
+
+    delete = filter_nils([
+      q: filter,
+      limit: limit,
+      collation: Keyword.get(opts, :collation)
+    ])
+
+    query = filter_nils([
+      delete: coll,
+      deletes: [delete],
+      ordered: Keyword.get(opts, :ordered),
+      writeConcern: write_concern
+    ])
+
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
+         {:ok, doc} <- direct_command(conn, query, opts) do
+      case doc do
+        %{"writeErrors" => write_errors} ->
+          {:error, %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: write_errors}}
+        %{"n" => n} ->
+          {:ok, %Mongo.DeleteResult{deleted_count: n}}
+        %{"ok" => ok} when ok == 1 ->
+          {:ok, %Mongo.DeleteResult{acknowledged: false}}
+      end
+    end
   end
 
   @doc """
@@ -823,12 +844,7 @@ defmodule Mongo do
         %{"writeErrors" => write_errors} ->
           {:error, %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: write_errors}}
         %{"n" => n, "nModified" => n_modified} ->
-          case Map.get(write_concern, :w) do
-            0 ->
-              {:ok, %Mongo.UpdateResult{acknowledged: false}}
-            _ ->
-              {:ok, %Mongo.UpdateResult{matched_count: n, modified_count: n_modified, upserted_ids: upserted_ids(doc["upserted"])}}
-          end
+          {:ok, %Mongo.UpdateResult{matched_count: n, modified_count: n_modified, upserted_ids: upserted_ids(doc["upserted"])}}
         %{"ok" => ok} when ok == 1 ->
           {:ok, %Mongo.UpdateResult{acknowledged: false}}
       end
