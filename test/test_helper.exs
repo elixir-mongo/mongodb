@@ -11,7 +11,7 @@ version =
   |> List.to_tuple
 
 options = []
-options = if System.get_env("CI") do [ssl: true] ++ options else options end
+options = if System.get_env("CI") do [ssl: true, socket: true] ++ options else options end
 options = if version < {3, 4, 0} do [mongo_3_4: true] ++ options else options end
 
 ExUnit.configure exclude: options

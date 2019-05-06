@@ -62,9 +62,7 @@ defmodule Mongo.Topology do
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#configuration
   @doc false
   def init(opts) do
-    seeds = Keyword.get(opts, :seeds, [
-      Keyword.get(opts, :hostname, "localhost") <> ":" <> to_string(Keyword.get(opts, :port, 27017))
-    ])
+    seeds = Keyword.get(opts, :seeds, [seed(opts)])
     type = Keyword.get(opts, :type, :unknown)
     set_name = Keyword.get(opts, :set_name, nil)
     local_threshold_ms = Keyword.get(opts, :local_threshold_ms, 15)
@@ -96,6 +94,13 @@ defmodule Mongo.Topology do
           }
           |> reconcile_servers
         {:ok, state}
+    end
+  end
+
+  defp seed(opts) do
+    case Mongo.Protocol.Utils.hostname_port(opts) do
+      {{:local, socket}, 0} -> socket
+      {hostname, port} -> "#{hostname}:#{port}"
     end
   end
 

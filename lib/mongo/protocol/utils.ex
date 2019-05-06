@@ -3,6 +3,21 @@ defmodule Mongo.Protocol.Utils do
   import Kernel, except: [send: 2]
   import Mongo.Messages
 
+  def hostname_port(opts) do
+    port = opts[:port] || 27_017
+    case Keyword.fetch(opts, :socket) do
+      {:ok, socket} ->
+        {{:local, socket}, 0}
+      :error ->
+        case Keyword.fetch(opts, :socket_dir) do
+          {:ok, dir} ->
+            {{:local, "#{dir}/mongodb-#{port}.sock"}, 0}
+          :error ->
+            {to_charlist(opts[:hostname] || "localhost"), port}
+        end
+    end
+  end
+
   def message(id, ops, s) when is_list(ops) do
     with :ok <- send(ops, s),
          {:ok, ^id, reply} <- recv(s),
