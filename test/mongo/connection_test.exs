@@ -37,6 +37,20 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
+  defp connect_socket_dir do
+    assert {:ok, pid} =
+      Mongo.start_link(socket_dir: "/tmp", database: "mongodb_test")
+
+    pid
+  end
+
+  defp connect_socket do
+    assert {:ok, pid} =
+      Mongo.start_link(socket: "/tmp/mongodb-27017.sock", database: "mongodb_test")
+
+    pid
+  end
+
   defp tcp_count do
     Enum.count(:erlang.ports(), fn port ->
       case :erlang.port_info(port, :name) do
@@ -189,5 +203,19 @@ defmodule Mongo.ConnectionTest do
       # there should be 10 connections with connection_type: :monitor
       assert tcp_count() == 10
     end)
+  end
+
+  test "connect socket_dir" do
+    pid = connect_socket_dir()
+    {:ok, conn, _, _} = Mongo.select_server(pid, :read)
+    assert {:ok, %{docs: [%{"ok" => 1.0}]}} =
+      Mongo.raw_find(conn, "$cmd", %{ping: 1}, %{}, [batch_size: 1])
+  end
+
+  test "connect socket" do
+    pid = connect_socket()
+    {:ok, conn, _, _} = Mongo.select_server(pid, :read)
+    assert {:ok, %{docs: [%{"ok" => 1.0}]}} =
+      Mongo.raw_find(conn, "$cmd", %{ping: 1}, %{}, [batch_size: 1])
   end
 end

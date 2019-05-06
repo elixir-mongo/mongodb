@@ -84,7 +84,14 @@ defmodule Mongo do
     * `:hostname` - The host to connect to (require)
     * `:port` - The port to connect to your server (default: 27017)
     * `:url` - A mongo connection url. Can be used in place of `:hostname` and
-      `:database` (optional)
+    * `:socket_dir` - Connect to MongoDB via UNIX sockets in the given directory.
+      The socket name is derived based on the port. This is the preferred method
+      for configuring sockets and it takes precedence over the hostname. If you
+      are connecting to a socket outside of the MongoDB convection, use
+      `:socket` instead.
+    * `:socket` - Connect to MongoDB via UNIX sockets in the given path.
+      This option takes precedence over `:hostname` and `:socket_dir`.
+    * `:database` (optional)
     * `:seeds` - A list of host names in the cluster. Can be used in place of
       `:hostname` (optional)
     * `:username` - The User to connect with (optional)
@@ -100,7 +107,7 @@ defmodule Mongo do
       options, this option must be included with all requests contacting the
       pool if not `DBConnection.Connection` (default: `DBConnection.Connection`)
     * `:idle` - The idle strategy, `:passive` to avoid checkin when idle and
-      `:active` to checking when idle (default: `:passive`)
+    * `:active` to checking when idle (default: `:passive`)
     * `:idle_timeout` - The idle timeout to ping the database (default: `1_000`)
     * `:connect_timeout_ms` - The maximum timeout for the initial connection
       (default: `5_000`)
