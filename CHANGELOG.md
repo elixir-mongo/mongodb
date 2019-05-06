@@ -1,4 +1,4 @@
-## v0.4.8-dev
+## v0.5.0
 
 * Enhancements
   * Added hostname and port to exceptions
