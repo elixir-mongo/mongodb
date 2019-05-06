@@ -1,13 +1,13 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.4.8-dev"
+  @version "0.5.0-dev"
 
   def project do
     [app: :mongodb,
      version: @version,
      elixirc_paths: elixirc_paths(Mix.env),
-     elixir: "~> 1.4",
+     elixir: "~> 1.5",
      name: "Mongodb",
      deps: deps(),
      docs: docs(),
@@ -37,13 +37,13 @@ defmodule Mongodb.Mixfile do
   defp deps do
     [
       {:connection,    "~> 1.0"},
-      {:db_connection, "~> 1.1"},
-      {:decimal,       "~> 1.0"},
+      {:db_connection, "~> 2.0"},
+      {:decimal,       "~> 1.5"},
       {:poolboy,       ">= 0.0.0", only: :test},
       {:jason,         "~> 1.0.0", only: :test},
       {:ex_doc,        ">= 0.0.0", only: :dev},
       {:earmark,       ">= 0.0.0", only: :dev},
-      {:dialyxir, "~> 1.0.0-rc.4", only: [:dev], runtime: false}
+      # {:dialyxir, "~> 1.0.0-rc.4", only: [:dev], runtime: false}
     ]
   end
 

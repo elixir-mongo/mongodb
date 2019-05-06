@@ -5,6 +5,7 @@
   * Added support for x509 authentication
   * Allow passing only partial `read_preference` information
   * Add support for GridFS
+  * Update to `db_connection` 2.x
 
 * Bug Fixes
   * Fixed a connection leak
