@@ -569,13 +569,33 @@ defmodule Mongo do
     assert_single_doc!(doc)
     {[id], [doc]} = assign_ids([doc])
 
-    params = [doc]
-    query = %Query{action: :insert_one, extra: coll}
+    write_concern = filter_nils(%{
+      w: Keyword.get(opts, :w),
+      j: Keyword.get(opts, :j),
+      wtimeout: Keyword.get(opts, :wtimeout)
+    })
+
+    query = filter_nils([
+      insert: coll,
+      documents: [doc],
+      ordered: Keyword.get(opts, :ordered),
+      writeConcern: write_concern,
+      bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
+    ])
     with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, _query, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-         :ok <- maybe_failure(reply),
-         {:ok, _doc} <- get_last_error(reply),
-         do: {:ok, %Mongo.InsertOneResult{inserted_id: id}}
+         {:ok, doc} <- direct_command(conn, query, opts) do
+      case doc do
+        %{"writeErrors" => _} ->
+          {:error, %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: doc["writeErrors"]}}
+        _ ->
+          case Map.get(write_concern, :w) do
+            0 ->
+              {:ok, %Mongo.InsertOneResult{acknowledged: false}}
+            _ ->
+              {:ok, %Mongo.InsertOneResult{inserted_id: id}}
+          end
+      end
+    end
   end
 
   @doc """
@@ -609,18 +629,32 @@ defmodule Mongo do
     assert_many_docs!(docs)
     {ids, docs} = assign_ids(docs)
 
-    # NOTE: Only for 2.4
-    ordered? = Keyword.get(opts, :ordered, true)
-    opts = [continue_on_error: not ordered?] ++ opts
-
-    params = docs
-    query = %Query{action: :insert_many, extra: coll}
+    write_concern = filter_nils(%{
+      w: Keyword.get(opts, :w),
+      j: Keyword.get(opts, :j),
+      wtimeout: Keyword.get(opts, :wtimeout)
+    })
+    query = filter_nils([
+      insert: coll,
+      documents: docs,
+      ordered: Keyword.get(opts, :ordered),
+      writeConcern: write_concern,
+      bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
+    ])
     with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, _query, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-         :ok <- maybe_failure(reply),
-         {:ok, _doc} <- get_last_error(reply),
-         ids = index_map(ids, 0, %{}),
-         do: {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
+         {:ok, doc} <- direct_command(conn, query, opts) do
+      case doc do
+        %{"writeErrors" => _} ->
+          {:error, %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: doc["writeErrors"]}}
+        _ ->
+          case Map.get(write_concern, :w) do
+            0 ->
+              {:ok, %Mongo.InsertManyResult{acknowledged: false}}
+            _ ->
+              {:ok, %Mongo.InsertManyResult{inserted_ids: ids}}
+          end
+      end
+    end
   end
 
   @doc """
