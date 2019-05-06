@@ -721,19 +721,7 @@ defmodule Mongo do
   def replace_one(topology_pid, coll, filter, replacement, opts \\ []) do
     _ = modifier_docs(replacement, :replace)
 
-    params = [filter, replacement]
-    query = %Query{action: :replace_one, extra: coll}
-    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, _query, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-         :ok <- maybe_failure(reply),
-         {:ok, doc} <- get_last_error(reply) do
-      case doc do
-        %{"n" => 1, "upserted" => upserted_id} ->
-          {:ok, %Mongo.UpdateResult{matched_count: 0, modified_count: 1, upserted_id: upserted_id}}
-        %{"n" => n} ->
-          {:ok, %Mongo.UpdateResult{matched_count: n, modified_count: n}}
-      end
-    end
+    do_update(topology_pid, coll, filter, replacement, false, opts)
   end
 
   @doc """
@@ -767,19 +755,7 @@ defmodule Mongo do
   def update_one(topology_pid, coll, filter, update, opts \\ []) do
     _ = modifier_docs(update, :update)
 
-    params = [filter, update]
-    query = %Query{action: :update_one, extra: coll}
-    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, _qurey, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-         :ok <- maybe_failure(reply),
-         {:ok, doc} <- get_last_error(reply) do
-      case doc do
-        %{"n" => 1, "upserted" => upserted_id} ->
-          {:ok, %Mongo.UpdateResult{matched_count: 0, modified_count: 1, upserted_id: upserted_id}}
-        %{"n" => n} ->
-          {:ok, %Mongo.UpdateResult{matched_count: n, modified_count: n}}
-      end
-    end
+    do_update(topology_pid, coll, filter, update, false, opts)
   end
 
   @doc """
@@ -806,19 +782,7 @@ defmodule Mongo do
   def update_many(topology_pid, coll, filter, update, opts \\ []) do
     _ = modifier_docs(update, :update)
 
-    params = [filter, update]
-    query = %Query{action: :update_many, extra: coll}
-    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, _query, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-         :ok <- maybe_failure(reply),
-         {:ok, doc} <- get_last_error(reply) do
-      case doc do
-        %{"n" => 1, "upserted" => upserted_id} ->
-          {:ok, %Mongo.UpdateResult{matched_count: 0, modified_count: 1, upserted_id: upserted_id}}
-        %{"n" => n} ->
-          {:ok, %Mongo.UpdateResult{matched_count: n, modified_count: n}}
-      end
-    end
+    do_update(topology_pid, coll, filter, update, true, opts)
   end
 
   @doc """
@@ -828,6 +792,51 @@ defmodule Mongo do
   def update_many!(topology_pid, coll, filter, update, opts \\ []) do
     bangify(update_many(topology_pid, coll, filter, update, opts))
   end
+
+  defp do_update(topology_pid, coll, filter, update, multi, opts) do
+    write_concern = filter_nils(%{
+      w: Keyword.get(opts, :w),
+      j: Keyword.get(opts, :j),
+      wtimeout: Keyword.get(opts, :wtimeout)
+    })
+
+    update = filter_nils([
+      q: filter,
+      u: update,
+      upsert: Keyword.get(opts, :upsert),
+      multi: multi,
+      collation: Keyword.get(opts, :collation),
+      arrayFilters: Keyword.get(opts, :array_filters)
+    ])
+
+    query = filter_nils([
+      update: coll,
+      updates: [update],
+      ordered: Keyword.get(opts, :ordered),
+      writeConcern: write_concern,
+      bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
+    ])
+
+    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
+         {:ok, doc} <- direct_command(conn, query, opts) do
+      case doc do
+        %{"writeErrors" => write_errors} ->
+          {:error, %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: write_errors}}
+        %{"n" => n, "nModified" => n_modified} ->
+          case Map.get(write_concern, :w) do
+            0 ->
+              {:ok, %Mongo.UpdateResult{acknowledged: false}}
+            _ ->
+              {:ok, %Mongo.UpdateResult{matched_count: n, modified_count: n_modified, upserted_ids: upserted_ids(doc["upserted"])}}
+          end
+        %{"ok" => ok} when ok == 1 ->
+          {:ok, %Mongo.UpdateResult{acknowledged: false}}
+      end
+    end
+  end
+
+  defp upserted_ids(nil), do: nil
+  defp upserted_ids(docs), do: Enum.map(docs, fn d -> d["_id"] end)
 
   @doc """
   Returns a cursor to enumerate all indexes
