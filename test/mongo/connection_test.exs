@@ -205,6 +205,7 @@ defmodule Mongo.ConnectionTest do
     end)
   end
 
+  @tag :socket
   test "connect socket_dir" do
     pid = connect_socket_dir()
     {:ok, conn, _, _} = Mongo.select_server(pid, :read)
@@ -212,6 +213,7 @@ defmodule Mongo.ConnectionTest do
       Mongo.raw_find(conn, "$cmd", %{ping: 1}, %{}, [batch_size: 1])
   end
 
+  @tag :socket
   test "connect socket" do
     pid = connect_socket()
     {:ok, conn, _, _} = Mongo.select_server(pid, :read)
