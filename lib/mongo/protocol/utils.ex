@@ -4,7 +4,7 @@ defmodule Mongo.Protocol.Utils do
   import Mongo.Messages
 
   def hostname_port(opts) do
-    port = opts[:port] || 27017
+    port = opts[:port] || 27_017
     case Keyword.fetch(opts, :socket) do
       {:ok, socket} ->
         {{:local, socket}, 0}
@@ -13,7 +13,7 @@ defmodule Mongo.Protocol.Utils do
           {:ok, dir} ->
             {{:local, "#{dir}/mongodb-#{port}.sock"}, 0}
           :error ->
-            {(opts[:hostname] || "localhost") |> to_charlist, port}
+            {to_charlist(opts[:hostname] || "localhost"), port}
         end
     end
   end
