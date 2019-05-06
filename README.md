@@ -6,7 +6,7 @@
 
 ## Features
 
-  * Supports MongoDB versions 3.0, 3.2, 3.4, 3.6, 4.0
+  * Supports MongoDB versions 3.4, 3.6, 4.0
   * Connection pooling (through db_connection)
   * Streaming cursors
   * Performant ObjectID generation
@@ -104,7 +104,7 @@ DBConnection.Poolboy defaults to [10 Poolboy connections](https://hexdocs.pm/db_
 ```elixir
 {:ok, conn} = Mongo.start_link(name: :mongo, database: "test", pool: DBConnection.Poolboy, pool_size: 2)
 ```
- 
+
 
 Remember to specify the pool in each query. There is [some discussion](https://github.com/ankhers/mongodb/issues/175) on how to change this requirement.
 
@@ -124,7 +124,7 @@ This will allow for scenarios where the first `"hostname1.net:27017"` is unreach
 
 ### Auth mechanisms
 
-For versions of Mongo 3.0 and greater, the auth mechanism defaults to SCRAM. If you'd like to use [MONGODB-X509](https://docs.mongodb.com/manual/tutorial/configure-x509-client-authentication/#authenticate-with-a-x-509-certificate) 
+For versions of Mongo 3.0 and greater, the auth mechanism defaults to SCRAM. If you'd like to use [MONGODB-X509](https://docs.mongodb.com/manual/tutorial/configure-x509-client-authentication/#authenticate-with-a-x-509-certificate)
 authentication, you can specify that as a `start_link` option.
 
 ```elixir
@@ -134,10 +134,10 @@ authentication, you can specify that as a `start_link` option.
 ### AWS, TLS and Erlang SSL ciphers
 
 Some MongoDB cloud providers (notably AWS) require a particular TLS cipher that isn't enabled by default in the Erlang SSL module. In order to connect to these services,
-you'll want to add this cipher to your `ssl_opts`: 
+you'll want to add this cipher to your `ssl_opts`:
 
 ```elixir
-{:ok, pid} = Mongo.start_link(database: "test", 
+{:ok, pid} = Mongo.start_link(database: "test",
       ssl_opts: [
         ciphers: ['AES256-GCM-SHA384'],
         cacertfile: "...",
