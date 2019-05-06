@@ -1,3 +1,9 @@
+## v0.5.1-dev
+
+* Enhancements
+  * Added support for connecting via UNIX sockets (`:socket` and `:socket_dir`)
+  * Start using write commands for acknowledged writes
+
 ## v0.5.0
 
 * Enhancements
