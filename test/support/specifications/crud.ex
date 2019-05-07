@@ -14,7 +14,9 @@ defmodule Mongo.Specification.CRUD do
             operation = test_json["operation"]
             outcome = test_json["outcome"]
 
-            Mongo.insert_many!(mongo, collection, data)
+            if data != [] do
+              Mongo.insert_many!(mongo, collection, data)
+            end
 
             name = operation_name(operation["name"])
             arguments = operation["arguments"]

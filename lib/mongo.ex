@@ -343,8 +343,7 @@ defmodule Mongo do
 
     case documents do
       [%{"n" => count}] -> {:ok, count}
-      [] -> {:error, :nothing_returned}
-      _ -> {:error, :too_many_documents_returned}
+      [] -> {:ok, 0}
     end
   end
 
