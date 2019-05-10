@@ -121,12 +121,12 @@ defmodule Mongo.Protocol.Utils do
   end
 
   defp send_error(reason, s) do
-    error = Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)
+    error = Mongo.Error.exception(tag: :tcp, action: "send", reason: reason, host: s.host)
     {:disconnect, error, s}
   end
 
   defp recv_error(reason, s) do
-    error = Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)
+    error = Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason, host: s.host)
     {:disconnect, error, s}
   end
 
