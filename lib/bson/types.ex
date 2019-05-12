@@ -29,7 +29,8 @@ defmodule BSON.ObjectId do
   @type t :: %__MODULE__{value: <<_::96>>}
 
   @doc """
-  Creates a new ObjectId from the consisting parts
+  Creates a new ObjectId from the consisting parts.
+  For generating a new `BSON.ObjectId` you'd probably want to use `Mongo.object_id/0`.
   """
   def new(machine_id, proc_id, secs, counter) do
     value = <<secs       :: unsigned-big-32,
