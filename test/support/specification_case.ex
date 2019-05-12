@@ -12,13 +12,16 @@ defmodule Mongo.SpecificationCase do
     end
   end
 
+  # TODO: This should be using a connection and not shell out.
   def mongo_version do
     {string, 0} = System.cmd("mongod", ~w'--version')
     ["db version v" <> version, _] = String.split(string, "\n", parts: 2)
 
-    version
-    |> String.split(".")
-    |> Enum.map(&elem(Integer.parse(&1), 0))
-    |> List.to_tuple
+    Mongo.Version.from_string(version)
+  end
+
+  def min_server_version?(nil), do: true
+  def min_server_version?(number) do
+    mongo_version() >= Mongo.Version.from_string(number)
   end
 end

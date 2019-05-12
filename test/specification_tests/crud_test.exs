@@ -3,17 +3,6 @@ defmodule Mongo.SpecificationTests.CRUDTest do
   import Mongo.Specification.CRUD.Helpers
   require Mongo.Specification.CRUD
 
-  def min_server_version?(nil), do: true
-  def min_server_version?(number) do
-    min_server_version =
-      number <> ".0"
-      |> String.split(".")
-      |> Enum.map(&elem(Integer.parse(&1), 0))
-      |> List.to_tuple()
-
-    mongo_version() >= min_server_version
-  end
-
   setup_all do
     {:ok, pid} = Mongo.start_link(database: "mongodb_test")
 
