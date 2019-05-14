@@ -71,7 +71,7 @@ Then run `mix deps.get` to fetch dependencies.
 
 ### Connection pooling
 
-By default mongodb will start a single connection, but it also supports pooling with the `:pool` option. For poolboy add the `pool: DBConnection.Poolboy` option to `Mongo.start_link` and to all function calls in `Mongo` using the pool.
+By default mongodb will start a single connection, but it also supports pooling with the `:pool_size` option.
 
 ```elixir
 # Starts an unpooled connection
@@ -92,7 +92,7 @@ def start(_type, _args) do
   import Supervisor.Spec
 
   children = [
-    worker(Mongo, [[name: :mongo, database: "test", pool: DBConnection.Poolboy]])
+    worker(Mongo, [[name: :mongo, database: "test", pool_size: 2]])
   ]
 
   opts = [strategy: :one_for_one, name: MyApp.Supervisor]
@@ -100,17 +100,19 @@ def start(_type, _args) do
 end
 ```
 
-DBConnection.Poolboy defaults to [10 Poolboy connections](https://hexdocs.pm/db_connection/1.1.3/DBConnection.Poolboy.html#content), but you can change that with the `:pool_size` option:
-```elixir
-{:ok, conn} = Mongo.start_link(name: :mongo, database: "test", pool: DBConnection.Poolboy, pool_size: 2)
-```
-
-
-Remember to specify the pool in each query. There is [some discussion](https://github.com/ankhers/mongodb/issues/175) on how to change this requirement.
+Simple start with pooling:
 
 ```elixir
-Mongo.find(:mongo, "collection", %{}, limit: 20, pool: DBConnection.Poolboy)
+{:ok, conn} = Mongo.start_link(name: :mongo, database: "test", pool_size: 2)
 ```
+
+Operate the mongodb with specify pool name in each query:
+
+```elixir
+Mongo.find(:mongo, "collection", %{}, limit: 20)
+```
+
+More pool options in [here](https://hexdocs.pm/db_connection/2.0.6/DBConnection.html#start_link/2-options).
 
 ### Replica Sets
 
