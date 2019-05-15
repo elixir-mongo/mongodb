@@ -1,8 +1,12 @@
-## v0.5.1-dev
+## v0.5.1
 
 * Enhancements
   * Added support for connecting via UNIX sockets (`:socket` and `:socket_dir`)
   * Start using write commands for acknowledged writes
+
+* Bug Fixes
+  * Added missing host parameter in exception call
+  * No longer starting `:pool_size` number of connections for internal monitors
 
 ## v0.5.0
 
