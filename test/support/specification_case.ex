@@ -5,6 +5,7 @@ defmodule Mongo.SpecificationCase do
 
   using do
     quote do
+      @change_stream_tests Path.wildcard("test/support/change_stream_tests/**/*.json")
       @crud_tests_v1 Path.wildcard("test/support/crud_tests/v1/**/*.json")
 
       import MongoTest.Case
