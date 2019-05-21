@@ -171,7 +171,10 @@ defmodule Mongo.Topology do
             |> connect_opts_from_address(host)
 
           {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
-          connection_pools = Map.put(state.connection_pools, host, pool)
+          connection_pools = Map.update(state.connection_pools, host, pool, fn old_pool ->
+            GenServer.stop(old_pool)
+            pool
+          end)
           Enum.each(state.waiting_pids, fn from ->
             GenServer.reply(from, {:new_connection, host})
           end)
