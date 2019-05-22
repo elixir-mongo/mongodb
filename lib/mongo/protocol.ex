@@ -174,14 +174,14 @@ defmodule Mongo.Protocol do
   @doc """
   DBConnection callback
   """
-  def handle_deallocate(query, cursor, opts, state) do
+  def handle_deallocate(_query, _cursor, _opts, state) do
     {:ok, :ok, state}
   end
 
   @doc """
   DBConnection callback
   """
-  def handle_declare(query, params, opts, state) do
+  def handle_declare(query, _params, _opts, state) do
     {:ok, query, :ok, state}
   end
 
@@ -229,28 +229,28 @@ defmodule Mongo.Protocol do
   @doc """
   DBConnection callback
   """
-  def handle_fetch(query, cursor, opts, state) do
+  def handle_fetch(_query, _cursor, _opts, state) do
     {:cont, :ok, state}
   end
 
   @doc """
   DBConnection callback
   """
-  def handle_prepare(query, opts, state) do
+  def handle_prepare(query, _opts, state) do
     {:ok, query, state}
   end
 
   @doc """
   DBConnection callback
   """
-  def handle_rollback(opts, state) do
+  def handle_rollback(_opts, state) do
     {:idle, state}
   end
 
   @doc """
   DBConnection callback
   """
-  def handle_status(opts, state) do
+  def handle_status(_opts, state) do
     {:idle, state}
   end
 
