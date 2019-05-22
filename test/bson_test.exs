@@ -72,7 +72,7 @@ defmodule BSONTest do
   @map20 %{"p" => :BSON_max}
   @bin20 <<8, 0, 0, 0, 127, 112, 0, 0>>
 
-  @map21 %{"q" => %BSON.Binary{binary: <<1,2,3>>, subtype: :binary_old}}
+  @map21 %{"q" => %BSON.Binary{binary: <<1, 2, 3>>, subtype: :binary_old}}
   @bin21 <<20, 0, 0, 0, 5, 113, 0, 7, 0, 0, 0, 2, 3, 0, 0, 0, 1, 2, 3, 0>>
 
   test "encode" do
