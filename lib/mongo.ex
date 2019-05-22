@@ -982,15 +982,6 @@ defmodule Mongo do
       opts: opts}
   end
 
-  defp singly_cursor(conn, coll, query, select, opts) do
-    %Mongo.SinglyCursor{
-      conn: conn,
-      coll: coll,
-      query: query,
-      select: select,
-      opts: opts}
-  end
-
   defp aggregation_cursor(conn, coll, query, select, opts) do
     %Mongo.AggregationCursor{
       conn: conn,
@@ -1055,24 +1046,6 @@ defmodule Mongo do
     Keyword.put_new(opts, :timeout, @timeout)
   end
 
-  defp get_last_error(:ok) do
-    :ok
-  end
-  defp get_last_error(op_reply(docs: [%{"ok" => ok, "err" => nil} = doc])) when ok == 1 do
-    {:ok, doc}
-  end
-  defp get_last_error(op_reply(docs: [%{"ok" => ok, "err" => message, "code" => code}])) when ok == 1 do
-    # If a batch insert (OP_INSERT) fails some documents may still have been
-    # inserted, but mongo always returns {n: 0}
-    # When we support the 2.6 bulk write API we will get number of inserted
-    # documents and should change the return value to be something like:
-    # {:error, %WriteResult{}, %Error{}}
-    {:error, Mongo.Error.exception(message: message, code: code)}
-  end
-  defp get_last_error(op_reply(docs: [%{"ok" => 0.0, "errmsg" => message, "code" => code}])) do
-    {:error, Mongo.Error.exception(message: message, code: code)}
-  end
-
   defp assign_ids(list) when is_list(list) do
     Enum.map(list, &assign_id/1)
     |> Enum.unzip
@@ -1109,11 +1082,6 @@ defmodule Mongo do
     # Why are you inserting empty documents =(
     [{"_id", id}]
   end
-
-  defp index_map([], _ix, map),
-    do: map
-  defp index_map([elem|list], ix, map),
-    do: index_map(list, ix+1, Map.put(map, ix, elem))
 
   defp maybe_failure(op_reply(flags: flags, docs: [%{"$err" => reason, "code" => code}]))
     when (@reply_query_failure &&& flags) != 0,
