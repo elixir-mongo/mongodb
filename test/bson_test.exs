@@ -72,6 +72,9 @@ defmodule BSONTest do
   @map20 %{"p" => :BSON_max}
   @bin20 <<8, 0, 0, 0, 127, 112, 0, 0>>
 
+  @map21 %{"q" => %BSON.Binary{binary: <<1,2,3>>, subtype: :binary_old}}
+  @bin21 <<20, 0, 0, 0, 5, 113, 0, 7, 0, 0, 0, 2, 3, 0, 0, 0, 1, 2, 3, 0>>
+
   test "encode" do
     assert encode(@map1)  == @bin1
     assert encode(@map2)  == @bin2
@@ -93,6 +96,7 @@ defmodule BSONTest do
     assert encode(@map18) == @bin18
     assert encode(@map19) == @bin19
     assert encode(@map20) == @bin20
+    assert encode(@map21) == @bin21
   end
 
   test "decode" do
@@ -116,6 +120,7 @@ defmodule BSONTest do
     assert decode(@bin18) == @map18
     assert decode(@bin19) == @map19
     assert decode(@bin20) == @map20
+    assert decode(@bin21) == @map21
   end
 
   test "keywords" do
