@@ -60,7 +60,7 @@ defmodule Mongo do
 
   @type conn :: DbConnection.Conn
   @type collection :: String.t
-  @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t | Mongo.SinglyCursor.t
+  @opaque cursor :: Mongo.Cursor.t | Mongo.AggregationCursor.t
   @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t}
   @type result!(t) :: nil | t | no_return
 
