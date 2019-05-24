@@ -25,7 +25,8 @@ defmodule Mongo.TopologyTest do
     end
   end
 
-  test "remove old connection_pool", %{pid: mongo_pid} do
+  test "remove old connection_pool", _ do
+    {:ok, mongo_pid} = Mongo.TestConnection.connect
     :erlang.trace(mongo_pid, true, [:receive])
     %{monitors: %{"127.0.0.1:27001" => monitor_pid}} = state = :sys.get_state(mongo_pid)
 
