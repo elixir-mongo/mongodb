@@ -499,11 +499,14 @@ defmodule Mongo do
 
   @doc false
   def get_more(conn, coll, cursor, opts) do
-    query = %Query{action: :get_more, extra: {coll, cursor}}
-    with {:ok, _query, reply} <- DBConnection.execute(conn, query, [], defaults(opts)),
-         :ok <- maybe_failure(reply),
-         op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
-         do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
+    query = filter_nils([
+      getMore: cursor,
+      collection: coll,
+      batchSize: Keyword.get(opts, :batch_size),
+      maxTimeMS: Keyword.get(opts, :max_time_ms)
+    ])
+
+    direct_command(conn, query, opts)
   end
 
   @doc false
