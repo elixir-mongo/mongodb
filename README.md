@@ -46,7 +46,7 @@
     min key             :BSON_min
     max key             :BSON_max
 
-1) Since BSON documents are ordered Elixir maps cannot be used to fully represent them. This driver chose to accept both maps and lists of key-value pairs when encoding but will only decode documents to lists. This has the side-effect that it's impossible to discern empty arrays from empty documents. Additionally the driver will accept both atoms and strings for document keys but will only decode to strings.
+1) Since BSON documents are ordered Elixir maps cannot be used to fully represent them. This driver chose to accept both maps and lists of key-value pairs when encoding but will only decode documents to maps. This has the side-effect that the information about order of keys in a BSON document is lost when it's decoded. Additionally the driver will accept both atoms and strings for document keys but will only decode to strings.
 
 2) BSON symbols can only be decoded.
 
