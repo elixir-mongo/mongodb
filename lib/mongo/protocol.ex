@@ -12,6 +12,9 @@ defmodule Mongo.Protocol do
   @update_flags ~w(upsert)a
   @write_concern ~w(w j wtimeout)a
 
+  @doc """
+  DBConnection callback
+  """
   def disconnect(_error, %{socket: {mod, sock}} = s) do
     notify_disconnect(s)
     mod.close(sock)
@@ -21,6 +24,9 @@ defmodule Mongo.Protocol do
     GenServer.cast(pid, {:disconnect, type, host})
   end
 
+  @doc """
+  DBConnection callback
+  """
   def connect(opts) do
     {write_concern, opts} = Keyword.split(opts, @write_concern)
     write_concern = Keyword.put_new(write_concern, :w, 1)
@@ -33,9 +39,11 @@ defmodule Mongo.Protocol do
       database: Keyword.fetch!(opts, :database),
       write_concern: Map.new(write_concern),
       wire_version: nil,
+      auth_mechanism: opts[:auth_mechanism] || nil,
       connection_type: Keyword.fetch!(opts, :connection_type),
       topology_pid: Keyword.fetch!(opts, :topology_pid),
-      ssl: opts[:ssl] || false
+      ssl: opts[:ssl] || false,
+      status: :idle
     }
 
     connect(opts, s)
@@ -57,11 +65,14 @@ defmodule Mongo.Protocol do
     case result do
       {:ok, s} ->
         {:ok, s}
-      {:disconnect, {:tcp_recv, reason}, _s} ->
-        {:error, Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)}
-      {:disconnect, {:tcp_send, reason}, _s} ->
-        {:error, Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)}
-      {:disconnect, %Mongo.Error{} = reason, _s} ->
+      {:disconnect, reason, s} ->
+        reason = case reason do
+          {:tcp_recv, reason} -> Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason, host: s.host)
+          {:tcp_send, reason} -> Mongo.Error.exception(tag: :tcp, action: "send", reason: reason, host: s.host)
+          %Mongo.Error{} = reason -> reason
+        end
+        {mod, sock} = s.socket
+        mod.close(sock)
         {:error, reason}
       {:error, reason} ->
         {:error, reason}
@@ -90,17 +101,22 @@ defmodule Mongo.Protocol do
       {:ok, ssl_sock} ->
         {:ok, %{s | socket: {:ssl, ssl_sock}}}
       {:error, reason} ->
-        {:error, Mongo.Error.exception(tag: :ssl, action: "connect", reason: reason)}
+        :gen_tcp.close(sock)
+        {:error, Mongo.Error.exception(tag: :ssl, action: "connect", reason: reason, host: s.host)}
     end
   end
 
   defp tcp_connect(opts, s) do
-    host      = (opts[:hostname] || "localhost") |> to_charlist
-    port      = opts[:port] || 27017
+    {host, port} = Utils.hostname_port(opts)
     sock_opts = [:binary, active: false, packet: :raw, nodelay: true]
                 ++ (opts[:socket_options] || [])
 
-    s = Map.put(s, :host, "#{host}:#{port}")
+    s = case host do
+          {:local, socket} ->
+            Map.put(s, :host, socket)
+          hostname ->
+            Map.put(s, :host, "#{hostname}:#{port}")
+        end
 
     case :gen_tcp.connect(host, port, sock_opts, s.connect_timeout_ms) do
       {:ok, socket} ->
@@ -114,7 +130,7 @@ defmodule Mongo.Protocol do
         {:ok, %{s | socket: {:gen_tcp, socket}}}
 
       {:error, reason} ->
-        {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: reason)}
+        {:error, Mongo.Error.exception(tag: :tcp, action: "connect", reason: reason, host: s.host)}
     end
   end
 
@@ -134,26 +150,44 @@ defmodule Mongo.Protocol do
     end
   end
 
-  def handle_info({:tcp, data}, s) do
-    err = Mongo.Error.exception(message: "unexpected async recv: #{inspect data}")
-    {:disconnect, err, s}
+  @doc """
+  DBConnection callback
+  """
+  def handle_begin(_opts, state) do
+    {:idle, state}
   end
 
-  def handle_info({:tcp_closed, _}, s) do
-    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: :closed)
-    {:disconnect, err, s}
+  @doc """
+  DBConnection callback
+  """
+  def handle_close(_query, _opts, state) do
+    {:ok, nil, state}
   end
 
-  def handle_info({:tcp_error, _, reason}, s) do
-    err = Mongo.Error.exception(tag: :tcp, action: "async recv", reason: reason)
-    {:disconnect, err, s}
+  @doc """
+  DBConnection callback
+  """
+  def handle_commit(_opts, state) do
+    {:idle, state}
   end
 
-  def handle_info({:ssl_closed, _}, s) do
-    err = Mongo.Error.exception(tag: :ssl, action: "async recv", reason: :closed)
-    {:disconnect, err, s}
+  @doc """
+  DBConnection callback
+  """
+  def handle_deallocate(_query, _cursor, _opts, state) do
+    {:ok, :ok, state}
   end
 
+  @doc """
+  DBConnection callback
+  """
+  def handle_declare(query, _params, _opts, state) do
+    {:ok, query, :ok, state}
+  end
+
+  @doc """
+  DBConnection callback
+  """
   def checkout(%{socket: {mod, sock}} = s) do
     case setopts(mod, sock, [active: :false]) do
       :ok                       -> recv_buffer(s)
@@ -180,6 +214,9 @@ defmodule Mongo.Protocol do
     end
   end
 
+  @doc """
+  DBConnection callback
+  """
   def checkin(%{socket: {mod, sock}} = s) do
     :ok = setopts(mod, sock, [active: :once])
     {:ok, s}
@@ -189,13 +226,44 @@ defmodule Mongo.Protocol do
     handle_execute(query, params, opts, s)
   end
 
-  def handle_execute(%Mongo.Query{action: action, extra: extra}, params, opts, original_state) do
+  @doc """
+  DBConnection callback
+  """
+  def handle_fetch(_query, _cursor, _opts, state) do
+    {:cont, :ok, state}
+  end
+
+  @doc """
+  DBConnection callback
+  """
+  def handle_prepare(query, _opts, state) do
+    {:ok, query, state}
+  end
+
+  @doc """
+  DBConnection callback
+  """
+  def handle_rollback(_opts, state) do
+    {:idle, state}
+  end
+
+  @doc """
+  DBConnection callback
+  """
+  def handle_status(_opts, state) do
+    {:idle, state}
+  end
+
+  @doc """
+  DBConnection callback
+  """
+  def handle_execute(%Mongo.Query{action: action, extra: extra} = query, params, opts, original_state) do
     {mod, sock} = original_state.socket
     :ok = setopts(mod, sock, active: false)
     tmp_state = %{original_state | database: Keyword.get(opts, :database, original_state.database)}
     with {:ok, reply, tmp_state} <- handle_execute(action, extra, params, opts, tmp_state) do
       :ok = setopts(mod, sock, active: :once)
-      {:ok, reply, Map.put(tmp_state, :database, original_state.database)}
+      {:ok, query, reply, Map.put(tmp_state, :database, original_state.database)}
     end
   end
 
@@ -308,6 +376,9 @@ defmodule Mongo.Protocol do
     end
   end
 
+  @doc """
+  DBConnection callback
+  """
   def ping(%{wire_version: wire_version, socket: {mod, sock}} = s) do
     {:ok, active} = getopts(mod, sock, [:active])
     :ok = setopts(mod, sock, [active: false])

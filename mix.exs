@@ -1,25 +1,25 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.4.8"
+  @version "0.5.1"
 
   def project do
-    [
-      app: :mongodb,
-      version: @version,
-      elixirc_paths: elixirc_paths(Mix.env()),
-      elixir: "~> 1.3",
-      name: "Mongodb",
-      deps: deps(),
-      docs: docs(),
-      description: description(),
-      package: package(),
-      dialyzer: [
-        plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
-        plt_add_deps: :transitive,
-        plt_core_path: "plt_core_path"
-      ]
-    ]
+    [app: :mongodb,
+     version: @version,
+     elixirc_paths: elixirc_paths(Mix.env),
+     elixir: "~> 1.5",
+     name: "Mongodb",
+     deps: deps(),
+     docs: docs(),
+     description: description(),
+     package: package(),
+     dialyzer: [
+       flags: [:underspecs, :unknown, :unmatched_returns],
+       plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
+       plt_add_deps: :transitive,
+       plt_core_path: "plt_core_path"
+     ]
+   ]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -34,14 +34,14 @@ defmodule Mongodb.Mixfile do
 
   defp deps do
     [
-      {:connection, "~> 1.0"},
-      {:db_connection, "~> 1.1"},
-      {:decimal, "~> 1.0"},
-      {:poolboy, ">= 0.0.0", only: :test},
-      {:jason, "~> 1.0.0", only: :test},
-      {:ex_doc, ">= 0.0.0", only: :dev},
-      {:earmark, ">= 0.0.0", only: :dev},
-      {:dialyxir, "~> 0.5.1", only: :dev}
+      {:connection,    "~> 1.0"},
+      {:db_connection, "~> 2.0"},
+      {:decimal,       "~> 1.5"},
+      # {:poolboy,       ">= 0.0.0", only: :test},
+      {:jason,         "~> 1.0.0", only: :test},
+      {:ex_doc,        ">= 0.0.0", only: :dev},
+      {:earmark,       ">= 0.0.0", only: :dev},
+      # {:dialyxir, "~> 1.0.0-rc.4", only: [:dev], runtime: false}
     ]
   end
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 needs_initiate=1
 

@@ -51,8 +51,8 @@ defmodule Mongo.TopologyDescription do
 
   # steps 3-4
   def select_servers(topology, type, opts \\ []) do
-    read_preference = Keyword.get(opts, :read_preference,
-                                  ReadPreference.defaults)
+    read_preference = Keyword.get(opts, :read_preference)
+                      |> ReadPreference.defaults()
     if topology[:compatible] == false do
       {:error, :invalid_wire_version}
     else
@@ -92,32 +92,39 @@ defmodule Mongo.TopologyDescription do
 
   ## Private Functions
 
-  defp select_replica_set_server(topology, mode, read_preference)
-      when mode in [:primary, :primary_preferred] do
-    primary = Enum.filter(topology.servers, fn {_, server} ->
+  defp select_replica_set_server(topology, :primary, _read_preference) do
+    Enum.filter(topology.servers, fn {_, server} ->
       server.type == :rs_primary
     end)
+  end
 
-    if mode == :primary_preferred && Enum.empty? primary do
+  defp select_replica_set_server(topology, :primary_preferred, read_preference) do
+    preferred = select_replica_set_server(topology, :primary, read_preference)
+
+    if Enum.empty?(preferred) do
       select_replica_set_server(topology, :secondary, read_preference)
     else
-      primary
+      preferred
+    end
+  end
+
+  defp select_replica_set_server(topology, :secondary_preferred, read_preference) do
+    preferred = select_replica_set_server(topology, :secondary, read_preference)
+
+    if Enum.empty?(preferred) do
+      select_replica_set_server(topology, :primary, read_preference)
+    else
+      preferred
     end
   end
 
   defp select_replica_set_server(topology, mode, read_preference)
-         when mode in [:secondary, :secondary_preferred, :nearest] do
-    initial = if mode in [:secondary, :secondary_preferred] do
-      topology.servers
-      |> Enum.filter(fn {_, server} ->
-        server.type == :rs_secondary
-      end)
-      |> Enum.into(%{})
-    else
-      topology.servers
-    end
-
-    initial
+    when mode in [:secondary, :nearest] do
+    topology.servers
+    |> Enum.filter(fn {_, server} ->
+        server.type == :rs_secondary || mode == :nearest
+    end)
+    |> Enum.into(%{})
     |> filter_out_stale(topology, read_preference.max_staleness_ms)
     |> select_tag_sets(read_preference.tag_sets)
     |> filter_latency_window(topology.local_threshold_ms)
@@ -340,7 +347,7 @@ defmodule Mongo.TopologyDescription do
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#actions
 
   defp not_in_servers?(topology, server_description) do
-    not server_description.address in Map.keys(topology.servers)
+    not(server_description.address in Map.keys(topology.servers))
   end
 
   def invalid_set_name?(topology, server_description) do
@@ -394,7 +401,7 @@ defmodule Mongo.TopologyDescription do
     all_hosts =
       server_description.hosts ++ server_description.passives ++ server_description.arbiters
     topology = Enum.reduce(all_hosts, topology, fn (host, topology) ->
-      if not host in Map.keys(topology.servers) do
+      if not(host in Map.keys(topology.servers)) do
         # this is kinda like an "upsert"
         put_in(topology.servers[host], ServerDescription.defaults(%{address: host}))
       else

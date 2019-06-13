@@ -51,6 +51,11 @@ defmodule BSON.Decoder do
     list(binary)
   end
 
+  defp type(@type_binary, <<_size::int32, subtype, length::int32, binary::binary(length), rest::binary>>) when subtype == 0x02 do
+    subtype = subtype(subtype)
+    {%BSON.Binary{binary: binary, subtype: subtype}, rest}
+  end
+
   defp type(@type_binary, <<size::int32, subtype, binary::binary(size), rest::binary>>) do
     subtype = subtype(subtype)
     {%BSON.Binary{binary: binary, subtype: subtype}, rest}
@@ -69,7 +74,7 @@ defmodule BSON.Decoder do
   end
 
   defp type(@type_datetime, <<unix_ms::int64, rest::binary>>) do
-    {DateTime.from_unix!(unix_ms, :milliseconds), rest}
+    {DateTime.from_unix!(unix_ms, :millisecond), rest}
   end
 
   defp type(@type_undefined, rest) do

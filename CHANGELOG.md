@@ -1,3 +1,28 @@
+## v0.5.1
+
+* Enhancements
+  * Added support for connecting via UNIX sockets (`:socket` and `:socket_dir`)
+  * Start using write commands for acknowledged writes
+
+* Bug Fixes
+  * Added missing host parameter in exception call
+  * No longer starting `:pool_size` number of connections for internal monitors
+
+## v0.5.0
+
+* Enhancements
+  * Added hostname and port to exceptions
+  * Added support for x509 authentication
+  * Allow passing only partial `read_preference` information
+  * Add support for GridFS
+  * Update to `db_connection` 2.x
+
+* Bug Fixes
+  * Fixed a connection leak
+  * Properly parse write concern for URL
+  * Properly follow read preference for `secondary_preferred`
+  * Fixed an issue where the topology could crash due to a negative timeout
+
 ## v0.4.7
 
 * Enhancements

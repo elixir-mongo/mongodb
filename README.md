@@ -2,9 +2,11 @@
 
 [![Build Status](https://travis-ci.org/ankhers/mongodb.svg?branch=master)](https://travis-ci.org/ankhers/mongodb)
 
+[Documentation for Mongodb is available online](http://hexdocs.pm/mongodb/).
+
 ## Features
 
-  * Supports MongoDB versions 3.0, 3.2, 3.4, 3.6, 4.0
+  * Supports MongoDB versions 3.4, 3.6, 4.0
   * Connection pooling (through db_connection)
   * Streaming cursors
   * Performant ObjectID generation
@@ -44,7 +46,7 @@
     min key             :BSON_min
     max key             :BSON_max
 
-1) Since BSON documents are ordered Elixir maps cannot be used to fully represent them. This driver chose to accept both maps and lists of key-value pairs when encoding but will only decode documents to lists. This has the side-effect that it's impossible to discern empty arrays from empty documents. Additionally the driver will accept both atoms and strings for document keys but will only decode to strings.
+1) Since BSON documents are ordered Elixir maps cannot be used to fully represent them. This driver chose to accept both maps and lists of key-value pairs when encoding but will only decode documents to maps. This has the side-effect that the information about order of keys in a BSON document is lost when it's decoded. Additionally the driver will accept both atoms and strings for document keys but will only decode to strings.
 
 2) BSON symbols can only be decoded.
 
@@ -69,7 +71,7 @@ Then run `mix deps.get` to fetch dependencies.
 
 ### Connection pooling
 
-By default mongodb will start a single connection, but it also supports pooling with the `:pool` option. For poolboy add the `pool: DBConnection.Poolboy` option to `Mongo.start_link` and to all function calls in `Mongo` using the pool.
+By default mongodb will start a single connection, but it also supports pooling with the `:pool_size` option.
 
 ```elixir
 # Starts an unpooled connection
@@ -90,7 +92,7 @@ def start(_type, _args) do
   import Supervisor.Spec
 
   children = [
-    worker(Mongo, [[name: :mongo, database: "test", pool: DBConnection.Poolboy]])
+    worker(Mongo, [[name: :mongo, database: "test", pool_size: 2]])
   ]
 
   opts = [strategy: :one_for_one, name: MyApp.Supervisor]
@@ -98,11 +100,19 @@ def start(_type, _args) do
 end
 ```
 
-Then you can use the pool as following:
+Simple start with pooling:
 
 ```elixir
-Mongo.find(:mongo, "collection", %{}, limit: 20, pool: DBConnection.Poolboy)
+{:ok, conn} = Mongo.start_link(name: :mongo, database: "test", pool_size: 2)
 ```
+
+Operate the mongodb with specify pool name in each query:
+
+```elixir
+Mongo.find(:mongo, "collection", %{}, limit: 20)
+```
+
+More pool options in [here](https://hexdocs.pm/db_connection/2.0.6/DBConnection.html#start_link/2-options).
 
 ### Replica Sets
 
@@ -113,6 +123,30 @@ To connect to a Mongo cluster that is using replica sets, it is recommended to u
 ```
 
 This will allow for scenarios where the first `"hostname1.net:27017"` is unreachable for any reason and will automatically try to connect to each of the following entries in the list to connect to the cluster.
+
+### Auth mechanisms
+
+For versions of Mongo 3.0 and greater, the auth mechanism defaults to SCRAM. If you'd like to use [MONGODB-X509](https://docs.mongodb.com/manual/tutorial/configure-x509-client-authentication/#authenticate-with-a-x-509-certificate)
+authentication, you can specify that as a `start_link` option.
+
+```elixir
+{:ok, pid} = Mongo.start_link(database: "test", auth_mechanism: :x509)
+```
+
+### AWS, TLS and Erlang SSL ciphers
+
+Some MongoDB cloud providers (notably AWS) require a particular TLS cipher that isn't enabled by default in the Erlang SSL module. In order to connect to these services,
+you'll want to add this cipher to your `ssl_opts`:
+
+```elixir
+{:ok, pid} = Mongo.start_link(database: "test",
+      ssl_opts: [
+        ciphers: ['AES256-GCM-SHA384'],
+        cacertfile: "...",
+        certfile: "...")
+      ]
+)
+```
 
 ### Examples
 

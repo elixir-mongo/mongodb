@@ -17,6 +17,12 @@ defmodule BSON.Encoder do
   def encode(:BSON_max),
     do: ""
 
+  def encode(%BSON.Binary{binary: binary, subtype: :binary_old}) do
+    subtype = subtype(:binary_old)
+    size = IO.iodata_length(binary)
+    [<<size + 4::int32>>, subtype, <<size::int32>>, binary]
+  end
+
   def encode(%BSON.Binary{binary: binary, subtype: subtype}) do
     subtype = subtype(subtype)
     [<<IO.iodata_length(binary)::int32>>, subtype | binary]
@@ -26,7 +32,7 @@ defmodule BSON.Encoder do
     do: value
 
   def encode(%DateTime{} = datetime) do
-    unix_ms = DateTime.to_unix(datetime, :milliseconds)
+    unix_ms = DateTime.to_unix(datetime, :millisecond)
     <<unix_ms::int64>>
   end
 

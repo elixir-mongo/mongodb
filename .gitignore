@@ -7,3 +7,6 @@ erl_crash.dump
 .tool-versions
 .elixir_ls
 plt_core_path/*.plt
+.idea/
+*.iml
+*.code-workspace

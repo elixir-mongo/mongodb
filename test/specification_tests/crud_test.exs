@@ -20,7 +20,7 @@ defmodule Mongo.SpecificationTests.CRUDTest do
     %{mongo: pid}
   end
 
-  Enum.map(@crud_tests, fn file ->
+  Enum.map(@crud_tests_v1, fn file ->
     json = file |> File.read!() |> Jason.decode!()
     [file_no_suffix, _suffix] =
       file

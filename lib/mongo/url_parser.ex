@@ -19,7 +19,7 @@ defmodule Mongo.UrlParser do
     "maxIdleTimeMS" => :number,
     "waitQueueMultiple" => :number,
     "waitQueueTimeoutMS" => :number,
-    "w" => :string,
+    "w" => :number_or_string,
     "wtimeoutMS" => :number,
     "journal" => ["true", "false"],
     "readConcernLevel" => ["local", "majority", "linearizable", "available"],
@@ -60,6 +60,15 @@ defmodule Mongo.UrlParser do
 
       :string ->
         value
+
+      :number_or_string ->
+        case Integer.parse(value) do
+          {num, ""} ->
+            num
+
+          _string ->
+            value
+        end
 
       enum when is_list(enum) ->
         if Enum.member?(enum, value) do
@@ -130,7 +139,7 @@ defmodule Mongo.UrlParser do
 
   defp resolve_srv_url(frags), do: frags
 
-  @spec get_host_srv([tuple]) :: {:ok, String.t()}
+  @spec get_host_srv([{term, term, term, term}]) :: {:ok, String.t()}
   defp get_host_srv(srv) when is_list(srv) do
     hosts =
       srv

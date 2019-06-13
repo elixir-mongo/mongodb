@@ -3,6 +3,21 @@ defmodule Mongo.Protocol.Utils do
   import Kernel, except: [send: 2]
   import Mongo.Messages
 
+  def hostname_port(opts) do
+    port = opts[:port] || 27_017
+    case Keyword.fetch(opts, :socket) do
+      {:ok, socket} ->
+        {{:local, socket}, 0}
+      :error ->
+        case Keyword.fetch(opts, :socket_dir) do
+          {:ok, dir} ->
+            {{:local, "#{dir}/mongodb-#{port}.sock"}, 0}
+          :error ->
+            {to_charlist(opts[:hostname] || "localhost"), port}
+        end
+    end
+  end
+
   def message(id, ops, s) when is_list(ops) do
     with :ok <- send(ops, s),
          {:ok, ^id, reply} <- recv(s),
@@ -15,7 +30,13 @@ defmodule Mongo.Protocol.Utils do
   end
 
   def command(id, command, s) do
-    op = op_query(coll: namespace("$cmd", s, nil), query: BSON.Encoder.document(command),
+    ns =
+      if Keyword.get(command, :mechanism) == "MONGODB-X509" && Keyword.get(command, :authenticate) == 1 do
+        namespace("$cmd", nil, "$external")
+      else
+        namespace("$cmd", s, nil)
+    end
+    op = op_query(coll: ns, query: BSON.Encoder.document(command),
                   select: "", num_skip: 0, num_return: 1, flags: [])
     case message(id, op, s) do
       {:ok, op_reply(docs: docs)} ->
@@ -100,12 +121,12 @@ defmodule Mongo.Protocol.Utils do
   end
 
   defp send_error(reason, s) do
-    error = Mongo.Error.exception(tag: :tcp, action: "send", reason: reason)
+    error = Mongo.Error.exception(tag: :tcp, action: "send", reason: reason, host: s.host)
     {:disconnect, error, s}
   end
 
   defp recv_error(reason, s) do
-    error = Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason)
+    error = Mongo.Error.exception(tag: :tcp, action: "recv", reason: reason, host: s.host)
     {:disconnect, error, s}
   end
 

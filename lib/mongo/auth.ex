@@ -19,6 +19,8 @@ defmodule Mongo.Auth do
           nil
 
         error ->
+          {mod, sock} = s.socket
+          mod.close(sock)
           error
       end
     end) || {:ok, Map.put(s, :database, opts[:database])}
@@ -41,7 +43,8 @@ defmodule Mongo.Auth do
 
   defp mechanism(%{auth_mechanism: :plain}),
     do: Mongo.Auth.Plain
-
+  defp mechanism(%{wire_version: version, auth_mechanism: :x509}) when version >= 3,
+    do: Mongo.Auth.X509
   defp mechanism(%{wire_version: version}) when version >= 3,
     do: Mongo.Auth.SCRAM
 

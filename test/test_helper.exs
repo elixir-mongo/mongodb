@@ -11,12 +11,11 @@ version =
   |> List.to_tuple
 
 options = []
-options = if System.get_env("CI") do [ssl: true] ++ options else options end
+options = if System.get_env("CI") do [ssl: true, socket: true] ++ options else options end
 options = if version < {3, 4, 0} do [mongo_3_4: true] ++ options else options end
 
 ExUnit.configure exclude: options
 ExUnit.start()
-
 
 {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() --port 27001')
 {_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() --port 27001')
@@ -45,12 +44,6 @@ defmodule MongoTest.Case do
     quote do
       import MongoTest.Case
     end
-  end
-
-  def capture_log(fun) do
-    Logger.remove_backend(:console)
-    fun.()
-    Logger.add_backend(:console, flush: true)
   end
 
   defmacro unique_name do

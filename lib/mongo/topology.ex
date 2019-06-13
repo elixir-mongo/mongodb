@@ -27,8 +27,12 @@ defmodule Mongo.Topology do
   end
 
   def wait_for_connection(pid, timeout, start_time) do
-    timeout = timeout - System.convert_time_unit(System.monotonic_time - start_time, :native, :milliseconds)
+    timeout = timeout - System.convert_time_unit(System.monotonic_time - start_time, :native, :millisecond)
 
+    wait_for_connection(pid, timeout)
+  end
+
+  defp wait_for_connection(pid, timeout) when timeout >= 0 do
     try do
       case GenServer.call(pid, :wait_for_connection, timeout) do
         {:new_connection, server} ->
@@ -40,6 +44,9 @@ defmodule Mongo.Topology do
       :exit, {:timeout, _} ->
         {:error, :selection_timeout}
     end
+  end
+  defp wait_for_connection(pid, _timeout) do
+    wait_for_connection(pid, 0)
   end
 
   def topology(pid) do
@@ -55,9 +62,7 @@ defmodule Mongo.Topology do
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#configuration
   @doc false
   def init(opts) do
-    seeds = Keyword.get(opts, :seeds, [
-      Keyword.get(opts, :hostname, "localhost") <> ":" <> to_string(Keyword.get(opts, :port, 27017))
-    ])
+    seeds = Keyword.get(opts, :seeds, [seed(opts)])
     type = Keyword.get(opts, :type, :unknown)
     set_name = Keyword.get(opts, :set_name, nil)
     local_threshold_ms = Keyword.get(opts, :local_threshold_ms, 15)
@@ -69,7 +74,7 @@ defmodule Mongo.Topology do
     cond do
       type == :single and length(seeds) > 1 ->
         {:stop, :single_topology_multiple_hosts}
-      set_name != nil and not type in [:unknown, :replica_set_no_primary, :single] ->
+      set_name != nil and not(type in [:unknown, :replica_set_no_primary, :single]) ->
         {:stop, :set_name_bad_topology}
       true ->
         servers = servers_from_seeds(seeds)
@@ -89,6 +94,13 @@ defmodule Mongo.Topology do
           }
           |> reconcile_servers
         {:ok, state}
+    end
+  end
+
+  defp seed(opts) do
+    case Mongo.Protocol.Utils.hostname_port(opts) do
+      {{:local, socket}, 0} -> socket
+      {hostname, port} -> "#{hostname}:#{port}"
     end
   end
 
@@ -159,7 +171,10 @@ defmodule Mongo.Topology do
             |> connect_opts_from_address(host)
 
           {:ok, pool} = DBConnection.start_link(Mongo.Protocol, conn_opts)
-          connection_pools = Map.put(state.connection_pools, host, pool)
+          connection_pools = Map.update(state.connection_pools, host, pool, fn old_pool ->
+            GenServer.stop(old_pool)
+            pool
+          end)
           Enum.each(state.waiting_pids, fn from ->
             GenServer.reply(from, {:new_connection, host})
           end)
@@ -224,7 +239,7 @@ defmodule Mongo.Topology do
         server_description,
         self(),
         @heartbeat_frequency_ms,
-        Keyword.put(connopts, :pool, DBConnection.Connection)
+        Keyword.put(connopts, :pool, DBConnection.ConnectionPool)
       ]
 
       :ok = Mongo.Events.notify(%ServerOpeningEvent{address: address, topology_pid: self()})

@@ -39,6 +39,19 @@ defmodule Mongo.TopologyDescriptionTest do
            TopologyDescription.select_servers(repl_set_with_master(), :read, opts)
 
     opts = [
+      read_preference: ReadPreference.defaults(%{mode: :primary_preferred})
+    ]
+    assert {:ok, [master], true, false} ==
+      TopologyDescription.select_servers(repl_set_with_master(), :read, opts)
+
+    opts = [
+      read_preference: ReadPreference.defaults(%{mode: :primary_preferred})
+    ]
+    assert {:ok, List.delete(all_hosts, master), true, false} ==
+      TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
+
+
+    opts = [
       read_preference: ReadPreference.defaults(%{mode: :nearest})
     ]
     assert {:ok, all_hosts, true, false} ==
@@ -50,13 +63,33 @@ defmodule Mongo.TopologyDescriptionTest do
     assert {:ok, List.delete(all_hosts, master), true, false} ==
            TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
 
-    assert {:ok, [], false, false} ==
-           TopologyDescription.select_servers(repl_set_no_master(), :write)
+    opts = [
+      read_preference: ReadPreference.defaults(%{mode: :secondary_preferred})
+    ]
+    assert {:ok, List.delete(all_hosts, master), true, false} ==
+      TopologyDescription.select_servers(repl_set_with_master(), :read, opts)
+
+    assert {:ok, [master], true, false} ==
+      TopologyDescription.select_servers(repl_set_only_master(), :read, opts)
+
+    assert {:ok, List.delete(all_hosts, master), true, false} ==
+           TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
 
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :nearest})
     ]
     assert {:ok, all_hosts, true, false} ==
            TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
+
+  end
+
+  test "Simplified server selection" do
+    single_server = ["localhost:27017"]
+
+    opts = [
+      read_preference: %{mode: :secondary}
+    ]
+    assert {:ok, single_server, true, false} ==
+           TopologyDescription.select_servers(single(), :read, opts)
   end
 end
