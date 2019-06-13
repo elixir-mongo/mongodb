@@ -37,6 +37,8 @@ defmodule Mongo.Auth do
     if username && password, do: auth ++ [{username, password}], else: auth
   end
 
+  defp mechanism(%{auth_mechanism: :plain}),
+    do: Mongo.Auth.Plain
   defp mechanism(%{wire_version: version}) when version >= 3,
     do: Mongo.Auth.SCRAM
   defp mechanism(_),
