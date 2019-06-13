@@ -1,7 +1,7 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.5.1"
+  @version "0.4.8"
 
   def project do
     [app: :mongodb,
@@ -37,7 +37,7 @@ defmodule Mongodb.Mixfile do
   defp deps do
     [
       {:connection,    "~> 1.0"},
-      {:db_connection, "~> 2.0"},
+      {:db_connection, "~> 1.1"},
       {:decimal,       "~> 1.5"},
       # {:poolboy,       ">= 0.0.0", only: :test},
       {:jason,         "~> 1.0.0", only: :test},
