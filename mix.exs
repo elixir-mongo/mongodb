@@ -1,33 +1,32 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.4.7"
+  @version "0.4.8"
 
   def project do
-    [app: :mongodb,
-     version: @version,
-     elixirc_paths: elixirc_paths(Mix.env),
-     elixir: "~> 1.3",
-     name: "Mongodb",
-     deps: deps(),
-     docs: docs(),
-     description: description(),
-     package: package(),
-     dialyzer: [
-       plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
-       plt_add_deps: :transitive,
-       plt_core_path: "plt_core_path"
-     ]
-   ]
+    [
+      app: :mongodb,
+      version: @version,
+      elixirc_paths: elixirc_paths(Mix.env()),
+      elixir: "~> 1.3",
+      name: "Mongodb",
+      deps: deps(),
+      docs: docs(),
+      description: description(),
+      package: package(),
+      dialyzer: [
+        plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
+        plt_add_deps: :transitive,
+        plt_core_path: "plt_core_path"
+      ]
+    ]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(_),     do: ["lib"]
+  defp elixirc_paths(_), do: ["lib"]
 
   def application do
-    [applications: applications(Mix.env),
-     mod: {Mongo.App, []},
-     env: []]
+    [applications: applications(Mix.env()), mod: {Mongo.App, []}, env: []]
   end
 
   def applications(:test), do: [:logger, :connection, :db_connection]
@@ -35,22 +34,24 @@ defmodule Mongodb.Mixfile do
 
   defp deps do
     [
-      {:connection,    "~> 1.0"},
+      {:connection, "~> 1.0"},
       {:db_connection, "~> 1.1"},
-      {:decimal,       "~> 1.0"},
-      {:poolboy,       ">= 0.0.0", only: :test},
-      {:jason,         "~> 1.0.0", only: :test},
-      {:ex_doc,        ">= 0.0.0", only: :dev},
-      {:earmark,       ">= 0.0.0", only: :dev},
-      {:dialyxir,      "~> 0.5.1", only: :dev}
+      {:decimal, "~> 1.0"},
+      {:poolboy, ">= 0.0.0", only: :test},
+      {:jason, "~> 1.0.0", only: :test},
+      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:earmark, ">= 0.0.0", only: :dev},
+      {:dialyxir, "~> 0.5.1", only: :dev}
     ]
   end
 
   defp docs do
-    [main: "readme",
-     extras: ["README.md"],
-     source_ref: "v#{@version}",
-     source_url: "https://github.com/ankhers/mongodb"]
+    [
+      main: "readme",
+      extras: ["README.md"],
+      source_ref: "v#{@version}",
+      source_url: "https://github.com/ankhers/mongodb"
+    ]
   end
 
   defp description do
@@ -58,8 +59,10 @@ defmodule Mongodb.Mixfile do
   end
 
   defp package do
-    [maintainers: ["Eric Meadows-Jönsson", "Justin Wood"],
-     licenses: ["Apache 2.0"],
-     links: %{"GitHub" => "https://github.com/ankhers/mongodb"}]
+    [
+      maintainers: ["Eric Meadows-Jönsson", "Justin Wood"],
+      licenses: ["Apache 2.0"],
+      links: %{"GitHub" => "https://github.com/ankhers/mongodb"}
+    ]
   end
 end

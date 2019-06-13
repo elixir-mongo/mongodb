@@ -8,24 +8,26 @@ defmodule Mongo.Auth do
     auth_source = opts[:auth_source]
     wire_version = s[:wire_version]
 
-    s = if auth_source != nil && wire_version > 0,
-          do: Map.put(s, :database, auth_source),
+    s =
+      if auth_source != nil && wire_version > 0,
+        do: Map.put(s, :database, auth_source),
         else: s
 
     Enum.find_value(auth, fn opts ->
       case auther.auth(opts, s) do
         :ok ->
           nil
+
         error ->
           error
       end
-    end) || {:ok, Map.put(s,:database, opts[:database])}
+    end) || {:ok, Map.put(s, :database, opts[:database])}
   end
 
   defp setup(opts) do
     username = opts[:username]
     password = opts[:password]
-    auth     = opts[:auth] || []
+    auth = opts[:auth] || []
 
     auth =
       Enum.map(auth, fn opts ->
@@ -37,8 +39,12 @@ defmodule Mongo.Auth do
     if username && password, do: auth ++ [{username, password}], else: auth
   end
 
+  defp mechanism(%{auth_mechanism: :plain}),
+    do: Mongo.Auth.Plain
+
   defp mechanism(%{wire_version: version}) when version >= 3,
     do: Mongo.Auth.SCRAM
+
   defp mechanism(_),
     do: Mongo.Auth.CR
 end
