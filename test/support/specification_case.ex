@@ -19,6 +19,6 @@ defmodule Mongo.SpecificationCase do
     version
     |> String.split(".")
     |> Enum.map(&elem(Integer.parse(&1), 0))
-    |> List.to_tuple
+    |> List.to_tuple()
   end
 end

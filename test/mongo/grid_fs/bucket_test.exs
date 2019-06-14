@@ -5,13 +5,13 @@ defmodule Mongo.GridFs.BucketTest do
   alias Mongo.GridFs.Upload
 
   setup_all do
-    assert {:ok, pid} = Mongo.TestConnection.connect
+    assert {:ok, pid} = Mongo.TestConnection.connect()
     {:ok, [pid: pid]}
   end
 
   test "check implementation of the protocols Inspect and String.Chars", c do
     b = Bucket.new(c.pid)
-    assert inspect b == to_string(b)
+    assert inspect(b == to_string(b))
   end
 
   test "check if the name can be overridden", c do
@@ -27,9 +27,9 @@ defmodule Mongo.GridFs.BucketTest do
   end
 
   test "delete a file", c do
-    bucket        = Bucket.new(c.pid)
+    bucket = Bucket.new(c.pid)
     upload_stream = Upload.open_upload_stream(bucket, "my-file-to-delete.txt")
-    src_filename  = "./test/data/test.txt"
+    src_filename = "./test/data/test.txt"
 
     File.stream!(src_filename, [], 512) |> Stream.into(upload_stream) |> Stream.run()
 
@@ -48,11 +48,10 @@ defmodule Mongo.GridFs.BucketTest do
   end
 
   test "rename a file", c do
-
-    bucket        = Bucket.new(c.pid)
-    new_filename  = "my-new-filename.txt"
+    bucket = Bucket.new(c.pid)
+    new_filename = "my-new-filename.txt"
     upload_stream = Upload.open_upload_stream(bucket, "my-example-file.txt")
-    src_filename  = "./test/data/test.txt"
+    src_filename = "./test/data/test.txt"
 
     File.stream!(src_filename, [], 512) |> Stream.into(upload_stream) |> Stream.run()
 
@@ -69,10 +68,9 @@ defmodule Mongo.GridFs.BucketTest do
   end
 
   test "drop bucket", c do
-
-    bucket        = Bucket.new(c.pid, fs: "killme")
+    bucket = Bucket.new(c.pid, fs: "killme")
     upload_stream = Upload.open_upload_stream(bucket, "my-example-file.txt")
-    src_filename  = "./test/data/test.txt"
+    src_filename = "./test/data/test.txt"
 
     File.stream!(src_filename, [], 512) |> Stream.into(upload_stream) |> Stream.run()
 
@@ -87,7 +85,5 @@ defmodule Mongo.GridFs.BucketTest do
 
     file = Mongo.find_one(c.pid, Bucket.chunks_collection_name(bucket), %{file_id: file_id})
     assert file == nil
-
   end
-
 end

@@ -6,11 +6,11 @@ defmodule Mongo.InsertOneResult do
   """
 
   @type t :: %__MODULE__{
-    acknowledged: boolean,
-    inserted_id: nil | BSON.ObjectId.t
-  }
+          acknowledged: boolean,
+          inserted_id: nil | BSON.ObjectId.t()
+        }
 
-  defstruct [acknowledged: true, inserted_id: nil]
+  defstruct acknowledged: true, inserted_id: nil
 end
 
 defmodule Mongo.InsertManyResult do
@@ -21,11 +21,11 @@ defmodule Mongo.InsertManyResult do
   """
 
   @type t :: %__MODULE__{
-    acknowledged: boolean,
-    inserted_ids: %{non_neg_integer => BSON.ObjectId.t}
-  }
+          acknowledged: boolean,
+          inserted_ids: %{non_neg_integer => BSON.ObjectId.t()}
+        }
 
-  defstruct [acknowledged: true, inserted_ids: nil]
+  defstruct acknowledged: true, inserted_ids: nil
 end
 
 defmodule Mongo.DeleteResult do
@@ -37,11 +37,11 @@ defmodule Mongo.DeleteResult do
   """
 
   @type t :: %__MODULE__{
-    acknowledged: boolean,
-    deleted_count: non_neg_integer
-  }
+          acknowledged: boolean,
+          deleted_count: non_neg_integer
+        }
 
-  defstruct [acknowledged: true, deleted_count: 0]
+  defstruct acknowledged: true, deleted_count: 0
 end
 
 defmodule Mongo.UpdateResult do
@@ -55,11 +55,11 @@ defmodule Mongo.UpdateResult do
   """
 
   @type t :: %__MODULE__{
-    acknowledged: boolean,
-    matched_count: non_neg_integer,
-    modified_count: non_neg_integer,
-    upserted_ids: nil | list(BSON.ObjectId.t)
-  }
+          acknowledged: boolean,
+          matched_count: non_neg_integer,
+          modified_count: non_neg_integer,
+          upserted_ids: nil | list(BSON.ObjectId.t())
+        }
 
-  defstruct [acknowledged: true, matched_count: 0, modified_count: 0, upserted_ids: nil]
+  defstruct acknowledged: true, matched_count: 0, modified_count: 0, upserted_ids: nil
 end

@@ -7,17 +7,19 @@ defmodule Mongo.Specification.CRUD.Helpers do
 
   def find(pid, collection, arguments) do
     filter = arguments["filter"]
+
     opts =
       arguments
       |> Map.drop(["filter"])
       |> atomize_keys()
 
-    pid |> Mongo.find(collection, filter, opts) |> Enum.to_list
+    pid |> Mongo.find(collection, filter, opts) |> Enum.to_list()
   end
 
   def distinct(pid, collection, arguments) do
     field_name = arguments["fieldName"]
     filter = arguments["filter"] || %{}
+
     opts =
       arguments
       |> Map.drop(["fieldName", "filter"])
@@ -36,6 +38,7 @@ defmodule Mongo.Specification.CRUD.Helpers do
 
   def count_documents(pid, collection, arguments) do
     filter = arguments["filter"]
+
     opts =
       arguments
       |> Map.drop(["filter"])
@@ -47,6 +50,7 @@ defmodule Mongo.Specification.CRUD.Helpers do
 
   def count(pid, collection, arguments) do
     filter = arguments["filter"]
+
     opts =
       arguments
       |> Map.drop(["filter"])
@@ -58,12 +62,13 @@ defmodule Mongo.Specification.CRUD.Helpers do
 
   def aggregate(pid, collection, arguments) do
     pipeline = arguments["pipeline"]
+
     opts =
       arguments
       |> Map.drop(["pipeline"])
       |> atomize_keys()
 
-    pid |> Mongo.aggregate(collection, pipeline, opts) |> Enum.to_list
+    pid |> Mongo.aggregate(collection, pipeline, opts) |> Enum.to_list()
   end
 
   def match_operation_result?(expected, actual) do

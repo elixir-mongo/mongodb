@@ -19,8 +19,10 @@ defmodule Mongo.PBKDF2Cache do
     cond do
       salted_password = s.cache[key] ->
         {:reply, salted_password, s}
+
       list = s.pending[key] ->
-        {:noreply, put_in(s.pending[key], [from|list])}
+        {:noreply, put_in(s.pending[key], [from | list])}
+
       true ->
         _ = run_task(key)
         {:noreply, put_in(s.pending[key], [from])}
@@ -43,10 +45,13 @@ defmodule Mongo.PBKDF2Cache do
 
   defp run_task({password, salt, iterations} = key) do
     Task.async(fn ->
-      result = Mongo.PBKDF2.generate(password, salt,
-                                     iterations: iterations,
-                                     length: 20,
-                                     digest: :sha)
+      result =
+        Mongo.PBKDF2.generate(password, salt,
+          iterations: iterations,
+          length: 20,
+          digest: :sha
+        )
+
       {key, result}
     end)
   end

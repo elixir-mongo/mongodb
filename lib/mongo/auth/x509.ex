@@ -4,6 +4,7 @@ defmodule Mongo.Auth.X509 do
 
   def auth({username, _password}, s) do
     cmd = [authenticate: 1, user: username, mechanism: "MONGODB-X509"]
+
     with {:ok, _message} <- command(-2, cmd, s) do
       :ok
     else
@@ -11,5 +12,4 @@ defmodule Mongo.Auth.X509 do
         {:error, "X509 auth failed"}
     end
   end
-
 end
