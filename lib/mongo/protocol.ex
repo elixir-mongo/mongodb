@@ -104,7 +104,7 @@ defmodule Mongo.Protocol do
   end
 
   defp ssl(%{socket: {:gen_tcp, sock}} = s, opts) do
-    host = (opts[:hostname] || "localhost") |> to_charlist
+    host = to_charlist(opts[:hostname] || "localhost")
     ssl_opts = Keyword.put_new(opts[:ssl_opts] || [], :server_name_indication, host)
 
     case :ssl.connect(sock, ssl_opts, s.connect_timeout_ms) do
@@ -432,7 +432,7 @@ defmodule Mongo.Protocol do
   end
 
   defp message_gle(id, op, opts, s) do
-    write_concern = Keyword.take(opts, @write_concern) |> Map.new()
+    write_concern = opts |> Keyword.take(@write_concern) |> Map.new()
     write_concern = Map.merge(s.write_concern, write_concern)
 
     if write_concern.w == 0 do

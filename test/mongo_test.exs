@@ -507,19 +507,19 @@ defmodule Mongo.Test do
     assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_ids: nil}} =
              Mongo.replace_one(c.pid, coll, %{foo: 42}, %{foo: 0})
 
-    assert [_] = Mongo.find(c.pid, coll, %{foo: 0}) |> Enum.to_list()
-    assert [_] = Mongo.find(c.pid, coll, %{foo: 42}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{foo: 0}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{foo: 42}) |> Enum.to_list()
 
     assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 0, upserted_ids: [id]}} =
              Mongo.replace_one(c.pid, coll, %{foo: 50}, %{foo: 0}, upsert: true)
 
-    assert [_] = Mongo.find(c.pid, coll, %{_id: id}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{_id: id}) |> Enum.to_list()
 
     assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_ids: nil}} =
              Mongo.replace_one(c.pid, coll, %{foo: 43}, %{foo: 1}, upsert: true)
 
-    assert [] = Mongo.find(c.pid, coll, %{foo: 43}) |> Enum.to_list()
-    assert [_] = Mongo.find(c.pid, coll, %{foo: 1}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{foo: 43}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{foo: 1}) |> Enum.to_list()
   end
 
   test "replace_one!", c do
@@ -550,19 +550,19 @@ defmodule Mongo.Test do
     assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_ids: nil}} =
              Mongo.update_one(c.pid, coll, %{foo: 42}, %{"$set": %{foo: 0}})
 
-    assert [_] = Mongo.find(c.pid, coll, %{foo: 0}) |> Enum.to_list()
-    assert [_] = Mongo.find(c.pid, coll, %{foo: 42}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{foo: 0}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{foo: 42}) |> Enum.to_list()
 
     assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 0, upserted_ids: [id]}} =
              Mongo.update_one(c.pid, coll, %{foo: 50}, %{"$set": %{foo: 0}}, upsert: true)
 
-    assert [_] = Mongo.find(c.pid, coll, %{_id: id}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{_id: id}) |> Enum.to_list()
 
     assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_ids: nil}} =
              Mongo.update_one(c.pid, coll, %{foo: 43}, %{"$set": %{foo: 1}}, upsert: true)
 
-    assert [] = Mongo.find(c.pid, coll, %{foo: 43}) |> Enum.to_list()
-    assert [_] = Mongo.find(c.pid, coll, %{foo: 1}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{foo: 43}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{foo: 1}) |> Enum.to_list()
   end
 
   test "update_one!", c do
@@ -593,19 +593,19 @@ defmodule Mongo.Test do
     assert {:ok, %Mongo.UpdateResult{matched_count: 2, modified_count: 2, upserted_ids: nil}} =
              Mongo.update_many(c.pid, coll, %{foo: 42}, %{"$set": %{foo: 0}})
 
-    assert [_, _] = Mongo.find(c.pid, coll, %{foo: 0}) |> Enum.to_list()
-    assert [] = Mongo.find(c.pid, coll, %{foo: 42}) |> Enum.to_list()
+    assert [_, _] = c.pid |> Mongo.find(coll, %{foo: 0}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{foo: 42}) |> Enum.to_list()
 
     assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 0, upserted_ids: [id]}} =
              Mongo.update_many(c.pid, coll, %{foo: 50}, %{"$set": %{foo: 0}}, upsert: true)
 
-    assert [_] = Mongo.find(c.pid, coll, %{_id: id}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{_id: id}) |> Enum.to_list()
 
     assert {:ok, %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_ids: nil}} =
              Mongo.update_many(c.pid, coll, %{foo: 43}, %{"$set": %{foo: 1}}, upsert: true)
 
-    assert [] = Mongo.find(c.pid, coll, %{foo: 43}) |> Enum.to_list()
-    assert [_] = Mongo.find(c.pid, coll, %{foo: 1}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{foo: 43}) |> Enum.to_list()
+    assert [_] = c.pid |> Mongo.find(coll, %{foo: 1}) |> Enum.to_list()
   end
 
   test "update_many!", c do

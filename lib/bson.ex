@@ -38,7 +38,8 @@ defmodule BSON do
   """
   @spec decode(iodata) :: document
   def decode(iodata) do
-    IO.iodata_to_binary(iodata)
+    iodata
+    |> IO.iodata_to_binary()
     |> BSON.Decoder.decode()
   end
 end
