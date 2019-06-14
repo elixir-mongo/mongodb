@@ -30,7 +30,8 @@ defmodule Mongo.Specification.CRUD do
               data =
                 mongo
                 |> Mongo.find(outcome["collection"]["name"], %{})
-                |> Enum.to_list
+                |> Enum.to_list()
+
               assert ^data = outcome["collection"]["data"]
             end
           end

@@ -2,10 +2,10 @@ defmodule Mongo.Error do
   defexception [:message, :code, :host]
 
   @type t :: %__MODULE__{
-    message: String.t,
-    code: number,
-    host: String.t
-  }
+          message: String.t(),
+          code: number,
+          host: String.t()
+        }
 
   def message(e) do
     code = if e.code, do: " #{e.code}"
@@ -35,6 +35,6 @@ defmodule Mongo.WriteError do
   defexception [:n, :ok, :write_errors]
 
   def message(e) do
-    "n: #{e.n}, ok: #{e.ok}, write_errors: #{inspect e.write_errors}"
+    "n: #{e.n}, ok: #{e.ok}, write_errors: #{inspect(e.write_errors)}"
   end
 end

@@ -23,8 +23,10 @@ defimpl DBConnection.Query, for: Mongo.Query do
 
   def decode(_query, :ok, _opts),
     do: :ok
+
   def decode(_query, wire_version, _opts) when is_integer(wire_version),
     do: wire_version
+
   def decode(_query, op_reply(docs: docs) = reply, _opts),
     do: op_reply(reply, docs: BSON.Decoder.documents(docs))
 end

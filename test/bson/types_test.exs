@@ -10,7 +10,7 @@ defmodule BSON.TypesTest do
   end
 
   @objectid %BSON.ObjectId{value: <<29, 32, 69, 244, 101, 119, 228, 28, 61, 24, 21, 215>>}
-  @string   "1d2045f46577e41c3d1815d7"
+  @string "1d2045f46577e41c3d1815d7"
 
   test "inspect BSON.ObjectId" do
     assert inspect(@objectid) == "#BSON.ObjectId<#{@string}>"
@@ -49,7 +49,7 @@ defmodule BSON.TypesTest do
   end
 
   test "inspect BSON.Timestamp" do
-    value = %BSON.Timestamp{value: 1412180887, ordinal: 12}
+    value = %BSON.Timestamp{value: 1_412_180_887, ordinal: 12}
     assert inspect(value) == "#BSON.Timestamp<1412180887:12>"
   end
 end

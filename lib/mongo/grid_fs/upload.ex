@@ -11,9 +11,9 @@ defmodule Mongo.GridFs.Upload do
 
   User data for the 'metadata' field of the files collection document.
   """
-  @spec open_upload_stream(Mongo.GridFs.Bucket.t, String.t, BSON.document | nil) :: UploadStream.t
+  @spec open_upload_stream(Mongo.GridFs.Bucket.t(), String.t(), BSON.document() | nil) ::
+          UploadStream.t()
   def open_upload_stream(bucket, filename, meta \\ nil) do
     UploadStream.new(bucket, filename, meta)
   end
-
 end

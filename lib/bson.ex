@@ -3,11 +3,23 @@ defmodule BSON do
   Functions for encoding and decoding BSON documents.
   """
 
-  @type t :: document | String.t | atom | number | boolean | BSON.Binary.t |
-             BSON.ObjectId.t | BSON.Regex.t |
-             BSON.JavaScript.t | BSON.Timestamp.t | [t]
-  @type document :: %{atom => BSON.t} | %{String.t => BSON.t} |
-                    [{atom, BSON.t}] | [{String.t, BSON.t}]
+  @type t ::
+          document
+          | String.t()
+          | atom
+          | number
+          | boolean
+          | BSON.Binary.t()
+          | BSON.ObjectId.t()
+          | BSON.Regex.t()
+          | BSON.JavaScript.t()
+          | BSON.Timestamp.t()
+          | [t]
+  @type document ::
+          %{atom => BSON.t()}
+          | %{String.t() => BSON.t()}
+          | [{atom, BSON.t()}]
+          | [{String.t(), BSON.t()}]
 
   @doc """
   Encode a BSON document to `iodata`.
@@ -17,7 +29,7 @@ defmodule BSON do
     BSON.Encoder.encode(map)
   end
 
-  def encode([{_, _}|_] = keyword) do
+  def encode([{_, _} | _] = keyword) do
     BSON.Encoder.encode(keyword)
   end
 
@@ -27,6 +39,6 @@ defmodule BSON do
   @spec decode(iodata) :: document
   def decode(iodata) do
     IO.iodata_to_binary(iodata)
-    |> BSON.Decoder.decode
+    |> BSON.Decoder.decode()
   end
 end

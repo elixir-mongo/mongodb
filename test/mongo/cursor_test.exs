@@ -7,7 +7,7 @@ defmodule Mongo.CursorTest do
   end
 
   setup_all do
-    assert {:ok, pid} = Mongo.TestConnection.connect
+    assert {:ok, pid} = Mongo.TestConnection.connect()
     {:ok, [pid: pid]}
   end
 
@@ -18,6 +18,8 @@ defmodule Mongo.CursorTest do
     docs = Stream.cycle([%{foo: 42}]) |> Enum.take(100)
 
     assert {:ok, _} = Mongo.insert_many(c.pid, coll, docs)
-    assert [%{"foo" => 42}, %{"foo" => 42}] = Mongo.find(c.pid, coll, %{}, limit: 2) |> Enum.to_list
+
+    assert [%{"foo" => 42}, %{"foo" => 42}] =
+             Mongo.find(c.pid, coll, %{}, limit: 2) |> Enum.to_list()
   end
 end

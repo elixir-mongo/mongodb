@@ -3,11 +3,10 @@ defmodule Mongo.ReadPreference do
   Determines which servers are considered suitable for read operations
   """
   @type t :: %{
-    mode: :primary | :secondary | :primary_preferred | :secondary_preferred |
-          :nearest,
-    tag_sets: [%{String.t => String.t}],
-    max_staleness_ms: non_neg_integer
-  }
+          mode: :primary | :secondary | :primary_preferred | :secondary_preferred | :nearest,
+          tag_sets: [%{String.t() => String.t()}],
+          max_staleness_ms: non_neg_integer
+        }
 
   @default %{
     mode: :primary,
@@ -16,8 +15,10 @@ defmodule Mongo.ReadPreference do
   }
 
   def defaults(map \\ nil)
+
   def defaults(map) when is_map(map) do
     Map.merge(@default, map)
   end
+
   def defaults(_), do: @default
 end
