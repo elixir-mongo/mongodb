@@ -42,8 +42,8 @@ defmodule Mongo.Auth.SCRAM do
        ) do
     params = parse_payload(server_payload)
     server_nonce = params["r"]
-    salt = params["s"] |> Base.decode64!()
-    iter = params["i"] |> String.to_integer()
+    salt = Base.decode64!(params["s"])
+    iter = String.to_integer(params["i"])
     pass = digest_password(username, password)
     salted_password = hi(pass, salt, iter)
 
@@ -61,7 +61,7 @@ defmodule Mongo.Auth.SCRAM do
 
   defp second(%{"conversationId" => 1, "payload" => payload, "done" => false}, signature) do
     params = parse_payload(payload)
-    ^signature = params["v"] |> Base.decode64!()
+    ^signature = Base.decode64!(params["v"])
     [saslContinue: 1, conversationId: 1, payload: %BSON.Binary{binary: ""}]
   end
 
@@ -101,7 +101,8 @@ defmodule Mongo.Auth.SCRAM do
     do: xor_keys(ra, rb, <<result::binary, fa ^^^ fb>>)
 
   defp nonce do
-    :crypto.strong_rand_bytes(18)
+    18
+    |> :crypto.strong_rand_bytes()
     |> Base.encode64()
   end
 

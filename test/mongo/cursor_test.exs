@@ -20,6 +20,6 @@ defmodule Mongo.CursorTest do
     assert {:ok, _} = Mongo.insert_many(c.pid, coll, docs)
 
     assert [%{"foo" => 42}, %{"foo" => 42}] =
-             Mongo.find(c.pid, coll, %{}, limit: 2) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{}, limit: 2) |> Enum.to_list()
   end
 end

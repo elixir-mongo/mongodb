@@ -109,7 +109,11 @@ defmodule Mongo.Cursor do
     end
 
     defp batch_size(limit, opts) do
-      batch_size = Enum.reject([opts[:batch_size], limit, 1000], &is_nil/1) |> Enum.min()
+      batch_size =
+        [opts[:batch_size], limit, 1_000]
+        |> Enum.reject(&is_nil/1)
+        |> Enum.min()
+
       opts = Keyword.drop(opts, ~w(batch_size limit)a)
       [batch_size: batch_size] ++ opts
     end

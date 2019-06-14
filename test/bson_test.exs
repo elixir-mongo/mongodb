@@ -148,43 +148,43 @@ defmodule BSONTest do
     assert decode(encoded) == @map1
   end
 
-  @mapPosInf %{"a" => :inf}
-  @binPosInf <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 240::little-integer-size(8),
-               127::little-integer-size(8), 0>>
+  @map_pos_inf %{"a" => :inf}
+  @bin_pos_inf <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 240::little-integer-size(8),
+                 127::little-integer-size(8), 0>>
 
-  @mapNegInf %{"a" => :"-inf"}
-  @binNegInf <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 240::little-integer-size(8),
-               255::little-integer-size(8), 0>>
+  @map_neg_inf %{"a" => :"-inf"}
+  @bin_neg_inf <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 240::little-integer-size(8),
+                 255::little-integer-size(8), 0>>
 
-  @mapNaN %{"a" => :NaN}
-  @binNaN <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 248::little-integer-size(8),
-            127::little-integer-size(8), 0>>
-  @binNaN2 <<16, 0, 0, 0, 1, 97, 0, 1, 0, 0, 0, 0, 0, 240::little-integer-size(8),
+  @map_NaN %{"a" => :NaN}
+  @bin_NaN <<16, 0, 0, 0, 1, 97, 0, 0, 0, 0, 0, 0, 0, 248::little-integer-size(8),
              127::little-integer-size(8), 0>>
+  @bin_NaN2 <<16, 0, 0, 0, 1, 97, 0, 1, 0, 0, 0, 0, 0, 240::little-integer-size(8),
+              127::little-integer-size(8), 0>>
 
   test "decode float NaN" do
-    assert decode(@binNaN) == @mapNaN
-    assert decode(@binNaN2) == @mapNaN
+    assert decode(@bin_NaN) == @map_NaN
+    assert decode(@bin_NaN2) == @map_NaN
   end
 
   test "encode float NaN" do
-    assert encode(@mapNaN) == @binNaN
+    assert encode(@map_NaN) == @bin_NaN
   end
 
   test "decode float positive Infinity" do
-    assert decode(@binPosInf) == @mapPosInf
+    assert decode(@bin_pos_inf) == @map_pos_inf
   end
 
   test "encode float positive Infinity" do
-    assert encode(@mapPosInf) == @binPosInf
+    assert encode(@map_pos_inf) == @bin_pos_inf
   end
 
   test "decode float negative Infinity" do
-    assert decode(@binNegInf) == @mapNegInf
+    assert decode(@bin_neg_inf) == @map_neg_inf
   end
 
   test "encode float negative Infinity" do
-    assert encode(@mapNegInf) == @binNegInf
+    assert encode(@map_neg_inf) == @bin_neg_inf
   end
 
   defp encode(value) do

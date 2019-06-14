@@ -188,7 +188,7 @@ defmodule BSON.Decoder do
   end
 
   defp list_elems("", _ix, acc) do
-    acc |> Enum.reverse()
+    Enum.reverse(acc)
   end
 
   defp cstring(binary) do

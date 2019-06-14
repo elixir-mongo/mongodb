@@ -550,8 +550,8 @@ defmodule Mongo.TopologyDescription do
 
   def invalidate_stale_primary(topology, server_description) do
     {actions, new_servers} =
-      topology.servers
-      |> Enum.reduce({[], %{}}, fn {address, %{type: type} = server}, {acts, servers} ->
+      Enum.reduce(topology.servers, {[], %{}}, fn {address, %{type: type} = server},
+                                                  {acts, servers} ->
         if address != server_description.address and type == :rs_primary do
           {[{:force_check, address} | acts],
            Map.put(servers, address, ServerDescription.defaults(%{address: address}))}

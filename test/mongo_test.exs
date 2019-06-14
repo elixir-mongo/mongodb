@@ -87,7 +87,7 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 45})
 
     assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}, %{"foo" => 45}] =
-             Mongo.aggregate(c.pid, coll, []) |> Enum.to_list()
+             c.pid |> Mongo.aggregate(coll, []) |> Enum.to_list()
 
     query = [
       %{
@@ -104,22 +104,26 @@ defmodule Mongo.Test do
     ]
 
     assert [%{"_id" => "foo", "total" => 89}] =
-             Mongo.aggregate(c.pid, coll, query) |> Enum.to_list()
+             c.pid |> Mongo.aggregate(coll, query) |> Enum.to_list()
 
-    assert [] = Mongo.aggregate(c.pid, coll, []) |> Enum.take(0)
-    assert [] = Mongo.aggregate(c.pid, coll, []) |> Enum.drop(4)
-    assert [%{"foo" => 42}] = Mongo.aggregate(c.pid, coll, []) |> Enum.take(1)
-    assert [%{"foo" => 45}] = Mongo.aggregate(c.pid, coll, []) |> Enum.drop(3)
+    assert [] = c.pid |> Mongo.aggregate(coll, []) |> Enum.take(0)
+    assert [] = c.pid |> Mongo.aggregate(coll, []) |> Enum.drop(4)
+    assert [%{"foo" => 42}] = c.pid |> Mongo.aggregate(coll, []) |> Enum.take(1)
+    assert [%{"foo" => 45}] = c.pid |> Mongo.aggregate(coll, []) |> Enum.drop(3)
 
     assert [] = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.take(0)
     assert [] = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.drop(4)
-    assert [%{"foo" => 42}] = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.take(1)
-    assert [%{"foo" => 45}] = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.drop(3)
+
+    assert [%{"foo" => 42}] =
+             c.pid |> Mongo.aggregate(coll, [], use_cursor: false) |> Enum.take(1)
+
+    assert [%{"foo" => 45}] =
+             c.pid |> Mongo.aggregate(coll, [], use_cursor: false) |> Enum.drop(3)
 
     assert [] = Mongo.aggregate(c.pid, coll, [], batch_size: 1) |> Enum.take(0)
     assert [] = Mongo.aggregate(c.pid, coll, [], batch_size: 1) |> Enum.drop(4)
-    assert [%{"foo" => 42}] = Mongo.aggregate(c.pid, coll, [], batch_size: 1) |> Enum.take(1)
-    assert [%{"foo" => 45}] = Mongo.aggregate(c.pid, coll, [], batch_size: 1) |> Enum.drop(3)
+    assert [%{"foo" => 42}] = c.pid |> Mongo.aggregate(coll, [], batch_size: 1) |> Enum.take(1)
+    assert [%{"foo" => 45}] = c.pid |> Mongo.aggregate(coll, [], batch_size: 1) |> Enum.drop(3)
   end
 
   test "count", c do
@@ -162,45 +166,47 @@ defmodule Mongo.Test do
   test "find", c do
     coll = unique_name()
 
-    assert [] = Mongo.find(c.pid, coll, %{}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{}) |> Enum.to_list()
 
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 42, bar: 1})
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 43, bar: 2})
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 44, bar: 3})
 
     assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}] =
-             Mongo.find(c.pid, coll, %{}) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{}) |> Enum.to_list()
 
     # Mongo is weird with batch_size=1
-    assert [%{"foo" => 42}] = Mongo.find(c.pid, coll, %{}, batch_size: 1) |> Enum.to_list()
+    assert [%{"foo" => 42}] = c.pid |> Mongo.find(coll, %{}, batch_size: 1) |> Enum.to_list()
 
     assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}] =
-             Mongo.find(c.pid, coll, %{}, batch_size: 2) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{}, batch_size: 2) |> Enum.to_list()
 
     assert [%{"foo" => 42}, %{"foo" => 43}] =
-             Mongo.find(c.pid, coll, %{}, limit: 2) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{}, limit: 2) |> Enum.to_list()
 
     assert [%{"foo" => 42}, %{"foo" => 43}] =
-             Mongo.find(c.pid, coll, %{}, batch_size: 2, limit: 2) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{}, batch_size: 2, limit: 2) |> Enum.to_list()
 
-    assert [%{"foo" => 42}] = Mongo.find(c.pid, coll, %{bar: 1}) |> Enum.to_list()
+    assert [%{"foo" => 42}] = c.pid |> Mongo.find(coll, %{bar: 1}) |> Enum.to_list()
 
     assert [%{"bar" => 1}, %{"bar" => 2}, %{"bar" => 3}] =
-             Mongo.find(c.pid, coll, %{}, projection: %{bar: 1}) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{}, projection: %{bar: 1}) |> Enum.to_list()
 
     assert [%{"bar" => 1}] =
-             Mongo.find(c.pid, coll, %{"$query": %{foo: 42}}, projection: %{bar: 1})
+             c.pid
+             |> Mongo.find(coll, %{"$query": %{foo: 42}}, projection: %{bar: 1})
              |> Enum.to_list()
 
     assert [%{"foo" => 44}, %{"foo" => 43}] =
-             Mongo.find(c.pid, coll, %{}, sort: [foo: -1], batch_size: 2, limit: 2)
+             c.pid
+             |> Mongo.find(coll, %{}, sort: [foo: -1], batch_size: 2, limit: 2)
              |> Enum.to_list()
   end
 
   test "find_one", c do
     coll = unique_name()
 
-    assert [] = Mongo.find(c.pid, coll, %{}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{}) |> Enum.to_list()
 
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 42, bar: 1})
 
@@ -328,13 +334,13 @@ defmodule Mongo.Test do
                sort: %{bar: -1}
              )
 
-    assert [doc] = Mongo.find(c.pid, coll, %{note: "keep"}) |> Enum.to_list()
+    assert [doc] = c.pid |> Mongo.find(coll, %{note: "keep"}) |> Enum.to_list()
 
     assert %{"bar" => 1, "note" => "keep"} = doc,
            "Replaced the correct document according to the sort"
 
     # upsert
-    assert [] = Mongo.find(c.pid, coll, %{upsertedDocument: true}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{upsertedDocument: true}) |> Enum.to_list()
 
     assert {:ok, value} =
              Mongo.find_one_and_replace(
@@ -349,7 +355,7 @@ defmodule Mongo.Test do
     assert %{"upsertedDocument" => true} = value, "Should upsert"
 
     assert [%{"upsertedDocument" => true}] =
-             Mongo.find(c.pid, coll, %{upsertedDocument: true}) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{upsertedDocument: true}) |> Enum.to_list()
   end
 
   test "find_one_and_delete", c do
@@ -359,7 +365,7 @@ defmodule Mongo.Test do
 
     # default
     assert {:ok, %{"foo" => 42, "bar" => 1}} = Mongo.find_one_and_delete(c.pid, coll, %{foo: 42})
-    assert [] = Mongo.find(c.pid, coll, %{foo: 42}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{foo: 42}) |> Enum.to_list()
 
     # projection
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 42, bar: 1})
@@ -376,7 +382,7 @@ defmodule Mongo.Test do
     assert {:ok, %{"note" => "delete"}} =
              Mongo.find_one_and_delete(c.pid, coll, %{foo: 50}, sort: %{bar: -1})
 
-    assert [%{"note" => "keep"}] = Mongo.find(c.pid, coll, %{note: "keep"}) |> Enum.to_list()
+    assert [%{"note" => "keep"}] = c.pid |> Mongo.find(coll, %{note: "keep"}) |> Enum.to_list()
   end
 
   test "insert_one", c do
@@ -389,7 +395,8 @@ defmodule Mongo.Test do
     assert {:ok, result} = Mongo.insert_one(c.pid, coll, %{foo: 42})
     assert %Mongo.InsertOneResult{acknowledged: true, inserted_id: id} = result
 
-    assert [%{"_id" => ^id, "foo" => 42}] = Mongo.find(c.pid, coll, %{_id: id}) |> Enum.to_list()
+    assert [%{"_id" => ^id, "foo" => 42}] =
+             c.pid |> Mongo.find(coll, %{_id: id}) |> Enum.to_list()
 
     assert {:ok, %Mongo.InsertOneResult{acknowledged: false, inserted_id: nil}} =
              Mongo.insert_one(c.pid, coll, %{}, w: 0)
@@ -419,10 +426,10 @@ defmodule Mongo.Test do
     assert %Mongo.InsertManyResult{inserted_ids: [id0, id1]} = result
 
     assert [%{"_id" => ^id0, "foo" => 42}] =
-             Mongo.find(c.pid, coll, %{_id: id0}) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{_id: id0}) |> Enum.to_list()
 
     assert [%{"_id" => ^id1, "foo" => 43}] =
-             Mongo.find(c.pid, coll, %{_id: id1}) |> Enum.to_list()
+             c.pid |> Mongo.find(coll, %{_id: id1}) |> Enum.to_list()
 
     assert {:ok, %Mongo.InsertManyResult{acknowledged: false, inserted_ids: nil}} =
              Mongo.insert_many(c.pid, coll, [%{}], w: 0)
@@ -450,17 +457,17 @@ defmodule Mongo.Test do
     assert {:ok, %Mongo.DeleteResult{deleted_count: 1}} =
              Mongo.delete_one(c.pid, coll, %{foo: 42})
 
-    assert [%{"foo" => 42}] = Mongo.find(c.pid, coll, %{foo: 42}) |> Enum.to_list()
+    assert [%{"foo" => 42}] = c.pid |> Mongo.find(coll, %{foo: 42}) |> Enum.to_list()
 
     assert {:ok, %Mongo.DeleteResult{deleted_count: 1}} =
              Mongo.delete_one(c.pid, coll, %{foo: 42})
 
-    assert [] = Mongo.find(c.pid, coll, %{foo: 42}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{foo: 42}) |> Enum.to_list()
 
     assert {:ok, %Mongo.DeleteResult{deleted_count: 0}} =
              Mongo.delete_one(c.pid, coll, %{foo: 42})
 
-    assert [%{"foo" => 43}] = Mongo.find(c.pid, coll, %{foo: 43}) |> Enum.to_list()
+    assert [%{"foo" => 43}] = c.pid |> Mongo.find(coll, %{foo: 43}) |> Enum.to_list()
   end
 
   test "delete_one!", c do
@@ -479,12 +486,12 @@ defmodule Mongo.Test do
     assert {:ok, %Mongo.DeleteResult{deleted_count: 2}} =
              Mongo.delete_many(c.pid, coll, %{foo: 42})
 
-    assert [] = Mongo.find(c.pid, coll, %{foo: 42}) |> Enum.to_list()
+    assert [] = c.pid |> Mongo.find(coll, %{foo: 42}) |> Enum.to_list()
 
     assert {:ok, %Mongo.DeleteResult{deleted_count: 0}} =
              Mongo.delete_one(c.pid, coll, %{foo: 42})
 
-    assert [%{"foo" => 43}] = Mongo.find(c.pid, coll, %{foo: 43}) |> Enum.to_list()
+    assert [%{"foo" => 43}] = c.pid |> Mongo.find(coll, %{foo: 43}) |> Enum.to_list()
   end
 
   test "delete_many!", c do

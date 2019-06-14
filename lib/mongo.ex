@@ -162,14 +162,13 @@ defmodule Mongo do
   @spec aggregate(GenServer.server(), collection, [BSON.document()], Keyword.t()) :: cursor
   def aggregate(topology_pid, coll, pipeline, opts \\ []) do
     query =
-      [
+      filter_nils(
         aggregate: coll,
         pipeline: pipeline,
         allowDiskUse: opts[:allow_disk_use],
         collation: opts[:collation],
         maxTimeMS: opts[:max_time]
-      ]
-      |> filter_nils
+      )
 
     wv_query = %Query{action: :wire_version}
 
@@ -216,7 +215,7 @@ defmodule Mongo do
     _ = modifier_docs(update, :update)
 
     query =
-      [
+      filter_nils(
         findAndModify: coll,
         query: filter,
         update: update,
@@ -227,8 +226,7 @@ defmodule Mongo do
         sort: opts[:sort],
         upsert: opts[:upsert],
         collation: opts[:collation]
-      ]
-      |> filter_nils
+      )
 
     opts =
       Keyword.drop(
@@ -270,7 +268,7 @@ defmodule Mongo do
     _ = modifier_docs(replacement, :replace)
 
     query =
-      [
+      filter_nils(
         findAndModify: coll,
         query: filter,
         update: replacement,
@@ -281,8 +279,7 @@ defmodule Mongo do
         sort: opts[:sort],
         upsert: opts[:upsert],
         collation: opts[:collation]
-      ]
-      |> filter_nils
+      )
 
     opts =
       Keyword.drop(
@@ -313,7 +310,7 @@ defmodule Mongo do
           result(BSON.document())
   def find_one_and_delete(topology_pid, coll, filter, opts \\ []) do
     query =
-      [
+      filter_nils(
         findAndModify: coll,
         query: filter,
         remove: true,
@@ -321,8 +318,7 @@ defmodule Mongo do
         fields: opts[:projection],
         sort: opts[:sort],
         collation: opts[:collation]
-      ]
-      |> filter_nils
+      )
 
     opts = Keyword.drop(opts, ~w(max_time projection sort collation)a)
 
@@ -336,15 +332,14 @@ defmodule Mongo do
           result(non_neg_integer)
   def count(topology_pid, coll, filter, opts \\ []) do
     query =
-      [
+      filter_nils(
         count: coll,
         query: filter,
         limit: opts[:limit],
         skip: opts[:skip],
         hint: opts[:hint],
         collation: opts[:collation]
-      ]
-      |> filter_nils
+      )
 
     opts = Keyword.drop(opts, ~w(limit skip hint collation)a)
 
@@ -432,14 +427,13 @@ defmodule Mongo do
           result([BSON.t()])
   def distinct(topology_pid, coll, field, filter, opts \\ []) do
     query =
-      [
+      filter_nils(
         distinct: coll,
         key: field,
         query: filter,
         collation: opts[:collation],
         maxTimeMS: opts[:max_time]
-      ]
-      |> filter_nils
+      )
 
     opts = Keyword.drop(opts, ~w(max_time)a)
 
@@ -1173,7 +1167,8 @@ defmodule Mongo do
   end
 
   defp assign_ids(list) when is_list(list) do
-    Enum.map(list, &assign_id/1)
+    list
+    |> Enum.map(&assign_id/1)
     |> Enum.unzip()
   end
 
