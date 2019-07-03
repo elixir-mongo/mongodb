@@ -26,6 +26,7 @@ defmodule Mongo.Protocol do
     write_concern = Keyword.put_new(write_concern, :w, 1)
 
     s = %{
+      auth_mechanism: opts[:auth_mechanism] || nil,
       socket: nil,
       request_id: 0,
       timeout: opts[:timeout] || @timeout,
