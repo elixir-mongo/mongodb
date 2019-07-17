@@ -555,13 +555,6 @@ defmodule Mongo do
            direct_command(conn, query, opts) do
       {:ok, %{from: 0, num: Enum.count(docs), cursor_id: id, docs: docs}}
     end
-
-    # params = [query, select]
-    # query = %Query{action: :find, extra: coll}
-    # with {:ok, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-    #      :ok <- maybe_failure(reply),
-    #      op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
-    #      do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
   end
 
   @doc false
@@ -578,12 +571,6 @@ defmodule Mongo do
            direct_command(conn, query, opts) do
       {:ok, %{from: 0, num: Enum.count(docs), cursor_id: id, docs: docs}}
     end
-
-    # query = %Query{action: :get_more, extra: {coll, cursor}}
-    # with {:ok, reply} <- DBConnection.execute(conn, query, [], defaults(opts)),
-    #      :ok <- maybe_failure(reply),
-    #      op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
-    #      do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
   end
 
   @doc false
