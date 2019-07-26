@@ -1,32 +1,28 @@
-# Do not run the SSL tests on Travis
 {string, 0} = System.cmd("mongod", ~w'--version')
 ["db version v" <> version, _] = String.split(string, "\n", parts: 2)
 
 IO.puts("[mongod v#{version}]")
 
-version =
-  version
-  |> String.split(".")
-  |> Enum.map(&elem(Integer.parse(&1), 0))
-  |> List.to_tuple()
+version = Version.parse!(version)
 
-options = []
+excluded = []
 
-options =
+# Do not run the SSL tests on Travis
+excluded =
   if System.get_env("CI") do
-    [ssl: true, socket: true] ++ options
+    [ssl: true, socket: true] ++ excluded
   else
-    options
+    excluded
   end
 
-options =
-  if version < {3, 4, 0} do
-    [mongo_3_4: true] ++ options
+excluded =
+  if Version.match?(version, "< 3.4.0") do
+    [mongo_3_4: true] ++ excluded
   else
-    options
+    excluded
   end
 
-ExUnit.configure(exclude: options)
+ExUnit.configure(exclude: excluded)
 ExUnit.start()
 
 {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() --port 27001')
@@ -36,7 +32,7 @@ ExUnit.start()
 {_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase()')
 {_, 0} = System.cmd("mongo", ~w'admin_test --eval db.dropDatabase()')
 
-if version < {2, 6, 0} do
+if Version.match?(version, "< 2.6.0") do
   {_, 0} =
     System.cmd(
       "mongo",
