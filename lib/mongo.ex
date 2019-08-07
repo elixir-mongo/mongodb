@@ -162,13 +162,15 @@ defmodule Mongo do
   @spec aggregate(GenServer.server(), collection, [BSON.document()], Keyword.t()) :: cursor
   def aggregate(topology_pid, coll, pipeline, opts \\ []) do
     query =
-      filter_nils(
+      [
         aggregate: coll,
         pipeline: pipeline,
         allowDiskUse: opts[:allow_disk_use],
         collation: opts[:collation],
         maxTimeMS: opts[:max_time]
-      )
+      ]
+      |> filter_nils()
+      |> Mongo.Session.add_session(opts[:session])
 
     wv_query = %Query{action: :wire_version}
 
@@ -215,7 +217,7 @@ defmodule Mongo do
     _ = modifier_docs(update, :update)
 
     query =
-      filter_nils(
+      [
         findAndModify: coll,
         query: filter,
         update: update,
@@ -226,7 +228,9 @@ defmodule Mongo do
         sort: opts[:sort],
         upsert: opts[:upsert],
         collation: opts[:collation]
-      )
+      ]
+      |> filter_nils()
+      |> Mongo.Session.add_session(opts[:session])
 
     opts =
       Keyword.drop(
@@ -647,13 +651,15 @@ defmodule Mongo do
       })
 
     query =
-      filter_nils(
+      [
         insert: coll,
         documents: [doc],
         ordered: Keyword.get(opts, :ordered),
         writeConcern: write_concern,
         bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
-      )
+      ]
+      |> filter_nils()
+      |> Mongo.Session.add_session(opts[:session])
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts) do
@@ -944,13 +950,15 @@ defmodule Mongo do
       )
 
     query =
-      filter_nils(
+      [
         update: coll,
         updates: [update],
         ordered: Keyword.get(opts, :ordered),
         writeConcern: write_concern,
         bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
-      )
+      ]
+      |> filter_nils()
+      |> Mongo.Session.add_session(opts[:session])
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts) do
@@ -1012,21 +1020,43 @@ defmodule Mongo do
     end
   end
 
-  @doc false
+  def start_session(topology_pid, opts \\ []) do
+    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+         {:ok, %{"id" => id}} <- direct_command(conn, %{startSession: 1}, opts) do
+      Mongo.Session.start_link(conn, id, opts)
+    end
+  end
+
+  def with_session(topology_pid, opts \\ [], func) do
+    with {:ok, pid} <- start_session(topology_pid, opts) do
+      try do
+        func.(pid)
+      after
+        Mongo.Session.end_session(pid, opts)
+      end
+    end
+  end
+
   def select_server(topology_pid, type, opts \\ []) do
-    with {:ok, servers, slave_ok, mongos?} <-
+    with {:session, :error} <- {:session, Keyword.fetch(opts, :session)},
+         {:ok, servers, slave_ok, mongos?} <-
            select_servers(topology_pid, type, opts) do
       if Enum.empty?(servers) do
         {:ok, [], slave_ok, mongos?}
       else
         with {:ok, connection} <-
                servers
-               |> Enum.take_random(1)
-               |> Enum.at(0)
+               |> Enum.random()
                |> get_connection(topology_pid) do
           {:ok, connection, slave_ok, mongos?}
         end
       end
+    else
+      {:session, {:ok, session}} ->
+        {:ok, Mongo.Session.get_connection(session), false, true}
+
+      other ->
+        other
     end
   end
 
