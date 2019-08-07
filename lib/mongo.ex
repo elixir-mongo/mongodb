@@ -980,7 +980,7 @@ defmodule Mongo do
   """
   @spec list_indexes(GenServer.server(), String.t(), Keyword.t()) :: cursor
   def list_indexes(topology_pid, coll, opts \\ []) do
-    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read, opts) do
+    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts) do
       aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, opts)
     end
   end
@@ -1005,7 +1005,7 @@ defmodule Mongo do
     #
     # In versions 2.8.0-rc3 and later, the listCollections command returns a cursor!
     #
-    with {:ok, conn, _, _} <- Mongo.select_server(topology_pid, :read, opts) do
+    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts) do
       aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts)
       |> Stream.filter(fn coll -> coll["type"] == "collection" end)
       |> Stream.map(fn coll -> coll["name"] end)
