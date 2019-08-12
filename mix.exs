@@ -27,11 +27,8 @@ defmodule Mongodb.Mixfile do
   defp elixirc_paths(_), do: ["lib"]
 
   def application do
-    [applications: applications(Mix.env()), mod: {Mongo.App, []}, env: []]
+    [mod: {Mongo.App, []}, env: [], extra_applications: [:logger]]
   end
-
-  def applications(:test), do: [:logger, :connection, :db_connection]
-  def applications(_), do: [:logger, :connection, :db_connection]
 
   defp deps do
     [
