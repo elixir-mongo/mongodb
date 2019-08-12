@@ -22,6 +22,13 @@ excluded =
     excluded
   end
 
+excluded =
+  if Version.match?(version, "< 3.6.0") do
+    [session: true] ++ excluded
+  else
+    excluded
+  end
+
 ExUnit.configure(exclude: excluded)
 ExUnit.start()
 
