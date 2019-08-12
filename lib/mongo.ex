@@ -1023,7 +1023,7 @@ defmodule Mongo do
   def start_session(topology_pid, opts \\ []) do
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, %{"id" => id}} <- direct_command(conn, %{startSession: 1}, opts) do
-      Mongo.Session.start_link(conn, id, opts)
+      Mongo.Session.Supervisor.start_child(topology_pid, id, opts)
     end
   end
 
@@ -1032,14 +1032,13 @@ defmodule Mongo do
       try do
         func.(pid)
       after
-        Mongo.Session.end_session(pid, opts)
+        Mongo.Session.end_session(pid) 
       end
     end
   end
 
   def select_server(topology_pid, type, opts \\ []) do
-    with {:session, :error} <- {:session, Keyword.fetch(opts, :session)},
-         {:ok, servers, slave_ok, mongos?} <-
+    with {:ok, servers, slave_ok, mongos?} <-
            select_servers(topology_pid, type, opts) do
       if Enum.empty?(servers) do
         {:ok, [], slave_ok, mongos?}
@@ -1051,12 +1050,6 @@ defmodule Mongo do
           {:ok, connection, slave_ok, mongos?}
         end
       end
-    else
-      {:session, {:ok, session}} ->
-        {:ok, Mongo.Session.get_connection(session), false, true}
-
-      other ->
-        other
     end
   end
 
