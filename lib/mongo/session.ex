@@ -1,6 +1,7 @@
 defmodule Mongo.Session do
-  @enforce_keys [:id, :pid, :ref]
+  @enforce_keys [:id, :pid]
   defstruct @enforce_keys ++ [
+    :ref,
     :read_concern,
     :write_concern,
     :read_preference,
@@ -81,9 +82,25 @@ defmodule Mongo.Session do
   @outside_txn @states -- @in_txn
 
   def child_spec({topology_pid, id, opts, parent}) do
+    casual_consistency = Keyword.get(opts, :casual_consistency, true)
+    read_concern = Keyword.get(opts, :read_concern, %{})
+    read_preference = Keyword.get(opts, :read_preference)
+    retry_writes = Keyword.get(opts, :retry_writes, true)
+    write_concern = Keyword.get(opts, :write_concern)
+
+    state = %__MODULE__{
+      id: id,
+      pid: topology_pid,
+      casual_consistency: casual_consistency,
+      read_concern: read_concern,
+      read_preference: read_preference,
+      retry_writes: retry_writes,
+      write_concern: write_concern
+    }
+
     %{
       id: nil,
-      start: {:gen_statem, :start_link, [__MODULE__, {topology_pid, id, opts, parent}, []]},
+      start: {:gen_statem, :start_link, [__MODULE__, {parent, state}, []]},
       restart: :temporary,
       type: :worker
     }
@@ -91,9 +108,10 @@ defmodule Mongo.Session do
 
   def callback_mode, do: :handle_event_function
 
-  def init({topology_pid, id, _opts, parent}) do
+  @impl :gen_statem
+  def init({parent, state}) do
     ref = Process.monitor(parent)
-    {:ok, :no_transaction, %__MODULE__{id: id, pid: topology_pid, ref: ref}}
+    {:ok, :no_transaction, struct(state, ref: ref)}
   end
 
   def handle_event({:call, from}, :get_connection, _state, data) do
@@ -115,6 +133,8 @@ defmodule Mongo.Session do
         startTransaction: state == :transaction_started,
         autocommit: false
       )
+      |> add_option(:writeConcern, data.write_concern)
+      |> add_option(:readConcern, data.read_concern)
 
     {:next_state, :in_transaction, data, {:reply, from, new_query}}
   end
@@ -173,11 +193,17 @@ defmodule Mongo.Session do
       txnNumber: {:long, state.txn},
       autocommit: false
     ]
+    |> add_option(:writeConcern, state.write_concern)
 
     opts = [database: "admin"]
 
     with {:ok, conn, _, _} <- Mongo.select_server(state.pid, :write, opts),
          {:ok, _} <- Mongo.direct_command(conn, query, opts),
          do: :ok
+  end
+
+  defp add_option(conn_opts, _key, nil), do: conn_opts
+  defp add_option(conn_opts, key, value) do
+    List.keydelete(conn_opts, key, 0) ++ [{key, value}]
   end
 end
