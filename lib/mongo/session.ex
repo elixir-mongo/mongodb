@@ -27,30 +27,54 @@ defmodule Mongo.Session do
 
   @behaviour :gen_statem
 
-  @spec start_transaction(session()) :: :ok
-  @spec start_transaction(session(), keyword()) :: :ok
+  @doc """
+  Start new transaction within current session.
+  """
+  @spec start_transaction(session()) :: :ok | {:error, term()}
+  @spec start_transaction(session(), keyword()) :: :ok | {:error, term()}
   def start_transaction(pid, opts \\ []) do
     :gen_statem.call(pid, {:start_transaction, opts})
   end
 
+  @doc """
+  Commit current transaction. It will error if the session is in invalid state.
+  """
   @spec commit_transaction(session()) :: :ok | {:error, term}
   def commit_transaction(pid), do: :gen_statem.call(pid, :commit_transaction)
 
-  @spec abort_transaction(session()) :: :ok
+  @doc """
+  Abort current transaction and rollback changes introduced by it. It will error
+  if the session is invalid.
+  """
+  @spec abort_transaction(session()) :: :ok | {:error, term()}
   def abort_transaction(pid), do: :gen_statem.call(pid, :abort_transaction)
 
-  @spec end_session(session()) :: :ok
+  @doc """
+  Finish current session and rollback uncommited transactions if any.
+
+  **WARNING:** Session is ended in asynchronous manner, which mean, that
+  the process itself can be still available and `#{inspect(__MODULE__)}.ended?(session)`
+  can still return `false` for some time after calling this function.
+  """
+  @spec end_session(session()) :: :ok | {:error, term()}
   def end_session(pid) do
     unless ended?(pid), do: :gen_statem.call(pid, :end_session)
 
     :ok
   end
 
+  @doc """
+  Check whether given session has already ended.
+  """
   @spec ended?(session()) :: boolean()
   def ended?(pid), do: not Process.alive?(pid)
 
-  @spec with_transaction(session(), (() -> return)) :: {:ok, return} | {:error, term} when return: term()
-  @spec with_transaction(session(), keyword(), (() -> return)) :: {:ok, return} | {:error, term} when return: term()
+  @doc """
+  Run provided `func` within transaction and automatically commit it if there
+  was no exceptions.
+  """
+  @spec with_transaction(session(), ((GenServer.server()) -> return)) :: {:ok, return} | {:error, term} when return: term()
+  @spec with_transaction(session(), keyword(), ((GenServer.server()) -> return)) :: {:ok, return} | {:error, term} when return: term()
   def with_transaction(pid, opts \\ [], func) do
     :ok = start_transaction(pid, opts)
     conn = get_connection(pid)
@@ -81,6 +105,7 @@ defmodule Mongo.Session do
   @in_txn [:transaction_started, :in_transaction]
   @outside_txn @states -- @in_txn
 
+  @doc false
   def child_spec({topology_pid, id, opts, parent}) do
     casual_consistency = Keyword.get(opts, :casual_consistency, true)
     read_concern = Keyword.get(opts, :read_concern, %{})
@@ -106,6 +131,7 @@ defmodule Mongo.Session do
     }
   end
 
+  @impl :gen_statem
   def callback_mode, do: :handle_event_function
 
   @impl :gen_statem
@@ -114,15 +140,19 @@ defmodule Mongo.Session do
     {:ok, :no_transaction, struct(state, ref: ref)}
   end
 
+  @impl :gen_statem
+  # Get current connection form session.
   def handle_event({:call, from}, :get_connection, _state, data) do
     {:keep_state_and_data, {:reply, from, data.pid}}
   end
 
+  # Start new transaction if there isn't one already.
   def handle_event({:call, from}, {:start_transaction, _opts}, state, %{txn: txn} = data)
       when state in @outside_txn do
     {:next_state, :transaction_started, struct(data, txn: txn + 1), {:reply, from, :ok}}
   end
 
+  # Add session information to the query metadata.
   def handle_event({:call, from}, {:add_session, query}, state, data) when state in @in_txn do
     new_query =
       query
@@ -139,6 +169,8 @@ defmodule Mongo.Session do
     {:next_state, :in_transaction, data, {:reply, from, new_query}}
   end
 
+  # Commit transaction. If there isn't any then just change current state to
+  # `transaction_commited` and call it a day.
   def handle_event({:call, from}, :commit_transaction, state, data) when state in @in_txn do
     response =
       if state == :in_transaction do
@@ -150,6 +182,8 @@ defmodule Mongo.Session do
     {:next_state, :transaction_commited, data, {:reply, from, response}}
   end
 
+  # Abort transaction if there is any. If there is none then change state to
+  # `transaction_aborted`
   def handle_event({:call, from}, :abort_transaction, state, data) when state in @in_txn do
     response =
       if state == :in_transaction do
@@ -161,18 +195,26 @@ defmodule Mongo.Session do
     {:next_state, :transaction_aborted, data, {:reply, from, response}}
   end
 
+  # Finish session by ending process (for further "closing" see `terminate/3`
+  # handler.
   def handle_event({:call, from}, :end_session, _state, _data) do
     {:stop_and_reply, :normal, {:reply, from, :ok}}
   end
 
+  # If parent process died before session then stop process and handle aborting
+  # sessions in `terminate/3` handler.
   def handle_event(:info, {:DOWN, ref, :process, _pid, _reason}, _state, %{ref: ref}) do
     {:stop, :normal}
   end
 
+  # On unsupported call (for example call in invalid state) just return error to
+  # the caller with information about current state and called command.
   def handle_event({:call, from}, command, state, _data) do
     {:keep_state_and_data, {:reply, from, {:error, {:invalid_call, command, state}}}}
   end
 
+  @impl :gen_statem
+  # Abort all pending transactions if there any and end session itself.
   def terminate(_reason, state, %{pid: pid} = data) do
     if state == :in_transaction, do: :ok = abort_txn(data)
 
