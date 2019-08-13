@@ -1023,7 +1023,8 @@ defmodule Mongo do
   @doc """
   Start new session for given `topology_pid`.
   """
-  @spec start_session(GenServer.server(), keyword()) :: {:ok, Mongo.Session.session()} | {:error, term()}
+  @spec start_session(GenServer.server(), keyword()) ::
+          {:ok, Mongo.Session.session()} | {:error, term()}
   def start_session(topology_pid, opts \\ []) do
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, %{"id" => id}} <- direct_command(conn, %{startSession: 1}, opts) do
@@ -1031,14 +1032,16 @@ defmodule Mongo do
     end
   end
 
-  @spec with_session(GenServer.server(), (Mongo.Session.session() -> return)) :: return when return: term()
-  @spec with_session(GenServer.server(), keyword(), (Mongo.Session.session() -> return)) :: return when return: term()
+  @spec with_session(GenServer.server(), (Mongo.Session.session() -> return)) :: return
+        when return: term()
+  @spec with_session(GenServer.server(), keyword(), (Mongo.Session.session() -> return)) :: return
+        when return: term()
   def with_session(topology_pid, opts \\ [], func) do
     with {:ok, pid} <- start_session(topology_pid, opts) do
       try do
         func.(pid)
       after
-        Mongo.Session.end_session(pid) 
+        Mongo.Session.end_session(pid)
       end
     end
   end
