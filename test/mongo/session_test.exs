@@ -38,13 +38,14 @@ defmodule Mongo.SessionTest do
     end
 
     test "session end together with parent process", %{pid: pid} do
-      task = Task.async(fn ->
-        assert {:ok, session} = Mongo.start_session(pid)
+      task =
+        Task.async(fn ->
+          assert {:ok, session} = Mongo.start_session(pid)
 
-        refute Session.ended?(session)
+          refute Session.ended?(session)
 
-        session
-      end)
+          session
+        end)
 
       session = Task.await(task)
       ref = Process.monitor(session)
@@ -83,8 +84,13 @@ defmodule Mongo.SessionTest do
     end
 
     tasks = [:commit, :abort]
+
     for first <- tasks, second <- tasks do
-      test "#{first}ed transaction cannot be #{second}ed", %{pid: pid, session: session, table: table} do
+      test "#{first}ed transaction cannot be #{second}ed", %{
+        pid: pid,
+        session: session,
+        table: table
+      } do
         assert :ok = Session.start_transaction(session)
         assert {:ok, _} = Mongo.insert_one(pid, table, %{foo: 1}, session: session)
         assert :ok = Session.unquote(:"#{first}_transaction")(session)
@@ -92,7 +98,11 @@ defmodule Mongo.SessionTest do
       end
     end
 
-    test "inserts in commited transactions are visible after commit", %{pid: pid, session: session, table: table} do
+    test "inserts in commited transactions are visible after commit", %{
+      pid: pid,
+      session: session,
+      table: table
+    } do
       assert :ok = Session.start_transaction(session)
       assert {:ok, result} = Mongo.insert_one(pid, table, %{foo: 1}, session: session)
       id = result.inserted_id
@@ -100,7 +110,11 @@ defmodule Mongo.SessionTest do
       assert Mongo.find_one(pid, table, _id: id)
     end
 
-    test "inserts in aborted transactions are ignored", %{pid: pid, session: session, table: table} do
+    test "inserts in aborted transactions are ignored", %{
+      pid: pid,
+      session: session,
+      table: table
+    } do
       assert :ok = Session.start_transaction(session)
       assert {:ok, result} = Mongo.insert_one(pid, table, %{foo: 1}, session: session)
       id = result.inserted_id
@@ -134,17 +148,26 @@ defmodule Mongo.SessionTest do
       assert {:ok, :ok} == Session.with_transaction(session, fn _pid -> :ok end)
     end
 
-    test "inserts are persisted after transaction end", %{pid: pid, session: session, table: table} do
-      assert {:ok, result} = Session.with_transaction(session, fn conn ->
-        assert {:ok, result} = Mongo.insert_one(conn, table, %{foo: 1}, session: session)
+    test "inserts are persisted after transaction end", %{
+      pid: pid,
+      session: session,
+      table: table
+    } do
+      assert {:ok, result} =
+               Session.with_transaction(session, fn conn ->
+                 assert {:ok, result} = Mongo.insert_one(conn, table, %{foo: 1}, session: session)
 
-        result
-      end)
+                 result
+               end)
 
       assert Mongo.find_one(pid, table, _id: result.inserted_id)
     end
 
-    test "aborts session and reraises error that occured within function", %{pid: pid, session: session, table: table} do
+    test "aborts session and reraises error that occured within function", %{
+      pid: pid,
+      session: session,
+      table: table
+    } do
       assert_raise RuntimeError, "example error", fn ->
         Session.with_transaction(session, fn conn ->
           assert {:ok, _} = Mongo.insert_one(conn, table, %{foo: 1}, session: session)
