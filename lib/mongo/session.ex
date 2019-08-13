@@ -1,15 +1,16 @@
 defmodule Mongo.Session do
   @enforce_keys [:id, :pid]
-  defstruct @enforce_keys ++ [
-    :ref,
-    :read_concern,
-    :write_concern,
-    :read_preference,
-    casual_consistency: true,
-    retry_writes: false,
-    cluster_time: nil,
-    txn: 0
-  ]
+  defstruct @enforce_keys ++
+              [
+                :ref,
+                :read_concern,
+                :write_concern,
+                :read_preference,
+                casual_consistency: true,
+                retry_writes: false,
+                cluster_time: nil,
+                txn: 0
+              ]
 
   @opaque session :: pid()
 
@@ -73,8 +74,12 @@ defmodule Mongo.Session do
   Run provided `func` within transaction and automatically commit it if there
   was no exceptions.
   """
-  @spec with_transaction(session(), ((GenServer.server()) -> return)) :: {:ok, return} | {:error, term} when return: term()
-  @spec with_transaction(session(), keyword(), ((GenServer.server()) -> return)) :: {:ok, return} | {:error, term} when return: term()
+  @spec with_transaction(session(), (GenServer.server() -> return)) ::
+          {:ok, return} | {:error, term}
+        when return: term()
+  @spec with_transaction(session(), keyword(), (GenServer.server() -> return)) ::
+          {:ok, return} | {:error, term}
+        when return: term()
   def with_transaction(pid, opts \\ [], func) do
     :ok = start_transaction(pid, opts)
     conn = get_connection(pid)
@@ -229,13 +234,14 @@ defmodule Mongo.Session do
   defp abort_txn(data), do: run_txn_command(data, :abortTransaction)
 
   defp run_txn_command(state, command) do
-    query = [
-      {command, 1},
-      lsid: state.id,
-      txnNumber: {:long, state.txn},
-      autocommit: false
-    ]
-    |> add_option(:writeConcern, state.write_concern)
+    query =
+      [
+        {command, 1},
+        lsid: state.id,
+        txnNumber: {:long, state.txn},
+        autocommit: false
+      ]
+      |> add_option(:writeConcern, state.write_concern)
 
     opts = [database: "admin"]
 
@@ -245,6 +251,7 @@ defmodule Mongo.Session do
   end
 
   defp add_option(conn_opts, _key, nil), do: conn_opts
+
   defp add_option(conn_opts, key, value) do
     List.keydelete(conn_opts, key, 0) ++ [{key, value}]
   end
