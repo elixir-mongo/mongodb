@@ -111,7 +111,7 @@ defmodule Mongo.Session do
       |> Keyword.new()
       |> Keyword.merge(
         lsid: data.id,
-        txnNumber: 2_147_483_647 + data.txn,
+        txnNumber: {:long, data.txn},
         startTransaction: state == :transaction_started,
         autocommit: false
       )
@@ -122,7 +122,7 @@ defmodule Mongo.Session do
   def handle_event({:call, from}, :commit_transaction, state, data) when state in @in_txn do
     response =
       if state == :in_transaction do
-        run_txn_command(data, :commitTransaction, [])
+        run_txn_command(data, :commitTransaction)
       else
         :ok
       end
@@ -154,9 +154,7 @@ defmodule Mongo.Session do
   end
 
   def terminate(_reason, state, %{pid: pid} = data) do
-    if state in @in_txn do
-      :ok = abort_txn(data)
-    end
+    if state == :in_transaction, do: :ok = abort_txn(data)
 
     query = %{
       endSessions: [data.id]
@@ -166,20 +164,19 @@ defmodule Mongo.Session do
          do: Mongo.direct_command(conn, query, database: "admin")
   end
 
-  defp abort_txn(data), do: run_txn_command(data, :abortTransaction, [])
+  defp abort_txn(data), do: run_txn_command(data, :abortTransaction)
 
-  defp run_txn_command(%{pid: pid, txn: txn, id: id}, command, opts) do
+  defp run_txn_command(state, command) do
     query = [
       {command, 1},
-      lsid: id,
-      writeConcern: %{w: 1},
-      txnNumber: 2_147_483_647 + txn,
+      lsid: state.id,
+      txnNumber: {:long, state.txn},
       autocommit: false
     ]
 
-    opts = Keyword.put(opts, :database, "admin")
+    opts = [database: "admin"]
 
-    with {:ok, conn, _, _} <- Mongo.select_server(pid, :write, opts),
+    with {:ok, conn, _, _} <- Mongo.select_server(state.pid, :write, opts),
          {:ok, _} <- Mongo.direct_command(conn, query, opts),
          do: :ok
   end
