@@ -95,6 +95,10 @@ defmodule BSON.Encoder do
   def encode(value) when is_int64(value),
     do: <<value::int64>>
 
+  # Special case for forcing number encoding as long
+  def encode({:long, value}) when is_int32(value) or is_int64(value),
+    do: <<value::int64>>
+
   def document(doc) do
     {_, iodata} =
       Enum.reduce(doc, {:unknown, ""}, fn
@@ -162,6 +166,7 @@ defmodule BSON.Encoder do
   defp type(value) when is_list(value), do: @type_array
   defp type(value) when is_int32(value), do: @type_int32
   defp type(value) when is_int64(value), do: @type_int64
+  defp type({:long, value}) when is_int32(value) or is_int64(value), do: @type_int64
 
   defp subtype(:generic), do: 0x00
   defp subtype(:function), do: 0x01
