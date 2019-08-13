@@ -87,7 +87,7 @@ defmodule Mongo.Session do
   rescue
     exception ->
       abort_transaction(pid)
-      reraise exception, __STACKTRACE__
+      reraise exception, System.stacktrace()
   else
     val ->
       with :ok <- commit_transaction(pid), do: {:ok, val}
