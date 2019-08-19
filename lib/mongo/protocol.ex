@@ -39,7 +39,8 @@ defmodule Mongo.Protocol do
       connection_type: Keyword.fetch!(opts, :connection_type),
       topology_pid: Keyword.fetch!(opts, :topology_pid),
       ssl: opts[:ssl] || false,
-      status: :idle
+      status: :idle,
+      session: nil
     }
 
     connect(opts, s)
@@ -169,18 +170,41 @@ defmodule Mongo.Protocol do
   end
 
   @impl DBConnection
-  def handle_begin(_opts, state) do
-    {:idle, state}
+  def handle_begin(opts, %{topology_pid: pid} = state) do
+    with {:ok, session} <- Mongo.start_session(pid, opts),
+         :ok <- Mongo.Session.start_transaction(session, opts) do
+      {:ok, :ok, %{state | session: session}}
+    else
+      _ ->
+        {:idle, state}
+    end
+  end
+
+  @impl DBConnection
+  def handle_commit(_opts, state) do
+    with false <- is_nil(state.session),
+         :ok <- Mongo.Session.commit_transaction(state.session),
+         :ok <- Mongo.Session.end_session(state.session) do
+      {:ok, :ok, %{state | session: nil}}
+    else
+      _ -> {:idle, state}
+    end
+  end
+
+  @impl DBConnection
+  def handle_rollback(_opts, state) do
+    with false <- is_nil(state.session),
+         :ok <- Mongo.Session.abort_transaction(state.session),
+         :ok <- Mongo.Session.end_session(state.session) do
+      {:ok, :ok, %{state | session: nil}}
+    else
+      _ -> {:idle, state}
+    end
   end
 
   @impl DBConnection
   def handle_close(_query, _opts, state) do
     {:ok, nil, state}
-  end
-
-  @impl DBConnection
-  def handle_commit(_opts, state) do
-    {:idle, state}
   end
 
   @impl DBConnection
@@ -239,11 +263,6 @@ defmodule Mongo.Protocol do
   @impl DBConnection
   def handle_prepare(query, _opts, state) do
     {:ok, query, state}
-  end
-
-  @impl DBConnection
-  def handle_rollback(_opts, state) do
-    {:idle, state}
   end
 
   @impl DBConnection
