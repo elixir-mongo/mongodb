@@ -138,7 +138,12 @@ defmodule Mongo do
   end
 
   def child_spec(opts, child_opts \\ []) do
-    Supervisor.Spec.worker(Mongo, [opts], child_opts)
+    child_opts
+    |> Map.new()
+    |> Map.merge(%{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]}
+    })
   end
 
   @doc """
