@@ -6,7 +6,8 @@ defmodule Mongo.Session do
                 :read_concern,
                 :write_concern,
                 :read_preference,
-                casual_consistency: true,
+                operation_time: nil,
+                causal_consistency: true,
                 retry_writes: false,
                 cluster_time: nil,
                 txn: 0
@@ -112,7 +113,7 @@ defmodule Mongo.Session do
 
   @doc false
   def child_spec({topology_pid, id, opts, parent}) do
-    casual_consistency = Keyword.get(opts, :casual_consistency, true)
+    causal_consistency = Keyword.get(opts, :causal_consistency, true)
     read_concern = Keyword.get(opts, :read_concern, %{})
     read_preference = Keyword.get(opts, :read_preference)
     retry_writes = Keyword.get(opts, :retry_writes, true)
@@ -121,7 +122,7 @@ defmodule Mongo.Session do
     state = %__MODULE__{
       id: id,
       pid: topology_pid,
-      casual_consistency: casual_consistency,
+      causal_consistency: causal_consistency,
       read_concern: read_concern,
       read_preference: read_preference,
       retry_writes: retry_writes,
@@ -158,20 +159,40 @@ defmodule Mongo.Session do
   end
 
   # Add session information to the query metadata.
-  def handle_event({:call, from}, {:add_session, query}, state, data) when state in @in_txn do
+  def handle_event({:call, from}, {:add_session, query}, :transaction_started, data) do
+    new_query =
+      query
+      |> Keyword.new()
+      |> add_option(:lsid, data.id)
+      |> add_option(:txnNumber, {:long, data.txn})
+      |> add_option(:startTransaction, true)
+      |> add_option(:autocommit, false)
+      |> set_read_concern(data.operation_time, data.causal_consistency)
+
+    {:next_state, :in_transaction, data, {:reply, from, new_query}}
+  end
+
+  def handle_event({:call, from}, {:add_session, query}, :in_transaction, data) do
     new_query =
       query
       |> Keyword.new()
       |> Keyword.merge(
         lsid: data.id,
         txnNumber: {:long, data.txn},
-        startTransaction: state == :transaction_started,
         autocommit: false
       )
-      |> add_option(:writeConcern, data.write_concern)
-      |> add_option(:readConcern, data.read_concern)
 
-    {:next_state, :in_transaction, data, {:reply, from, new_query}}
+    {:keep_state_and_data, {:reply, from, new_query}}
+  end
+
+  def handle_event({:call, from}, {:add_session, query}, _state, data) do
+    new_query =
+      query
+      |> Keyword.new()
+      |> add_option(:lsid, data.id)
+      |> set_read_concern(data.operation_time, data.causal_consistency)
+
+    {:next_state, :no_transaction, data, {:reply, from, new_query}}
   end
 
   # Commit transaction. If there isn't any then just change current state to
@@ -238,8 +259,8 @@ defmodule Mongo.Session do
       [
         {command, 1},
         lsid: state.id,
-        txnNumber: {:long, state.txn},
-        autocommit: false
+        autocommit: false,
+        txnNumber: {:long, state.txn}
       ]
       |> add_option(:writeConcern, state.write_concern)
 
@@ -248,6 +269,14 @@ defmodule Mongo.Session do
     with {:ok, conn, _, _} <- Mongo.select_server(state.pid, :write, opts),
          {:ok, _} <- Mongo.direct_command(conn, query, opts),
          do: :ok
+  end
+
+  defp set_read_concern(conn_opts, nil, true) do
+    add_option(conn_opts, :readConcern, %{})
+  end
+
+  defp set_read_concern(conn_opts, time, false) do
+    Keyword.update(conn_opts, :readConcern, %{afterClusterTime: time}, &Map.put(&1, :afterClusterTime, time))
   end
 
   defp add_option(conn_opts, _key, nil), do: conn_opts
