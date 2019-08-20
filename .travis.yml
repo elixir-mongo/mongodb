@@ -8,7 +8,7 @@ cache:
   - apt
   - directories:
     - ~/.mongodb
-    - ./plt_core_path
+    - ~/.mix
 
 before_install:
   - . $HOME/.nvm/nvm.sh
@@ -26,6 +26,7 @@ before_script:
 
 script:
   - mix test
+  - mix dialyzer
 
 env:
   matrix:

@@ -56,7 +56,7 @@ defmodule Mongo do
 
   @timeout 5000
 
-  @dialyzer [no_match: [count_documents!: 4]]
+  @dialyzer nowarn_function: [count_documents!: 4]
 
   @type conn :: DbConnection.Conn
   @type collection :: String.t()
