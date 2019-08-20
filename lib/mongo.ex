@@ -175,11 +175,11 @@ defmodule Mongo do
         maxTimeMS: opts[:max_time]
       ]
       |> filter_nils()
-      |> Mongo.Session.add_session(opts[:session])
 
     wv_query = %Query{action: :wire_version}
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
+    with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
+         {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
          {:ok, _query, version} <- DBConnection.execute(conn, wv_query, [], defaults(opts)) do
       cursor? = version >= 1 and Keyword.get(opts, :use_cursor, true)
       opts = Keyword.drop(opts, ~w(allow_disk_use max_time use_cursor)a)
@@ -235,7 +235,6 @@ defmodule Mongo do
         collation: opts[:collation]
       ]
       |> filter_nils()
-      |> Mongo.Session.add_session(opts[:session])
 
     opts =
       Keyword.drop(
@@ -243,7 +242,8 @@ defmodule Mongo do
         ~w(bypass_document_validation max_time projection return_document sort upsert collation)a
       )
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
+    with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
+         {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts),
          do: {:ok, doc["value"]}
   end
@@ -666,9 +666,9 @@ defmodule Mongo do
         bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
       ]
       |> filter_nils()
-      |> Mongo.Session.add_session(opts[:session])
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
+    with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
+         {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts) do
       case doc do
         %{"writeErrors" => _} ->
@@ -965,9 +965,9 @@ defmodule Mongo do
         bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
       ]
       |> filter_nils()
-      |> Mongo.Session.add_session(opts[:session])
 
-    with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
+    with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
+         {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts) do
       case doc do
         %{"writeErrors" => write_errors} ->

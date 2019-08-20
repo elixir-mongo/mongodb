@@ -1,5 +1,5 @@
 defmodule Mongo.Error do
-  defexception [:message, :code, :host]
+  defexception [:message, :code, :host, type: :mongo]
 
   @type t :: %__MODULE__{
           message: String.t(),
@@ -14,20 +14,60 @@ defmodule Mongo.Error do
 
   def exception(tag: :tcp, action: action, reason: reason, host: host) do
     formatted_reason = :inet.format_error(reason)
-    %Mongo.Error{message: "#{host} tcp #{action}: #{formatted_reason} - #{inspect(reason)}"}
+
+    %__MODULE__{
+      message: "#{host} tcp #{action}: #{formatted_reason} - #{inspect(reason)}",
+      type: :network
+    }
   end
 
   def exception(tag: :ssl, action: action, reason: reason, host: host) do
     formatted_reason = :ssl.format_error(reason)
-    %Mongo.Error{message: "#{host} ssl #{action}: #{formatted_reason} - #{inspect(reason)}"}
+
+    %__MODULE__{
+      message: "#{host} ssl #{action}: #{formatted_reason} - #{inspect(reason)}",
+      type: :network
+    }
   end
 
   def exception(message: message, code: code) do
-    %Mongo.Error{message: message, code: code}
+    %__MODULE__{message: message, code: code}
   end
 
   def exception(message: message) do
-    %Mongo.Error{message: message}
+    %__MODULE__{message: message}
+  end
+
+  @retryable_error_codes [
+    # HostUnreachable
+    6,
+    # HostNotFound
+    7,
+    # NetworkTimeout
+    89,
+    # ShutdownInProgress
+    91,
+    # PrimarySteppedDown
+    189,
+    # SocketException
+    9001,
+    # NotMaster
+    10107,
+    # InterruptedAtShutdown
+    11600,
+    # InterruptedDueToReplStateChange
+    11602,
+    # NotMasterNoSlaveOk
+    13435,
+    # NotMasterOrSecondary
+    13436
+  ]
+
+  def retryable(%__MODULE__{code: code}) when code in @retryable_error_codes,
+    do: true
+
+  def retryable(%__MODULE__{message: message}) do
+    message =~ ~r/not master|node is recovering/
   end
 end
 
