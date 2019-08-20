@@ -376,7 +376,7 @@ defmodule Mongo do
   def count_documents(topology_pid, coll, filter, opts \\ []) do
     pipeline =
       [
-        {"$match", filter},
+        {"$match", Map.new(filter)},
         {"$skip", opts[:skip]},
         {"$limit", opts[:limit]},
         {"$group", %{"_id" => nil, "n" => %{"$sum" => 1}}}
@@ -615,6 +615,8 @@ defmodule Mongo do
           {:error, %Mongo.Error{message: "command failed: #{reason}", code: error["code"]}}
 
         op_reply(docs: [%{"ok" => ok} = doc]) when ok == 1 ->
+          Mongo.Session.update_session(doc, opts[:session])
+
           {:ok, doc}
 
         # TODO: Check if needed
