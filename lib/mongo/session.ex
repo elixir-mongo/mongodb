@@ -9,7 +9,6 @@ defmodule Mongo.Session do
                 operation_time: nil,
                 causal_consistency: true,
                 retry_writes: false,
-                cluster_time: nil,
                 txn: 0
               ]
 
@@ -98,15 +97,11 @@ defmodule Mongo.Session do
     :gen_statem.call(pid, {:advance_operation_time, timestamp})
   end
 
-  def advance_cluster_time(pid, data) do
-    :gen_statem.call(pid, {:advance_cluster_time, data})
-  end
-
   @doc false
   def update_session(doc, nil), do: doc
-  def update_session(%{"operationTime" => operation_ts, "$clusterTime" => cluster_ts} = doc, pid) do
+
+  def update_session(%{"operationTime" => operation_ts} = doc, pid) do
     :ok = advance_operation_time(pid, operation_ts)
-    :ok = advance_cluster_time(pid, cluster_ts)
 
     doc
   end
@@ -114,7 +109,7 @@ defmodule Mongo.Session do
   def update_session(doc, _pid), do: doc
 
   @doc false
-  def add_session(query, nil), do: query
+  def add_session(query, nil), do: {:ok, query}
   def add_session(query, pid), do: :gen_statem.call(pid, {:add_session, query})
 
   defp get_connection(pid), do: :gen_statem.call(pid, :get_connection)
@@ -196,7 +191,7 @@ defmodule Mongo.Session do
       |> add_option(:autocommit, false)
       |> set_read_concern(data.operation_time, data.causal_consistency)
 
-    {:next_state, :in_transaction, data, {:reply, from, new_query}}
+    {:next_state, :in_transaction, data, {:reply, from, {:ok, new_query}}}
   end
 
   def handle_event({:call, from}, {:add_session, query}, :in_transaction, data) do
@@ -209,30 +204,44 @@ defmodule Mongo.Session do
         autocommit: false
       )
 
-    {:keep_state_and_data, {:reply, from, new_query}}
+    case Keyword.get(new_query, :read_preference, %{mode: :primary}) do
+      %{mode: :primary} ->
+        {:keep_state_and_data, {:reply, from, {:ok, new_query}}}
+
+      %{mode: mode} ->
+        {:keep_state_and_data,
+         {:reply, from,
+          {:error,
+           Mongo.Error.exception(message: "Read preference must be primary, not: #{mode}")}}}
+    end
   end
 
   def handle_event({:call, from}, {:add_session, query}, _state, data) do
-    new_query =
-      query
-      |> Keyword.new()
-      |> add_option(:lsid, data.id)
-      |> set_read_concern(data.operation_time, data.causal_consistency)
+    if query[:will_retry_write] do
+      handle_event({:call, from}, {:add_session, query}, :in_transaction, data)
+    else
+      new_query =
+        query
+        |> Keyword.new()
+        |> add_option(:lsid, data.id)
+        |> set_read_concern(data.operation_time, data.causal_consistency)
 
-    {:next_state, :no_transaction, data, {:reply, from, new_query}}
+      {:next_state, :no_transaction, data, {:reply, from, {:ok, new_query}}}
+    end
   end
 
   # Commit transaction. If there isn't any then just change current state to
   # `transaction_commited` and call it a day.
-  def handle_event({:call, from}, :commit_transaction, state, data) when state in @in_txn do
-    response =
+  def handle_event({:call, from}, :commit_transaction, state, data)
+      when state in @in_txn or state == :transaction_commited do
+    return =
       if state == :in_transaction do
-        run_txn_command(data, :commitTransaction)
+        try_run_txn_command(data, :commitTransaction)
       else
         :ok
       end
 
-    {:next_state, :transaction_commited, data, {:reply, from, response}}
+    {:next_state, :transaction_commited, data, {:reply, from, return}}
   end
 
   # Abort transaction if there is any. If there is none then change state to
@@ -240,7 +249,7 @@ defmodule Mongo.Session do
   def handle_event({:call, from}, :abort_transaction, state, data) when state in @in_txn do
     response =
       if state == :in_transaction do
-        abort_txn(data)
+        try_run_txn_command(data, :abortTransaction)
       else
         :ok
       end
@@ -255,11 +264,14 @@ defmodule Mongo.Session do
   end
 
   def handle_event({:call, from}, {:advance_operation_time, timestamp}, _state, data) do
-    {:keep_state, struct(data, operation_time: timestamp), {:reply, from, :ok}}
-  end
-
-  def handle_event({:call, from}, {:advance_cluster_time, time}, _state, data) do
-    {:keep_state, struct(data, cluster_time: time), {:reply, from, :ok}}
+    if not is_nil(data.operation_time) and
+         (timestamp.value > data.operation_time.value or
+            (timestamp.value == data.operation_time.value and
+               timestamp.ordinal > data.operation_time.ordinal)) do
+      {:keep_state, struct(data, operation_time: timestamp), {:reply, from, :ok}}
+    else
+      {:keep_state_and_data, {:reply, from, :ok}}
+    end
   end
 
   # If parent process died before session then stop process and handle aborting
@@ -277,7 +289,9 @@ defmodule Mongo.Session do
   @impl :gen_statem
   # Abort all pending transactions if there any and end session itself.
   def terminate(_reason, state, %{pid: pid} = data) do
-    if state == :in_transaction, do: _ = abort_txn(data)
+    if state == :in_transaction do
+      _ = try_run_txn_command(data, :abortTransaction)
+    end
 
     query = %{
       endSessions: [data.id]
@@ -287,7 +301,25 @@ defmodule Mongo.Session do
          do: Mongo.direct_command(conn, query, database: "admin")
   end
 
-  defp abort_txn(data), do: run_txn_command(data, :abortTransaction)
+  defp try_run_txn_command(data, command) do
+    case run_txn_command(data, command) do
+      :ok -> :ok
+      {:error, error} = val ->
+        if Mongo.Error.retryable(error) do
+          new_data = Map.update!(data, :write_concern, fn
+            nil -> %{w: :majority, wtimeout: 10_000}
+            map when is_map(map) ->
+              map
+              |> Map.put(:w, :majority)
+              |> Map.put_new(:wtimeout, 10_000)
+          end)
+
+          try_run_txn_command(new_data, command)
+        else
+          val
+        end
+    end
+  end
 
   defp run_txn_command(state, command) do
     query =
@@ -313,7 +345,12 @@ defmodule Mongo.Session do
   end
 
   defp set_read_concern(conn_opts, time, true) do
-    Keyword.update(conn_opts, :readConcern, %{afterClusterTime: time}, &Map.put(&1, :afterClusterTime, time))
+    Keyword.update(
+      conn_opts,
+      :readConcern,
+      %{afterClusterTime: time},
+      &Map.put(&1, :afterClusterTime, time)
+    )
   end
 
   defp add_option(conn_opts, _key, nil), do: conn_opts

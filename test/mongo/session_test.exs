@@ -83,18 +83,32 @@ defmodule Mongo.SessionTest do
       assert :ok = Session.abort_transaction(session)
     end
 
+    test "commited transaction cannot be aborted", %{pid: pid, session: session, table: table} do
+      assert :ok = Session.start_transaction(session)
+      assert {:ok, _} = Mongo.insert_one(pid, table, %{foo: 1}, session: session)
+      assert :ok = Session.commit_transaction(session)
+      assert {:error, _} = Session.abort_transaction(session)
+    end
+
+    test "commited transaction can be commited", %{pid: pid, session: session, table: table} do
+      assert :ok = Session.start_transaction(session)
+      assert {:ok, _} = Mongo.insert_one(pid, table, %{foo: 1}, session: session)
+      assert :ok = Session.commit_transaction(session)
+      assert :ok = Session.commit_transaction(session)
+    end
+
     tasks = [:commit, :abort]
 
-    for first <- tasks, second <- tasks do
-      test "#{first}ed transaction cannot be #{second}ed", %{
+    for task <- tasks do
+      test "aborted transaction cannot be #{task}ed", %{
         pid: pid,
         session: session,
         table: table
       } do
         assert :ok = Session.start_transaction(session)
         assert {:ok, _} = Mongo.insert_one(pid, table, %{foo: 1}, session: session)
-        assert :ok = Session.unquote(:"#{first}_transaction")(session)
-        assert {:error, _} = Session.unquote(:"#{second}_transaction")(session)
+        assert :ok = Session.abort_transaction(session)
+        assert {:error, _} = Session.unquote(:"#{task}_transaction")(session)
       end
     end
 
