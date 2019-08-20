@@ -94,6 +94,25 @@ defmodule Mongo.Session do
       with :ok <- commit_transaction(pid), do: {:ok, val}
   end
 
+  def advance_operation_time(pid, timestamp) do
+    :gen_statem.call(pid, {:advance_operation_time, timestamp})
+  end
+
+  def advance_cluster_time(pid, data) do
+    :gen_statem.call(pid, {:advance_cluster_time, data})
+  end
+
+  @doc false
+  def update_session(doc, nil), do: doc
+  def update_session(%{"operationTime" => operation_ts, "$clusterTime" => cluster_ts} = doc, pid) do
+    :ok = advance_operation_time(pid, operation_ts)
+    :ok = advance_cluster_time(pid, cluster_ts)
+
+    doc
+  end
+
+  def update_session(doc, _pid), do: doc
+
   @doc false
   def add_session(query, nil), do: query
   def add_session(query, pid), do: :gen_statem.call(pid, {:add_session, query})
@@ -235,6 +254,14 @@ defmodule Mongo.Session do
     {:stop_and_reply, :normal, {:reply, from, :ok}}
   end
 
+  def handle_event({:call, from}, {:advance_operation_time, timestamp}, _state, data) do
+    {:keep_state, struct(data, operation_time: timestamp), {:reply, from, :ok}}
+  end
+
+  def handle_event({:call, from}, {:advance_cluster_time, time}, _state, data) do
+    {:keep_state, struct(data, cluster_time: time), {:reply, from, :ok}}
+  end
+
   # If parent process died before session then stop process and handle aborting
   # sessions in `terminate/3` handler.
   def handle_event(:info, {:DOWN, ref, :process, _pid, _reason}, _state, %{ref: ref}) do
@@ -279,11 +306,13 @@ defmodule Mongo.Session do
          do: :ok
   end
 
+  defp set_read_concern(conn_opts, _, false), do: conn_opts
+
   defp set_read_concern(conn_opts, nil, true) do
     add_option(conn_opts, :readConcern, %{})
   end
 
-  defp set_read_concern(conn_opts, time, false) do
+  defp set_read_concern(conn_opts, time, true) do
     Keyword.update(conn_opts, :readConcern, %{afterClusterTime: time}, &Map.put(&1, :afterClusterTime, time))
   end
 
