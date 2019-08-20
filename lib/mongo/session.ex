@@ -137,13 +137,21 @@ defmodule Mongo.Session do
     }
   end
 
-  @impl :gen_statem
-  def callback_mode, do: :handle_event_function
+  if String.to_integer(System.otp_release()) < 20 do
+    @impl :gen_statem
+    def init({parent, state}) do
+      ref = Process.monitor(parent)
+      {:handle_event_function, :no_transaction, struct(state, ref: ref)}
+    end
+  else
+    @impl :gen_statem
+    def callback_mode, do: :handle_event_function
 
-  @impl :gen_statem
-  def init({parent, state}) do
-    ref = Process.monitor(parent)
-    {:ok, :no_transaction, struct(state, ref: ref)}
+    @impl :gen_statem
+    def init({parent, state}) do
+      ref = Process.monitor(parent)
+      {:ok, :no_transaction, struct(state, ref: ref)}
+    end
   end
 
   @impl :gen_statem
