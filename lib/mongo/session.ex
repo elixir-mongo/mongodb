@@ -58,7 +58,7 @@ defmodule Mongo.Session do
   the process itself can be still available and `#{inspect(__MODULE__)}.ended?(session)`
   can still return `false` for some time after calling this function.
   """
-  @spec end_session(session()) :: :ok | {:error, term()}
+  @spec end_session(session()) :: :ok
   def end_session(pid) do
     unless ended?(pid), do: :gen_statem.call(pid, :end_session)
 
@@ -87,7 +87,7 @@ defmodule Mongo.Session do
     func.(conn)
   rescue
     exception ->
-      abort_transaction(pid)
+      _ = abort_transaction(pid)
       reraise exception, System.stacktrace()
   else
     val ->
@@ -250,7 +250,7 @@ defmodule Mongo.Session do
   @impl :gen_statem
   # Abort all pending transactions if there any and end session itself.
   def terminate(_reason, state, %{pid: pid} = data) do
-    if state == :in_transaction, do: :ok = abort_txn(data)
+    if state == :in_transaction, do: _ = abort_txn(data)
 
     query = %{
       endSessions: [data.id]
