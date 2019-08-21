@@ -14,6 +14,9 @@ defmodule Mongo.Session do
 
   @opaque session :: pid()
 
+  # 10 minute timeout
+  @timeout {:state_timeout, 10 * 60 * 60, nil}
+
   defmodule Supervisor do
     @moduledoc false
 
@@ -59,7 +62,7 @@ defmodule Mongo.Session do
   """
   @spec end_session(session()) :: :ok
   def end_session(pid) do
-    unless ended?(pid), do: :gen_statem.call(pid, :end_session)
+    Mongo.SessionPool.checkin(pid)
 
     :ok
   end
@@ -93,8 +96,28 @@ defmodule Mongo.Session do
       with :ok <- commit_transaction(pid), do: {:ok, val}
   end
 
+  @doc false
   def advance_operation_time(pid, timestamp) do
     :gen_statem.call(pid, {:advance_operation_time, timestamp})
+  end
+
+  @doc false
+  def set_options(pid, opts) do
+    causal_consistency = Keyword.get(opts, :causal_consistency, true)
+    read_concern = Keyword.get(opts, :read_concern, %{})
+    read_preference = Keyword.get(opts, :read_preference)
+    retry_writes = Keyword.get(opts, :retry_writes, true)
+    write_concern = Keyword.get(opts, :write_concern)
+
+    state = %{
+      causal_consistency: causal_consistency,
+      read_concern: read_concern,
+      read_preference: read_preference,
+      retry_writes: retry_writes,
+      write_concern: write_concern
+    }
+
+    :gen_statem.call(pid, {:set_options, state})
   end
 
   @doc false
@@ -177,7 +200,8 @@ defmodule Mongo.Session do
   # Start new transaction if there isn't one already.
   def handle_event({:call, from}, {:start_transaction, _opts}, state, %{txn: txn} = data)
       when state in @outside_txn do
-    {:next_state, :transaction_started, struct(data, txn: txn + 1), {:reply, from, :ok}}
+    {:next_state, :transaction_started, struct(data, txn: txn + 1),
+     {:reply, from, :ok}}
   end
 
   # Add session information to the query metadata.
@@ -210,9 +234,9 @@ defmodule Mongo.Session do
 
       %{mode: mode} ->
         {:keep_state_and_data,
-         {:reply, from,
-          {:error,
-           Mongo.Error.exception(message: "Read preference must be primary, not: #{mode}")}}}
+           {:reply, from,
+            {:error,
+             Mongo.Error.exception(message: "Read preference must be primary, not: #{mode}")}},}
     end
   end
 
@@ -241,7 +265,7 @@ defmodule Mongo.Session do
         :ok
       end
 
-    {:next_state, :transaction_commited, data, {:reply, from, return}}
+    {:next_state, :transaction_commited, data, [{:reply, from, return}, @timeout]}
   end
 
   # Abort transaction if there is any. If there is none then change state to
@@ -254,7 +278,7 @@ defmodule Mongo.Session do
         :ok
       end
 
-    {:next_state, :transaction_aborted, data, {:reply, from, response}}
+    {:next_state, :transaction_aborted, data, [{:reply, from, response}, @timeout]}
   end
 
   # Finish session by ending process (for further "closing" see `terminate/3`
@@ -268,10 +292,14 @@ defmodule Mongo.Session do
          (timestamp.value > data.operation_time.value or
             (timestamp.value == data.operation_time.value and
                timestamp.ordinal > data.operation_time.ordinal)) do
-      {:keep_state, struct(data, operation_time: timestamp), {:reply, from, :ok}}
+      {:keep_state, struct(data, operation_time: timestamp), [{:reply, from, :ok}, @timeout]}
     else
-      {:keep_state_and_data, {:reply, from, :ok}}
+      {:keep_state_and_data, [{:reply, from, :ok}, @timeout]}
     end
+  end
+
+  def handle_event({:call, from}, {:set_options, opts}, _state, data) do
+    {:keep_state, struct(data, opts), {:reply, from, :ok}}
   end
 
   # If parent process died before session then stop process and handle aborting
@@ -285,6 +313,8 @@ defmodule Mongo.Session do
   def handle_event({:call, from}, command, state, _data) do
     {:keep_state_and_data, {:reply, from, {:error, {:invalid_call, command, state}}}}
   end
+
+  def handle_event(:state_timeout, _, _, _), do: {:stop, :normal}
 
   @impl :gen_statem
   # Abort all pending transactions if there any and end session itself.
@@ -303,16 +333,21 @@ defmodule Mongo.Session do
 
   defp try_run_txn_command(data, command) do
     case run_txn_command(data, command) do
-      :ok -> :ok
+      :ok ->
+        :ok
+
       {:error, error} = val ->
         if Mongo.Error.retryable(error) do
-          new_data = Map.update!(data, :write_concern, fn
-            nil -> %{w: :majority, wtimeout: 10_000}
-            map when is_map(map) ->
-              map
-              |> Map.put(:w, :majority)
-              |> Map.put_new(:wtimeout, 10_000)
-          end)
+          new_data =
+            Map.update!(data, :write_concern, fn
+              nil ->
+                %{w: :majority, wtimeout: 10_000}
+
+              map when is_map(map) ->
+                map
+                |> Map.put(:w, :majority)
+                |> Map.put_new(:wtimeout, 10_000)
+            end)
 
           try_run_txn_command(new_data, command)
         else

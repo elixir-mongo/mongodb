@@ -1033,10 +1033,7 @@ defmodule Mongo do
   @spec start_session(GenServer.server(), keyword()) ::
           {:ok, Mongo.Session.session()} | {:error, term()}
   def start_session(topology_pid, opts \\ []) do
-    with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts),
-         {:ok, %{"id" => id}} <- direct_command(conn, %{startSession: 1}, opts) do
-      Mongo.Session.Supervisor.start_child(topology_pid, id, opts)
-    end
+    Mongo.SessionPool.checkout(topology_pid, opts)
   end
 
   @spec with_session(GenServer.server(), (Mongo.Session.session() -> return)) :: return
