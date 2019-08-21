@@ -26,12 +26,22 @@ defmodule Mongodb.Mixfile do
   defp elixirc_paths(_), do: ["lib"]
 
   def application do
-    [mod: {Mongo.App, []}, env: [], extra_applications: [:logger]]
+    [
+      mod: {Mongo.App, []},
+      env: [],
+      extra_applications: [:logger],
+      registered: [
+        Mongo.PBKDF2Cache,
+        Mongo.Session.Supervisor,
+        Mongo.Events,
+        Mongo.IdServer,
+        Mongo.SessionPool
+      ]
+    ]
   end
 
   defp deps do
     [
-      {:connection, "~> 1.0"},
       {:db_connection, "~> 2.0"},
       {:decimal, "~> 1.5"},
       {:jason, "~> 1.0.0", only: :test},

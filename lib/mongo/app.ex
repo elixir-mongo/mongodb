@@ -6,6 +6,7 @@ defmodule Mongo.App do
       Mongo.IdServer,
       Mongo.PBKDF2Cache,
       Mongo.Session.Supervisor,
+      Mongo.SessionPool,
       %{
         id: Mongo.Events,
         start: {:gen_event, :start_link, local: Mongo.Events}
