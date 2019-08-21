@@ -27,32 +27,6 @@ defmodule Mongo.SessionTest do
       assert {:ok, session} = Mongo.start_session(pid)
       refute Session.ended?(session)
     end
-
-    test "ended session is ended", %{pid: pid} do
-      assert {:ok, session} = Mongo.start_session(pid)
-      ref = Process.monitor(session)
-      assert :ok = Session.end_session(session)
-
-      assert_receive {:DOWN, ^ref, :process, ^session, _}
-      assert Session.ended?(session)
-    end
-
-    test "session end together with parent process", %{pid: pid} do
-      task =
-        Task.async(fn ->
-          assert {:ok, session} = Mongo.start_session(pid)
-
-          refute Session.ended?(session)
-
-          session
-        end)
-
-      session = Task.await(task)
-      ref = Process.monitor(session)
-
-      assert_receive {:DOWN, ^ref, :process, ^session, _}
-      assert Session.ended?(session)
-    end
   end
 
   describe "transaction" do
@@ -135,20 +109,6 @@ defmodule Mongo.SessionTest do
       assert :ok = Session.abort_transaction(session)
       refute Mongo.find_one(pid, table, _id: id)
     end
-  end
-
-  test "with_session ends session when finished", %{pid: pid} do
-    session =
-      Mongo.with_session(pid, fn session ->
-        refute Session.ended?(session)
-
-        session
-      end)
-
-    ref = Process.monitor(session)
-
-    assert_receive {:DOWN, ^ref, :process, ^session, _}
-    assert Session.ended?(session)
   end
 
   describe "with_transaction commits changes on exit" do
