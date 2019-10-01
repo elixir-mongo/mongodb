@@ -72,6 +72,8 @@ defmodule Mongo.SessionPool do
     with {:ok, conn, _, _} <- Mongo.select_server(topology, :read, opts),
          {:ok, %{"id" => id}} <- Mongo.direct_command(conn, %{startSession: 1}, opts),
          {:ok, session} <- Mongo.Session.Supervisor.start_child(topology, id, opts) do
+      Process.monitor(session)
+
       {:ok, session, []}
     end
   end
