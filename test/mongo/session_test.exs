@@ -71,6 +71,21 @@ defmodule Mongo.SessionTest do
       assert :ok = Session.commit_transaction(session)
     end
 
+    test "data in one transaction aren't visible in other", %{pid: pid, session: s1, table: table} do
+      assert {:ok, s2} = Mongo.start_session(pid)
+
+      assert s1 != s2
+
+      assert :ok = Session.start_transaction(s1)
+      assert {:ok, _} = Mongo.insert_one(pid, table, %{foo: 1}, session: s1)
+
+      assert nil == Mongo.find_one(pid, table, %{}, session: s2)
+
+      assert :ok = Session.commit_transaction(s1)
+
+      refute nil == Mongo.find_one(pid, table, %{})
+    end
+
     tasks = [:commit, :abort]
 
     for task <- tasks do
