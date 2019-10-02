@@ -53,4 +53,39 @@ defmodule BSON.Decimal128Test do
   defp assert_decimal(binaries, expected_decimal) do
     assert BSON.Decimal128.decode(binaries) == expected_decimal
   end
+
+  @tag :mongo_3_4
+  test "BSON.Decimal128.encode/1" do
+    assert_binary_decimal(%Decimal{coef: :qNaN}, @nan_binaries)
+    assert_binary_decimal(%Decimal{coef: :inf}, @inf_binaries)
+    assert_binary_decimal(%Decimal{sign: -1, coef: :inf}, @neg_inf_binaries)
+    assert_binary_decimal(%Decimal{coef: 0}, @binaries_0)
+    assert_binary_decimal(%Decimal{coef: 0, exp: -611}, @binaries_0_neg_expo)
+    assert_binary_decimal(%Decimal{sign: -1, coef: 0, exp: -1}, @binaries_neg_0_0)
+    assert_binary_decimal(%Decimal{coef: 1, exp: 3}, @binaries_1_e_3)
+    assert_binary_decimal(%Decimal{coef: 1234, exp: -6}, @binaries_0_001234)
+    assert_binary_decimal(%Decimal{coef: 123_400_000, exp: -11}, @binaries_0_00123400000)
+
+    assert_binary_decimal(%Decimal{
+      coef: 1_234_567_890_123_456_789_012_345_678_901_234,
+      exp: -34
+    }, @binaries_0_1234567890123456789012345678901234)
+
+    assert_binary_decimal(%Decimal{
+      coef: 1_234_567_890_123_456_789_012_345_678_901_234,
+      exp: 0
+    }, @binaries_regular_largest)
+
+    assert_binary_decimal(%Decimal{
+      coef: 9_999_999_999_999_999_999_999_999_999_999_999,
+      exp: -6176
+    }, @binaries_scientific_tiniest)
+
+    assert_binary_decimal(%Decimal{coef: 1, exp: -6176}, @binaries_scientific_tiny)
+    assert_binary_decimal(%Decimal{sign: -1, coef: 1, exp: -6176}, @binaries_neg_tiny)
+  end
+
+  defp assert_binary_decimal(decimal, expected_binary) do
+    assert BSON.Decimal128.encode(decimal) == expected_binary
+  end
 end

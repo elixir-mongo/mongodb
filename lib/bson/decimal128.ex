@@ -8,6 +8,9 @@ defmodule BSON.Decimal128 do
   @exponent_mask 0x3FFF
   @exponent_bias 6176
 
+  @nan_mask 0x7c00000000000000
+  @inf_mask 0x7800000000000000
+
   def decode(<<_::little-64, high::little-64>> = bits) do
     is_negative = (high &&& @signed_bit_mask) == @signed_bit_mask
     combination = high >>> 58 &&& @combination_mask
@@ -27,6 +30,70 @@ defmodule BSON.Decimal128 do
       coef(bits),
       exponent
     )
+  end
+
+  def encode(%Decimal{coef: :qNaN, sign: sign}) do
+    low = 0
+    high = set_signed(@nan_mask, sign)
+
+    to_binary(low, high)
+  end
+
+  def encode(%Decimal{coef: :inf, sign: sign}) do
+    low = 0
+    high = set_signed(@inf_mask, sign)
+
+    to_binary(low, high)
+  end
+  def encode(%Decimal{sign: sign, coef: coef, exp: exp}) do
+    low = coef &&& (1 <<< 64) - 1
+
+    high =
+      coef >>> 64
+      |> set_exponent(exp)
+      |> set_signed(sign)
+
+    to_binary(low, high)
+  end
+
+  defp to_binary(low, high) do
+    to_unsigned_binary(low) <> to_unsigned_binary(high)
+  end
+
+  defp set_exponent(high, exp) do
+    two_highest_bits_set = high >>> 49 == 1
+    set_exponent(high, exp, two_highest_bits_set)
+  end
+
+  defp set_exponent(high, exp, _two_highest_bits_set = false) do
+    biased_exponent = exp + @exponent_bias
+    bor(high, biased_exponent <<< 49)
+  end
+  defp set_exponent(high, exp, _two_highest_bits_set = true) do
+    biased_exponent = exp + @exponent_bias
+    high = high &&& 0x7fffffffffff
+    high = bor(high, 3 <<< 61)
+    shifted_exponent = biased_exponent &&& @exponent_mask <<< 47
+    bor(high, shifted_exponent)
+  end
+
+  defp set_signed(high, 1) do
+    high
+  end
+  defp set_signed(high, -1) do
+    high ||| @signed_bit_mask
+  end
+
+  defp to_unsigned_binary(value) do
+    pad_trailing(:binary.encode_unsigned(value, :little), 8, 0)
+  end
+
+  defp pad_trailing(binary, len, _byte) when byte_size(binary) >= len do
+    binary
+  end
+
+  defp pad_trailing(binary, len, byte) do
+    binary <> :binary.copy(<<byte>>, len - byte_size(binary))
   end
 
   defp exponent(high, _two_highest_bits_set = true) do
