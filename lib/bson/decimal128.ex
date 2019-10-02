@@ -65,11 +65,11 @@ defmodule BSON.Decimal128 do
     set_exponent(high, exp, two_highest_bits_set)
   end
 
-  defp set_exponent(high, exp, _two_highest_bits_set = false) do
+  defp set_exponent(high, exp, false = _two_highest_bits_set) do
     biased_exponent = exp + @exponent_bias
     bor(high, biased_exponent <<< 49)
   end
-  defp set_exponent(high, exp, _two_highest_bits_set = true) do
+  defp set_exponent(high, exp, true = _two_highest_bits_set) do
     biased_exponent = exp + @exponent_bias
     high = high &&& 0x7fffffffffff
     high = bor(high, 3 <<< 61)
