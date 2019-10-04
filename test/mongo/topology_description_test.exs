@@ -16,12 +16,16 @@ defmodule Mongo.TopologyDescriptionTest do
     assert {:ok, single_server, false, false} ==
              TopologyDescription.select_servers(single(), :write)
 
+    assert TopologyDescription.has_readable_server?(single(), opts)
+
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :nearest})
     ]
 
     assert {:ok, single_server, true, false} ==
              TopologyDescription.select_servers(single(), :read, opts)
+
+    assert TopologyDescription.has_readable_server?(single(), opts)
   end
 
   test "replica set server selection" do
@@ -35,6 +39,10 @@ defmodule Mongo.TopologyDescriptionTest do
     assert {:ok, List.delete(all_hosts, master), true, false} ==
              TopologyDescription.select_servers(repl_set_with_master(), :read, opts)
 
+    assert TopologyDescription.has_readable_server?(repl_set_with_master(), opts)
+    assert !TopologyDescription.has_readable_server?(repl_set_only_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_no_master(), opts)
+
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :primary})
     ]
@@ -42,6 +50,10 @@ defmodule Mongo.TopologyDescriptionTest do
     assert {:ok, [master], true, false} ==
              TopologyDescription.select_servers(repl_set_with_master(), :read, opts)
 
+    assert TopologyDescription.has_readable_server?(repl_set_with_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_only_master(), opts)
+    assert !TopologyDescription.has_readable_server?(repl_set_no_master(), opts)
+
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :primary_preferred})
     ]
@@ -49,12 +61,12 @@ defmodule Mongo.TopologyDescriptionTest do
     assert {:ok, [master], true, false} ==
              TopologyDescription.select_servers(repl_set_with_master(), :read, opts)
 
-    opts = [
-      read_preference: ReadPreference.defaults(%{mode: :primary_preferred})
-    ]
-
     assert {:ok, List.delete(all_hosts, master), true, false} ==
              TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
+
+    assert TopologyDescription.has_readable_server?(repl_set_with_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_only_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_no_master(), opts)
 
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :nearest})
@@ -63,12 +75,20 @@ defmodule Mongo.TopologyDescriptionTest do
     assert {:ok, all_hosts, true, false} ==
              TopologyDescription.select_servers(repl_set_with_master(), :read, opts)
 
+    assert TopologyDescription.has_readable_server?(repl_set_with_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_only_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_no_master(), opts)
+
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :secondary})
     ]
 
     assert {:ok, List.delete(all_hosts, master), true, false} ==
              TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
+
+    assert TopologyDescription.has_readable_server?(repl_set_with_master(), opts)
+    assert !TopologyDescription.has_readable_server?(repl_set_only_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_no_master(), opts)
 
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :secondary_preferred})
@@ -83,12 +103,20 @@ defmodule Mongo.TopologyDescriptionTest do
     assert {:ok, List.delete(all_hosts, master), true, false} ==
              TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
 
+    assert TopologyDescription.has_readable_server?(repl_set_with_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_only_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_no_master(), opts)
+
     opts = [
       read_preference: ReadPreference.defaults(%{mode: :nearest})
     ]
 
     assert {:ok, all_hosts, true, false} ==
              TopologyDescription.select_servers(repl_set_no_master(), :read, opts)
+
+    assert TopologyDescription.has_readable_server?(repl_set_with_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_only_master(), opts)
+    assert TopologyDescription.has_readable_server?(repl_set_no_master(), opts)
   end
 
   test "Simplified server selection" do
@@ -100,5 +128,7 @@ defmodule Mongo.TopologyDescriptionTest do
 
     assert {:ok, single_server, true, false} ==
              TopologyDescription.select_servers(single(), :read, opts)
+
+    assert TopologyDescription.has_readable_server?(single(), opts)
   end
 end

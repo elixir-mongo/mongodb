@@ -41,8 +41,12 @@ defmodule Mongo.TopologyDescription do
     )
   end
 
-  def has_readable_server?(_topology, _read_preference) do
-    true
+  @doc """
+  This method allows you to check if current topology contains the readable server.
+  """
+  def has_readable_server?(topology, opts \\ []) do
+    {:ok, servers, _, _} = select_servers(topology, :read, opts)
+    Enum.any?(servers)
   end
 
   def has_writable_server?(topology) do
