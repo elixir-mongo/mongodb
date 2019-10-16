@@ -134,7 +134,7 @@ defmodule Mongo.SessionTest do
     end
 
     test "returns passed value", %{session: session} do
-      assert {:ok, :ok} == Session.with_transaction(session, fn _pid -> :ok end)
+      assert {:ok, :ok} == Session.with_transaction(session, fn -> :ok end)
     end
 
     test "inserts are persisted after transaction end", %{
@@ -143,8 +143,8 @@ defmodule Mongo.SessionTest do
       table: table
     } do
       assert {:ok, result} =
-               Session.with_transaction(session, fn conn ->
-                 assert {:ok, result} = Mongo.insert_one(conn, table, %{foo: 1}, session: session)
+               Session.with_transaction(session, fn ->
+                 assert {:ok, result} = Mongo.insert_one(pid, table, %{foo: 1}, session: session)
 
                  result
                end)
@@ -158,8 +158,8 @@ defmodule Mongo.SessionTest do
       table: table
     } do
       assert_raise RuntimeError, "example error", fn ->
-        Session.with_transaction(session, fn conn ->
-          assert {:ok, _} = Mongo.insert_one(conn, table, %{foo: 1}, session: session)
+        Session.with_transaction(session, fn ->
+          assert {:ok, _} = Mongo.insert_one(pid, table, %{foo: 1}, session: session)
 
           raise "example error"
 
