@@ -77,16 +77,16 @@ defmodule Mongo.Session do
   Run provided `func` within transaction and automatically commit it if there
   was no exceptions.
   """
-  @spec with_transaction(session(), (GenServer.server() -> return)) ::
+  @spec with_transaction(session(), (() -> return)) ::
           {:ok, return} | {:error, term}
         when return: term()
-  @spec with_transaction(session(), keyword(), (GenServer.server() -> return)) ::
+  @spec with_transaction(session(), keyword(), (() -> return)) ::
           {:ok, return} | {:error, term}
         when return: term()
   def with_transaction(pid, opts \\ [], func) do
     :ok = start_transaction(pid, opts)
-    conn = get_connection(pid)
-    func.(conn)
+
+    func.()
   rescue
     exception ->
       _ = abort_transaction(pid)
