@@ -62,6 +62,7 @@ defmodule Mongo do
   @type collection :: String.t()
   @opaque cursor :: Mongo.Cursor.t() | Mongo.AggregationCursor.t()
   @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t()}
+  @type write_result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t()} | {:error, Mongo.WriteError.t()}
   @type result!(t) :: nil | t | no_return
 
   defmacrop bangify(result) do
@@ -645,7 +646,7 @@ defmodule Mongo do
       Mongo.insert_one(pid, "users", %{first_name: "John", last_name: "Smith"})
   """
   @spec insert_one(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result(Mongo.InsertOneResult.t())
+          write_result(Mongo.InsertOneResult.t())
   def insert_one(topology_pid, coll, doc, opts \\ []) do
     assert_single_doc!(doc)
     {[id], [doc]} = assign_ids([doc])
@@ -715,7 +716,7 @@ defmodule Mongo do
       Mongo.insert_many(pid, "users", [%{first_name: "John", last_name: "Smith"}, %{first_name: "Jane", last_name: "Doe"}])
   """
   @spec insert_many(GenServer.server(), collection, [BSON.document()], Keyword.t()) ::
-          result(Mongo.InsertManyResult.t())
+          write_result(Mongo.InsertManyResult.t())
   def insert_many(topology_pid, coll, docs, opts \\ []) do
     assert_many_docs!(docs)
     {ids, docs} = assign_ids(docs)
@@ -768,7 +769,7 @@ defmodule Mongo do
   Remove a document matching the filter from the collection.
   """
   @spec delete_one(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result(Mongo.DeleteResult.t())
+          write_result(Mongo.DeleteResult.t())
   def delete_one(topology_pid, coll, filter, opts \\ []) do
     do_delete(topology_pid, coll, filter, 1, opts)
   end
@@ -786,7 +787,7 @@ defmodule Mongo do
   Remove all documents matching the filter from the collection.
   """
   @spec delete_many(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result(Mongo.DeleteResult.t())
+          write_result(Mongo.DeleteResult.t())
   def delete_many(topology_pid, coll, filter, opts \\ []) do
     do_delete(topology_pid, coll, filter, 0, opts)
   end
@@ -847,7 +848,7 @@ defmodule Mongo do
       matches the filter (default: `false`)
   """
   @spec replace_one(GenServer.server(), collection, BSON.document(), BSON.document(), Keyword.t()) ::
-          result(Mongo.UpdateResult.t())
+          write_result(Mongo.UpdateResult.t())
   def replace_one(topology_pid, coll, filter, replacement, opts \\ []) do
     _ = modifier_docs(replacement, :replace)
 
@@ -888,7 +889,7 @@ defmodule Mongo do
       matches the filter (default: `false`)
   """
   @spec update_one(GenServer.server(), collection, BSON.document(), BSON.document(), Keyword.t()) ::
-          result(Mongo.UpdateResult.t())
+          write_result(Mongo.UpdateResult.t())
   def update_one(topology_pid, coll, filter, update, opts \\ []) do
     _ = modifier_docs(update, :update)
 
@@ -917,7 +918,7 @@ defmodule Mongo do
       matches the filter (default: `false`)
   """
   @spec update_many(GenServer.server(), collection, BSON.document(), BSON.document(), Keyword.t()) ::
-          result(Mongo.UpdateResult.t())
+          write_result(Mongo.UpdateResult.t())
   def update_many(topology_pid, coll, filter, update, opts \\ []) do
     _ = modifier_docs(update, :update)
 
