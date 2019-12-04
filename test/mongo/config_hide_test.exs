@@ -1,10 +1,18 @@
 defmodule Mongo.HideConfigTest do
-
+  use ExUnit.Case, async: true
   import ExUnit.CaptureLog
   alias Mongo.ConfigHide, as: ConfigHide
   require ConfigHide
 
   @password_masked "***" 
+
+  setup_all do
+    :ok  
+  end 
+
+  setup do
+    :ok  
+  end 
 
   test "password is defined" do
   
@@ -23,7 +31,6 @@ defmodule Mongo.HideConfigTest do
     assert Keyword.equal?(opts_list, ConfigHide.to_options_list_with_actual_password_if_defined(updated_opts_list))  
 
   end
-
 
   test "password is NOT defined" do
 
