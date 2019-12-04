@@ -5,6 +5,9 @@ defmodule Mongo.Protocol do
   use Mongo.Messages
   alias Mongo.Protocol.Utils
 
+  alias Mongo.ConfigHide, as: ConfigHide
+  require ConfigHide
+ 
   @timeout 5000
   @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results oplog_replay)a
   @find_one_flags ~w(slave_ok exhaust partial)a
@@ -24,6 +27,8 @@ defmodule Mongo.Protocol do
 
   @impl DBConnection
   def connect(opts) do
+    opts=ConfigHide.to_options_list_with_actual_password_if_defined(opts)
+
     {write_concern, opts} = Keyword.split(opts, @write_concern)
     write_concern = Keyword.put_new(write_concern, :w, 1)
 
