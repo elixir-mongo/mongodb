@@ -14,25 +14,19 @@ defmodule Mongo.ConfigHide do
         |>Keyword.replace!(:password, @password_masked)
     end
   end
- 
+  
   def to_options_list_with_actual_password_if_defined(opts_as_keyword_list) do 
-    case Keyword.get(opts_as_keyword_list, :password) do
-      nil ->  
-        opts_as_keyword_list   
-      received_password -> 
-        case (@password_masked==received_password) do
-          true  -> 
-            actual_password=retreive_password(opts_as_keyword_list)
-            Keyword.replace!(opts_as_keyword_list, :password, actual_password )
-          false -> 
-              opts_as_keyword_list        
-        end  
-    end   
+    case Keyword.get(opts_as_keyword_list, :password)  do
+      @password_masked ->
+        actual_password = retrieve_password(opts_as_keyword_list)
+        Keyword.replace!(opts_as_keyword_list, :password, actual_password)
+      _ -> opts_as_keyword_list
+    end
   end 
 
-  defp retreive_password(opts_as_keyword_list) do 
+  defp retrieve_password(opts_as_keyword_list) do 
     {user, hostname, port}=user_hostname_port(opts_as_keyword_list)
-    retreive_password(user, hostname, port)
+    retrieve_password(user, hostname, port)
   end 
 
   defp retain_password_in_env(opts, password) do 
@@ -46,7 +40,7 @@ defmodule Mongo.ConfigHide do
     |> System.put_env(actual_password) 
   end
 
-  defp retreive_password(user, hostname, port) do 
+  defp retrieve_password(user, hostname, port) do 
     password_var_name=password_env_var_name(user, hostname, port)
     password_var_name
     |> System.get_env()
@@ -60,7 +54,7 @@ defmodule Mongo.ConfigHide do
         false->
           port 
       end 
-    "PASSWORD_FOR_" <>  user <> "_AT_" <>  String.replace( hostname, ".", "_")  <> "_ON_"  <>  port_str
+    "PASSWORD_FOR_#{user}_AT_#{String.replace( hostname, ".", "_")}_ON_#{port_str}"
   end
 
   defp user_hostname_port(opts_keyword_list) do  
