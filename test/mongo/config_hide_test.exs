@@ -1,8 +1,6 @@
 defmodule Mongo.HideConfigTest do
   use ExUnit.Case, async: true
-  import ExUnit.CaptureLog
-  alias Mongo.ConfigHide, as: ConfigHide
-  require ConfigHide
+  alias Mongo.ConfigHide
 
   @password_masked "***"
 

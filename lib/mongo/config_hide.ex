@@ -17,30 +17,18 @@ defmodule Mongo.ConfigHide do
   end
 
   def to_options_list_with_actual_password_if_defined(opts_as_keyword_list) do
-    case Keyword.get(opts_as_keyword_list, :password) do
-      nil ->
-        opts_as_keyword_list
+    case Keyword.get(opts_as_keyword_list, :password)  do
+      @password_masked ->
+        actual_password = retrieve_password(opts_as_keyword_list)
+        Keyword.replace!(opts_as_keyword_list, :password, actual_password)
 
-      received_password ->
-        case @password_masked == received_password do
-          true ->
-            actual_password = retreive_password(opts_as_keyword_list)
-            Keyword.replace!(opts_as_keyword_list, :password, actual_password)
-
-          false ->
-            opts_as_keyword_list
-        end
+      _ -> opts_as_keyword_list
     end
   end
 
-  defp retreive_password(opts_as_keyword_list) do
-    {user, hostname, port} = user_hostname_port(opts_as_keyword_list)
-    retreive_password(user, hostname, port)
-  end
-
-  defp retain_password_in_env(opts, password) do
-    {user, hostname, port} = user_hostname_port(opts)
-    retain_password_in_env(user, hostname, port, password)
+  defp retrieve_password(opts_as_keyword_list) do
+    {user, hostname, port}=user_hostname_port(opts_as_keyword_list)
+    retrieve_password(user, hostname, port)
   end
 
   defp retain_password_in_env(user, hostname, port, actual_password) do
