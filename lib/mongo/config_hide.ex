@@ -52,9 +52,9 @@ defmodule Mongo.ConfigHide do
         true-> 
           Integer.to_string(port)  
         false->
-          port 
+          String.trim(port) 
       end 
-    "PASSWORD_FOR_#{user}_AT_#{String.replace( hostname, ".", "_")}_ON_#{port_str}"
+    "PASSWORD_FOR_#{user}_AT_#{String.replace(hostname, ".", "_")}_ON_#{port_str}"
   end
 
   defp user_hostname_port(opts_keyword_list) do  

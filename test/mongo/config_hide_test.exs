@@ -24,7 +24,7 @@ defmodule Mongo.HideConfigTest do
       updated_opts_list
       |>Keyword.fetch(:password) 
 
-    assert @password_masked = password_value  
+    assert @password_masked == password_value  
 
     assert Keyword.equal?(opts_list, ConfigHide.to_options_list_with_actual_password_if_defined(updated_opts_list))  
 
