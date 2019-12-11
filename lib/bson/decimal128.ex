@@ -8,7 +8,7 @@ defmodule BSON.Decimal128 do
   @exponent_mask 0x3FFF
   @exponent_bias 6176
 
-  @nan_mask 0x7c00000000000000
+  @nan_mask 0x7C00000000000000
   @inf_mask 0x7800000000000000
 
   def decode(<<_::little-64, high::little-64>> = bits) do
@@ -45,6 +45,7 @@ defmodule BSON.Decimal128 do
 
     to_binary(low, high)
   end
+
   def encode(%Decimal{sign: sign, coef: coef, exp: exp}) do
     low = coef &&& (1 <<< 64) - 1
 
@@ -69,9 +70,10 @@ defmodule BSON.Decimal128 do
     biased_exponent = exp + @exponent_bias
     bor(high, biased_exponent <<< 49)
   end
+
   defp set_exponent(high, exp, true = _two_highest_bits_set) do
     biased_exponent = exp + @exponent_bias
-    high = high &&& 0x7fffffffffff
+    high = high &&& 0x7FFFFFFFFFFF
     high = bor(high, 3 <<< 61)
     shifted_exponent = biased_exponent &&& @exponent_mask <<< 47
     bor(high, shifted_exponent)
@@ -80,6 +82,7 @@ defmodule BSON.Decimal128 do
   defp set_signed(high, 1) do
     high
   end
+
   defp set_signed(high, -1) do
     high ||| @signed_bit_mask
   end
