@@ -19,11 +19,7 @@ defmodule Mongo.HideConfigTest do
       opts_list
       |> ConfigHide.to_options_with_password_masked_if_defined()
 
-    {:ok, password_value}=
-      updated_opts_list
-      |> Keyword.fetch(:password) 
-
-    password_value =
+    {:ok, password_value} =
       updated_opts_list
       |> Keyword.fetch(:password)
 

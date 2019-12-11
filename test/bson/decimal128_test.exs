@@ -66,20 +66,29 @@ defmodule BSON.Decimal128Test do
     assert_binary_decimal(%Decimal{coef: 1234, exp: -6}, @binaries_0_001234)
     assert_binary_decimal(%Decimal{coef: 123_400_000, exp: -11}, @binaries_0_00123400000)
 
-    assert_binary_decimal(%Decimal{
-      coef: 1_234_567_890_123_456_789_012_345_678_901_234,
-      exp: -34
-    }, @binaries_0_1234567890123456789012345678901234)
+    assert_binary_decimal(
+      %Decimal{
+        coef: 1_234_567_890_123_456_789_012_345_678_901_234,
+        exp: -34
+      },
+      @binaries_0_1234567890123456789012345678901234
+    )
 
-    assert_binary_decimal(%Decimal{
-      coef: 1_234_567_890_123_456_789_012_345_678_901_234,
-      exp: 0
-    }, @binaries_regular_largest)
+    assert_binary_decimal(
+      %Decimal{
+        coef: 1_234_567_890_123_456_789_012_345_678_901_234,
+        exp: 0
+      },
+      @binaries_regular_largest
+    )
 
-    assert_binary_decimal(%Decimal{
-      coef: 9_999_999_999_999_999_999_999_999_999_999_999,
-      exp: -6176
-    }, @binaries_scientific_tiniest)
+    assert_binary_decimal(
+      %Decimal{
+        coef: 9_999_999_999_999_999_999_999_999_999_999_999,
+        exp: -6176
+      },
+      @binaries_scientific_tiniest
+    )
 
     assert_binary_decimal(%Decimal{coef: 1, exp: -6176}, @binaries_scientific_tiny)
     assert_binary_decimal(%Decimal{sign: -1, coef: 1, exp: -6176}, @binaries_neg_tiny)

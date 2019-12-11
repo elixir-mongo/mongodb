@@ -152,10 +152,12 @@ defmodule Mongo.UrlParser do
   defp percent_decode(bin) when is_binary(bin), do: percent_decode(bin, "")
 
   defp percent_decode(<<>>, acc), do: acc
+
   defp percent_decode(<<"%", a, b, rest::binary>>, acc) do
     val = :erlang.binary_to_integer(<<a, b>>, 16)
     percent_decode(rest, <<acc::binary, val>>)
   end
+
   defp percent_decode(<<a, rest::binary>>, acc), do: percent_decode(rest, <<acc::binary, a>>)
 
   @spec parse_url(Keyword.t()) :: Keyword.t()
@@ -170,6 +172,7 @@ defmodule Mongo.UrlParser do
       case Keyword.has_key?(opts, :password) do
         true ->
           update_in(opts, [:password], &percent_decode/1)
+
         false ->
           opts
       end
