@@ -200,8 +200,7 @@ defmodule Mongo.Session do
   # Start new transaction if there isn't one already.
   def handle_event({:call, from}, {:start_transaction, _opts}, state, %{txn: txn} = data)
       when state in @outside_txn do
-    {:next_state, :transaction_started, struct(data, txn: txn + 1),
-     {:reply, from, :ok}}
+    {:next_state, :transaction_started, struct(data, txn: txn + 1), {:reply, from, :ok}}
   end
 
   # Add session information to the query metadata.
@@ -234,9 +233,9 @@ defmodule Mongo.Session do
 
       %{mode: mode} ->
         {:keep_state_and_data,
-           {:reply, from,
-            {:error,
-             Mongo.Error.exception(message: "Read preference must be primary, not: #{mode}")}},}
+         {:reply, from,
+          {:error,
+           Mongo.Error.exception(message: "Read preference must be primary, not: #{mode}")}}}
     end
   end
 

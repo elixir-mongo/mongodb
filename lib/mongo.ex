@@ -62,7 +62,8 @@ defmodule Mongo do
   @type collection :: String.t()
   @opaque cursor :: Mongo.Cursor.t() | Mongo.AggregationCursor.t()
   @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t()}
-  @type write_result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t()} | {:error, Mongo.WriteError.t()}
+  @type write_result(t) ::
+          :ok | {:ok, t} | {:error, Mongo.Error.t()} | {:error, Mongo.WriteError.t()}
   @type result!(t) :: nil | t | no_return
 
   defmacrop bangify(result) do
