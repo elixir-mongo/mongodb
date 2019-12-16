@@ -5,8 +5,7 @@ defmodule Mongo.Protocol do
   use Mongo.Messages
   alias Mongo.Protocol.Utils
 
-  alias Mongo.ConfigHide, as: ConfigHide
-  require ConfigHide
+  alias Mongo.ConfigHide
 
   @timeout 5000
   @find_flags ~w(tailable_cursor slave_ok no_cursor_timeout await_data exhaust allow_partial_results oplog_replay)a

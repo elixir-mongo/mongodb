@@ -1,4 +1,6 @@
 defmodule Mongo.ConfigHide do
+  @moduledoc false
+
   @default_user "anonymous"
   @password_masked "***"
 
