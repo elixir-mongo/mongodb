@@ -26,8 +26,6 @@ defmodule Mongo.Protocol do
 
   @impl DBConnection
   def connect(opts) do
-    opts = ConfigHide.to_options_list_with_actual_password_if_defined(opts)
-
     {write_concern, opts} = Keyword.split(opts, @write_concern)
     write_concern = Keyword.put_new(write_concern, :w, 1)
 
@@ -47,7 +45,7 @@ defmodule Mongo.Protocol do
       session: nil
     }
 
-    connect(opts, s)
+    connect(ConfigHide.unmask_password(opts), s)
   end
 
   defp connect(opts, s) do

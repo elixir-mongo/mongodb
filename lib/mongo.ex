@@ -136,6 +136,7 @@ defmodule Mongo do
   def start_link(opts) do
     opts
     |> UrlParser.parse_url()
+    |> Mongo.ConfigHide.mask_password()
     |> Topology.start_link()
   end
 

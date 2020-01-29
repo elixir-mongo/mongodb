@@ -17,17 +17,17 @@ defmodule Mongo.HideConfigTest do
 
     updated_opts_list =
       opts_list
-      |> ConfigHide.to_options_with_password_masked_if_defined()
+      |> ConfigHide.mask_password()
 
     {:ok, password_value} =
       updated_opts_list
       |> Keyword.fetch(:password)
 
-    assert @password_masked == password_value
+    assert :erlang.is_function(password_value)
 
     assert Keyword.equal?(
              opts_list,
-             ConfigHide.to_options_list_with_actual_password_if_defined(updated_opts_list)
+             ConfigHide.unmask_password(updated_opts_list)
            )
   end
 
@@ -36,13 +36,13 @@ defmodule Mongo.HideConfigTest do
 
     updated_opts_list =
       opts_list
-      |> ConfigHide.to_options_with_password_masked_if_defined()
+      |> ConfigHide.mask_password()
 
     assert Keyword.equal?(opts_list, updated_opts_list)
 
     assert Keyword.equal?(
              opts_list,
-             ConfigHide.to_options_list_with_actual_password_if_defined(updated_opts_list)
+             ConfigHide.unmask_password(updated_opts_list)
            )
   end
 end
