@@ -54,16 +54,14 @@
 
 ### Installation:
 
-Add mongodb to your mix.exs `deps` and `:applications` (replace `>= 0.0.0` in `deps` if you want a specific version). Mongodb supports the same pooling libraries db_connection does (currently: no pooling, poolboy, and sbroker). If you want to use poolboy as pooling library you should set up your project like this:
+Add mongodb to your mix.exs `deps` . Mongodb supports the same pooling libraries db_connection does (currently: no pooling, poolboy, and sbroker). If you want to use poolboy as pooling library you should set up your project like this:
 
 ```elixir
-def application do
-  [applications: [:mongodb, :poolboy]]
-end
-
 defp deps do
-  [{:mongodb, ">= 0.0.0"},
-   {:poolboy, ">= 0.0.0"}]
+  [
+    {:mongodb, "~> 0.5.1"},
+    {:poolboy, ">= 0.0.0"}
+  ]
 end
 ```
 
