@@ -25,6 +25,10 @@ defmodule Mongo.HideConfigTest do
 
     assert :erlang.is_function(password_value)
 
+    updated_opts_list =
+      updated_opts_list
+      |> ConfigHide.mask_password()
+
     assert Keyword.equal?(
              opts_list,
              ConfigHide.unmask_password(updated_opts_list)

@@ -8,6 +8,9 @@ defmodule Mongo.ConfigHide do
       nil ->
         opts
 
+      masked_password when is_function(masked_password) ->
+        opts
+
       actual_password ->
         opts
         |> Keyword.replace!(:password, fn -> actual_password end)
