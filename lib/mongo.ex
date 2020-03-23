@@ -593,9 +593,10 @@ defmodule Mongo do
     rp = ReadPreference.defaults(%{mode: :primary})
     rp_opts = [read_preference: Keyword.get(opts, :read_preference, rp)]
 
-    with {:ok, conn, slave_ok, _} <- select_server(topology_pid, :read, rp_opts),
-         opts = Keyword.put(opts, :slave_ok, slave_ok),
-         do: direct_command(conn, query, opts)
+     with {:ok, conn, slave_ok, _} <- select_server(topology_pid, :read, rp_opts) do
+       opts = Keyword.put(opts, :slave_ok, slave_ok)
+       direct_command(conn, query, opts)
+     end
   end
 
   @doc false
@@ -1089,8 +1090,8 @@ defmodule Mongo do
           {:ok, _servers} ->
             select_servers(topology_pid, type, opts, start_time)
 
-          {:error, :selection_timeout} = error ->
-            error
+          {:error, :selection_timeout} ->
+            {:error, %Mongo.Error{type: :network, message: "Topology selection timeout", code: 89}}
         end
       else
         {:ok, servers, slave_ok, mongos?}
