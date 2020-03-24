@@ -167,7 +167,7 @@ defmodule Mongo do
     * `:max_time` - Specifies a time limit in milliseconds
     * `:use_cursor` - Use a cursor for a batched response (Default: true)
   """
-  @spec aggregate(GenServer.server(), collection, [BSON.document()], Keyword.t()) :: cursor
+  @spec aggregate(GenServer.server(), collection, [BSON.document()], Keyword.t()) :: cursor | {:error, Mongo.Error.t()}
   def aggregate(topology_pid, coll, pipeline, opts \\ []) do
     query =
       [
@@ -482,7 +482,7 @@ defmodule Mongo do
     * `:projection` - Limits the fields to return for all matching document
     * `:skip` - The number of documents to skip before returning (Default: 0)
   """
-  @spec find(GenServer.server(), collection, BSON.document(), Keyword.t()) :: cursor
+  @spec find(GenServer.server(), collection, BSON.document(), Keyword.t()) :: cursor | {:error, Mongo.Error.t()}
   def find(topology_pid, coll, filter, opts \\ []) do
     query =
       [
@@ -1001,7 +1001,7 @@ defmodule Mongo do
   @doc """
   Returns a cursor to enumerate all indexes
   """
-  @spec list_indexes(GenServer.server(), String.t(), Keyword.t()) :: cursor
+  @spec list_indexes(GenServer.server(), String.t(), Keyword.t()) :: cursor | {:error, Mongo.Error.t()}
   def list_indexes(topology_pid, coll, opts \\ []) do
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts) do
       aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, opts)
@@ -1011,7 +1011,7 @@ defmodule Mongo do
   @doc """
   Convenient function that returns a cursor with the names of the indexes.
   """
-  @spec list_index_names(GenServer.server(), String.t(), Keyword.t()) :: %Stream{}
+  @spec list_index_names(GenServer.server(), String.t(), Keyword.t()) :: %Stream{} | {:error, Mongo.Error.t()}
   def list_index_names(topology_pid, coll, opts \\ []) do
     list_indexes(topology_pid, coll, opts)
     |> Stream.map(fn %{"name" => name} -> name end)
@@ -1020,7 +1020,7 @@ defmodule Mongo do
   @doc """
   Getting Collection Names
   """
-  @spec show_collections(GenServer.server(), Keyword.t()) :: cursor
+  @spec show_collections(GenServer.server(), Keyword.t()) :: cursor | {:error, Mongo.Error.t()}
   def show_collections(topology_pid, opts \\ []) do
     ##
     # from the specs
