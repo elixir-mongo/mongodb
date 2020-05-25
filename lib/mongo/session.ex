@@ -9,7 +9,11 @@ defmodule Mongo.Session do
                 operation_time: nil,
                 causal_consistency: true,
                 retry_writes: false,
-                txn: 0
+                txn: %{
+                  seq: 0,
+                  read_concern: nil,
+                  write_concern: nil
+                }
               ]
 
   @opaque session :: pid()
@@ -135,8 +139,6 @@ defmodule Mongo.Session do
   def add_session(query, nil), do: {:ok, query}
   def add_session(query, pid), do: :gen_statem.call(pid, {:add_session, query})
 
-  defp get_connection(pid), do: :gen_statem.call(pid, :get_connection)
-
   @states [
     :no_transaction,
     :transaction_started,
@@ -198,20 +200,39 @@ defmodule Mongo.Session do
   end
 
   # Start new transaction if there isn't one already.
-  def handle_event({:call, from}, {:start_transaction, _opts}, state, %{txn: txn} = data)
+  def handle_event({:call, from}, {:start_transaction, opts}, state, %{txn: %{seq: seq}} = data)
       when state in @outside_txn do
-    {:next_state, :transaction_started, struct(data, txn: txn + 1), {:reply, from, :ok}}
+    write_concern = Keyword.get(opts, :write_concern, data.write_concern)
+    read_concern = Keyword.get(opts, :read_concern, data.read_concern)
+
+    txn = %{
+      seq: seq + 1,
+      write_concern: write_concern,
+      read_concern: read_concern
+    }
+
+    {:next_state, :transaction_started, struct(data, txn: txn), {:reply, from, :ok}}
   end
 
   # Add session information to the query metadata.
   def handle_event({:call, from}, {:add_session, query}, :transaction_started, data) do
+    %{
+      txn: %{
+        seq: seq,
+        read_concern: read_concern,
+        write_concern: write_concern
+      }
+    } = data
+
     new_query =
       query
       |> Keyword.new()
       |> add_option(:lsid, data.id)
-      |> add_option(:txnNumber, {:long, data.txn})
+      |> add_option(:txnNumber, {:long, seq})
       |> add_option(:startTransaction, true)
       |> add_option(:autocommit, false)
+      |> add_option(:writeConcern, write_concern)
+      |> add_option(:readConcern, read_concern)
       |> set_read_concern(data.operation_time, data.causal_consistency)
 
     {:next_state, :in_transaction, data, {:reply, from, {:ok, new_query}}}
@@ -361,7 +382,7 @@ defmodule Mongo.Session do
         {command, 1},
         lsid: state.id,
         autocommit: false,
-        txnNumber: {:long, state.txn}
+        txnNumber: {:long, state.txn.seq}
       ]
       |> add_option(:writeConcern, state.write_concern)
 

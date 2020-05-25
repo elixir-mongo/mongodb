@@ -546,9 +546,12 @@ defmodule Mongo do
       |> Keyword.put(:limit, 1)
       |> Keyword.put(:batch_size, 1)
 
-    conn
-    |> find(coll, filter, opts)
-    |> Enum.at(0)
+    with [elem] <- Enum.to_list(find(conn, coll, filter, opts)) do
+      elem
+    else
+      [] -> nil
+      error -> error
+    end
   end
 
   @doc false
