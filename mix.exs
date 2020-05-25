@@ -44,7 +44,7 @@ defmodule Mongodb.Mixfile do
     [
       {:db_connection, "~> 2.0"},
       {:decimal, "~> 1.5"},
-      {:jason, "~> 1.0.0", only: :test},
+      {:jason, "~> 1.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:dialyxir, "~> 1.0.0-rc.4", only: :dev, runtime: false}
     ]
