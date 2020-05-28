@@ -9,7 +9,7 @@ defmodule Mongo do
 
     * `:timeout` - The maximum time that the caller is allowed the to hold the
       connection’s state (ignored when using a run/transaction connection,
-      default: `15_000`)
+      default: `5_000`)
     * `:pool` - The pooling behaviour module to use, this option is required
       unless the default `DBConnection.Connection` pool is used
     * `:pool_timeout` - The maximum time to wait for a reply when making a
