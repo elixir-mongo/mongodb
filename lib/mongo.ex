@@ -175,7 +175,8 @@ defmodule Mongo do
         pipeline: pipeline,
         allowDiskUse: opts[:allow_disk_use],
         collation: opts[:collation],
-        maxTimeMS: opts[:max_time]
+        maxTimeMS: opts[:max_time],
+        hint: opts[:hint]
       ]
       |> filter_nils()
 
