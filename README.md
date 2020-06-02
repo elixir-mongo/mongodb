@@ -1,23 +1,24 @@
-# Mongodb
+# MongoDB
 
 [![Build Status](https://travis-ci.org/ankhers/mongodb.svg?branch=master)](https://travis-ci.org/ankhers/mongodb)
 
-[Documentation for Mongodb is available online](http://hexdocs.pm/mongodb/).
+[Documentation for MongoDB is available online](http://hexdocs.pm/mongodb/).
 
 ## Features
 
   * Supports MongoDB versions 3.4, 3.6, 4.0
-  * Connection pooling (through db_connection)
+  * Connection pooling (through `db_connection`)
   * Streaming cursors
   * Performant ObjectID generation
   * Follows driver specification set by 10gen
   * Safe (by default) and unsafe writes
   * Aggregation pipeline
   * Replica sets
+  * Sessions and transactions
 
 ## Immediate Roadmap
 
-  * Make sure requests don't go over the 16mb limit
+  * Make sure requests don't go over the 16 MiB limit
   * New 2.6 write queries and bulk writes
 
 ## Tentative Roadmap
@@ -29,38 +30,42 @@
 
 ## Data representation
 
-    BSON                Elixir
-    ----------          ------
-    double              0.0
-    string              "Elixir"
-    document            [{"key", "value"}] | %{"key" => "value"} (1)
-    binary              %BSON.Binary{binary: <<42, 43>>, subtype: :generic}
-    object id           %BSON.ObjectId{value: <<...>>}
-    boolean             true | false
-    UTC datetime        %DateTime{}
-    null                nil
-    regex               %BSON.Regex{pattern: "..."}
-    JavaScript          %BSON.JavaScript{code: "..."}
-    integer             42
-    symbol              "foo" (2)
-    min key             :BSON_min
-    max key             :BSON_max
+| BSON             | Elixir
+| ---------------- | ------
+| double           | `0.0`
+| string           | `"Elixir"`
+| document         | `[{"key", "value"}]` \| `%{"key" => "value"}` ¹
+| binary           | `%BSON.Binary{binary: <<42, 43>>, subtype: :generic}`
+| object id        | `%BSON.ObjectId{value: <<...>>}`
+| boolean          | `true` | `false`
+| UTC datetime     | `%DateTime{}`
+| null             | `nil`
+| regex            | `%BSON.Regex{pattern: "..."}`
+| JavaScript       | `%BSON.JavaScript{code: "..."}`
+| integer          | `42`
+| symbol           | `"foo"` ²
+| min key          | `:BSON_min`
+| max key          | `:BSON_max`
 
-1) Since BSON documents are ordered Elixir maps cannot be used to fully represent them. This driver chose to accept both maps and lists of key-value pairs when encoding but will only decode documents to maps. This has the side-effect that the information about order of keys in a BSON document is lost when it's decoded. Additionally the driver will accept both atoms and strings for document keys but will only decode to strings.
+¹ Since BSON documents are ordered Elixir maps cannot be used to fully
+represent them. This driver chose to accept both maps and lists of key-value
+pairs when encoding but will only decode documents to maps. This has the
+side-effect that the information about order of keys in a BSON document is lost
+when it's decoded. Additionally the driver will accept both atoms and strings
+for document keys but will only decode to strings.
 
-2) BSON symbols can only be decoded.
+² BSON symbols can only be decoded.
 
 ## Usage
 
 ### Installation:
 
-Add mongodb to your mix.exs `deps` . Mongodb supports the same pooling libraries db_connection does (currently: no pooling, poolboy, and sbroker). If you want to use poolboy as pooling library you should set up your project like this:
+Add `mongodb` to your `mix.exs` `deps`.
 
 ```elixir
 defp deps do
   [
-    {:mongodb, "~> 0.5.1"},
-    {:poolboy, ">= 0.0.0"}
+    {:mongodb, "~> 0.5.1"}
   ]
 end
 ```
@@ -69,7 +74,8 @@ Then run `mix deps.get` to fetch dependencies.
 
 ### Connection pooling
 
-By default mongodb will start a single connection, but it also supports pooling with the `:pool_size` option.
+By default `mongodb` will start a single connection, but it also supports
+pooling with the `:pool_size` option.
 
 ```elixir
 # Starts an unpooled connection
@@ -87,10 +93,8 @@ If you're using pooling it is recommend to add it to your application supervisor
 
 ```elixir
 def start(_type, _args) do
-  import Supervisor.Spec
-
   children = [
-    worker(Mongo, [[name: :mongo, database: "test", pool_size: 2]])
+    {Mongo, [name: :mongo, database: "test", pool_size: 2]}
   ]
 
   opts = [strategy: :one_for_one, name: MyApp.Supervisor]
@@ -104,7 +108,7 @@ Simple start with pooling:
 {:ok, conn} = Mongo.start_link(name: :mongo, database: "test", pool_size: 2)
 ```
 
-Operate the mongodb with specify pool name in each query:
+Operate the `mongodb` with specify pool name in each query:
 
 ```elixir
 Mongo.find(:mongo, "collection", %{}, limit: 20)
@@ -114,18 +118,22 @@ More pool options in [here](https://hexdocs.pm/db_connection/2.0.6/DBConnection.
 
 ### Replica Sets
 
-To connect to a Mongo cluster that is using replica sets, it is recommended to use the `:seeds` list instead of a `:hostname` and `:port` pair.
+To connect to a MongoDB cluster that is using replica sets, it is recommended to
+use the `:seeds` list instead of a `:hostname` and `:port` pair.
 
 ```elixir
 {:ok, pid} = Mongo.start_link(database: "test", seeds: ["hostname1.net:27017", "hostname2.net:27017"])
 ```
 
-This will allow for scenarios where the first `"hostname1.net:27017"` is unreachable for any reason and will automatically try to connect to each of the following entries in the list to connect to the cluster.
+This will allow for scenarios where the first `"hostname1.net:27017"` is
+unreachable for any reason and will automatically try to connect to each of the
+following entries in the list to connect to the cluster.
 
 ### Auth mechanisms
 
-For versions of Mongo 3.0 and greater, the auth mechanism defaults to SCRAM. If you'd like to use [MONGODB-X509](https://docs.mongodb.com/manual/tutorial/configure-x509-client-authentication/#authenticate-with-a-x-509-certificate)
-authentication, you can specify that as a `start_link` option.
+For versions of MongoDB 3.0 and greater, the auth mechanism defaults to SCRAM.
+If you'd like to use [MONGODB-X509][] authentication, you can specify that as a
+`start_link` option.
 
 ```elixir
 {:ok, pid} = Mongo.start_link(database: "test", auth_mechanism: :x509)
@@ -133,8 +141,9 @@ authentication, you can specify that as a `start_link` option.
 
 ### AWS, TLS and Erlang SSL ciphers
 
-Some MongoDB cloud providers (notably AWS) require a particular TLS cipher that isn't enabled by default in the Erlang SSL module. In order to connect to these services,
-you'll want to add this cipher to your `ssl_opts`:
+Some MongoDB cloud providers (notably AWS) require a particular TLS cipher that
+isn't enabled by default in the Erlang SSL module. In order to connect to these
+services, you'll want to add this cipher to your `ssl_opts`:
 
 ```elixir
 {:ok, pid} = Mongo.start_link(database: "test",
@@ -169,7 +178,7 @@ Mongo.find(:mongo, "users", %{email: %{"$in" => ["my@email.com", "other@email.co
 ## Contributing
 
 The SSL test suite is enabled by default. You have two options. Either exclude
-the SSL tests or enable SSL on your Mongo server.
+the SSL tests or enable SSL on your MongoDB server.
 
 ### Disable the SSL tests
 
@@ -188,7 +197,7 @@ $ mongod --sslMode allowSSL --sslPEMKeyFile /path/to/mongodb.pem
 
 ## License
 
-Copyright 2015 Justin Wood
+Copyright 2015 Justin Wood and Kobil Systems GmbH
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -201,3 +210,5 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+[MONGODB-X509]: https://docs.mongodb.com/manual/tutorial/configure-x509-client-authentication/#authenticate-with-a-x-509-certificate
