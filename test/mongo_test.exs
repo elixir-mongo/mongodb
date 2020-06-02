@@ -3,12 +3,13 @@ defmodule Mongo.Test do
 
   setup_all do
     assert {:ok, pid} = Mongo.TestConnection.connect()
+
     {:ok, [pid: pid]}
   end
 
   defmacro unique_name do
     {function, _arity} = __CALLER__.function
-    "#{__CALLER__.module}.#{function}"
+    "#{__CALLER__.module}.#{function}.#{System.unique_integer([:positive])}"
   end
 
   test "object_id" do

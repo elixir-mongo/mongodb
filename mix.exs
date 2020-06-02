@@ -17,8 +17,7 @@ defmodule Mongodb.Mixfile do
       dialyzer: [
         flags: [:underspecs, :unknown, :unmatched_returns],
         plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
-        plt_add_deps: :transitive,
-        plt_core_path: "plt_core_path"
+        plt_add_deps: :transitive
       ]
     ]
   end
@@ -27,21 +26,28 @@ defmodule Mongodb.Mixfile do
   defp elixirc_paths(_), do: ["lib"]
 
   def application do
-    [applications: applications(Mix.env()), mod: {Mongo.App, []}, env: []]
+    [
+      mod: {Mongo.App, []},
+      env: [],
+      extra_applications: [:logger],
+      registered: [
+        Mongo.PBKDF2Cache,
+        Mongo.Session.Supervisor,
+        Mongo.Events,
+        Mongo.IdServer,
+        Mongo.SessionPool
+      ]
+    ]
   end
-
-  def applications(:test), do: [:logger, :connection, :db_connection]
-  def applications(_), do: [:logger, :connection, :db_connection]
 
   defp deps do
     [
-      {:connection, "~> 1.0"},
       {:db_connection, "~> 2.0"},
       {:decimal, "~> 1.5"},
-      {:jason, "~> 1.0.0", only: :test},
-      {:ex_doc, "~> 0.18", only: :dev, runtime: false},
-      {:earmark, ">= 0.0.0", only: :dev}
-      # {:dialyxir, "~> 1.0.0-rc.4", only: [:dev], runtime: false}
+      {:jason, "~> 1.0", only: :test},
+      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:earmark, ">= 0.0.0", only: :dev},
+      {:dialyxir, "~> 1.0.0-rc.4", only: :dev, runtime: false}
     ]
   end
 

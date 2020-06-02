@@ -1,5 +1,5 @@
 defmodule Mongo.CursorTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmacro unique_name do
     {function, _arity} = __CALLER__.function

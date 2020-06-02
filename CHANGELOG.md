@@ -1,3 +1,20 @@
+## v0.6.0-dev
+
+* Enhancements
+  * Add support for MongoDB sessions
+  * Add support for transactions
+  * Add support for hiding configuration options from logs
+  * Added Dialyzer to CI pipeline
+  * Reformatted code using `mix format`
+  * Add support for encoding long numbers in BSON
+  * Use `@impl` instead of doc strings where possible
+
+* Bug Fixes
+  * Added `LICENSE` file that was missing
+
+* Possible incompatibilities
+  * Bumped supported Elixir and OTP version
+
 ## v0.5.1
 
 * Enhancements
