@@ -1,5 +1,6 @@
 defprotocol Mongo.Encoder do
-  @spec encode(t) :: map()
+  @fallback_to_any false
+
   def encode(value)
 end
 
