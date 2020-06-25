@@ -8,8 +8,7 @@ defmodule Mongo.EncoderTest do
                hostname: "localhost",
                database: "mongodb_test",
                username: "mongodb_user",
-               password: "mongodb_user",
-               show_sensitive_data_on_connection_error: true
+               password: "mongodb_user"
              )
 
     pid
