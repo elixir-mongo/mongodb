@@ -1197,10 +1197,10 @@ defmodule Mongo do
   defp assert_single_doc!([{_, _} | _]), do: :ok
 
   defp assert_single_doc!(other) do
-    raise ArgumentError, "expected single document, got: #{inspect(other)}"
+    unless Mongo.Encoder.impl_for(other), do: raise(ArgumentError, "expected single document, got: #{inspect(other)}"), else: :ok
   end
 
-  defp assert_many_docs!([first | _]) when not is_tuple(first), do: :ok
+  defp assert_many_docs!(docs) when is_list(docs), do: Enum.all?(docs, &assert_single_doc!/1) && :ok
 
   defp assert_many_docs!(other) do
     raise ArgumentError, "expected list of documents, got: #{inspect(other)}"
@@ -1212,6 +1212,7 @@ defmodule Mongo do
 
   defp assign_ids(list) when is_list(list) do
     list
+    |> Enum.map(&Mongo.Encoder.encode/1)
     |> Enum.map(&assign_id/1)
     |> Enum.unzip()
   end
