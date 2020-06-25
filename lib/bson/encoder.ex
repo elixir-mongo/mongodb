@@ -117,7 +117,12 @@ defmodule BSON.Encoder do
         {key, value}, {_, acc} ->
           {key_type, key} = key(key)
           type = type(value)
-          value = encode(value)
+
+          value =
+            if Mongo.Encoder.impl_for(value),
+              do: value |> Mongo.Encoder.encode() |> encode(),
+              else: value |> encode()
+
           {key_type, [acc, type, key, value]}
       end)
 

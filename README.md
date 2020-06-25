@@ -56,6 +56,48 @@ for document keys but will only decode to strings.
 
 ² BSON symbols can only be decoded.
 
+### Writing your own encoding info
+
+If you want to write a custom struct to your mongo collection - you can do that
+by implementing `Mongo.Encoder` protocol for your class. The output should be a map,
+which will be passed to the Mongo database.
+
+Example:
+
+```elixir
+defmodule CustomStruct do
+  @fields [:a, :b, :c, :id]
+  @enforce_keys @fields
+  defstruct @fields
+
+  defimpl Mongo.Encoder do
+    def encode(%{a: a, b: b, id: id}) do
+      %{
+        _id: id,
+        a: a,
+        b: b,
+        custom_encoded: true
+      }
+    end
+  end
+end
+```
+
+So, given the struct:
+```elixir
+%CustomStruct{a: 10, b: 20, c: 30, id: "5ef27e73d2a57d358f812001"}
+```
+
+it will be written to database, as:
+```json
+{
+  "a": 10,
+  "b": 20,
+  "custom_encoded": true,
+  "_id": "5ef27e73d2a57d358f812001"
+}
+```
+
 ## Usage
 
 ### Installation:

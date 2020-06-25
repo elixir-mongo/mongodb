@@ -18,7 +18,8 @@ defmodule Mongodb.Mixfile do
         flags: [:underspecs, :unknown, :unmatched_returns],
         plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
         plt_add_deps: :transitive
-      ]
+      ],
+      consolidate_protocols: Mix.env() != :test
     ]
   end
 
