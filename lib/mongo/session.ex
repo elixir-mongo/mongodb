@@ -341,7 +341,7 @@ defmodule Mongo.Session do
   def terminate(_reason, state, %{pid: pid} = data) do
     _ =
       if state == :in_transaction do
-        _ = try_run_txn_command(data, :abortTransaction)
+        try_run_txn_command(data, :abortTransaction)
       end
 
     query = %{
