@@ -91,8 +91,8 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 44})
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 45})
 
-    assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}, %{"foo" => 45}] =
-             c.pid |> Mongo.aggregate(coll, []) |> Enum.to_list()
+    assert {:ok, colls0} =c.pid |> Mongo.aggregate(coll, [])
+    assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}, %{"foo" => 45}] = colls0 |> Enum.to_list()
 
     query = [
       %{
