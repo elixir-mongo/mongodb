@@ -389,9 +389,12 @@ defmodule Mongo do
       |> filter_nils
       |> Enum.map(&List.wrap/1)
 
-    documents =
+    {:ok, cursor} =
       topology_pid
       |> Mongo.aggregate(coll, pipeline, opts)
+      
+    documents =  
+      cursor 
       |> Enum.to_list()
 
     case documents do

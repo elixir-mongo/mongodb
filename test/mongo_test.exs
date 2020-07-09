@@ -69,13 +69,10 @@ defmodule Mongo.Test do
     cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1, bar: 1], name: "foo-bar"]]]
     assert {:ok, _} = Mongo.command(c.pid, cmd)
 
-    {:ok, colls00} =
+    indexes =
       c.pid
       |> Mongo.list_index_names(coll_1)
-
-    indexes =
-      colls00
-      |> Enum.to_list()
+      |> Enum.to_list() 
 
     assert Enum.count(indexes) == 3
     assert Enum.member?(indexes, "_id_")
