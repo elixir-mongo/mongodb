@@ -168,7 +168,7 @@ defmodule Mongo do
     * `:use_cursor` - Use a cursor for a batched response (Default: true)
   """
   @spec aggregate(GenServer.server(), collection, [BSON.document()], Keyword.t()) ::
-          cursor | {:error, Mongo.Error.t()}
+          {:ok, cursor} | {:error, Mongo.Error.t()}
   def aggregate(topology_pid, coll, pipeline, opts \\ []) do
     query =
       [
@@ -191,10 +191,10 @@ defmodule Mongo do
 
       if cursor? do
         query = query ++ [cursor: filter_nils(%{batchSize: opts[:batch_size]})]
-        aggregation_cursor(conn, "$cmd", query, nil, opts)
+        {:ok, aggregation_cursor(conn, "$cmd", query, nil, opts)}
       else
         query = query ++ [cursor: %{}]
-        aggregation_cursor(conn, "$cmd", query, nil, opts)
+        {:ok, aggregation_cursor(conn, "$cmd", query, nil, opts)}
       end
     end
   end
@@ -1004,10 +1004,10 @@ defmodule Mongo do
   Returns a cursor to enumerate all indexes
   """
   @spec list_indexes(GenServer.server(), String.t(), Keyword.t()) ::
-          cursor | {:error, Mongo.Error.t()}
+          {:ok, cursor} | {:error, Mongo.Error.t()}
   def list_indexes(topology_pid, coll, opts \\ []) do
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts) do
-      aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, opts)
+      {:ok, aggregation_cursor(conn, "$cmd", [listIndexes: coll], nil, opts)}
     end
   end
 
@@ -1024,7 +1024,8 @@ defmodule Mongo do
   @doc """
   Getting Collection Names
   """
-  @spec show_collections(GenServer.server(), Keyword.t()) :: cursor | {:error, Mongo.Error.t()}
+  @spec show_collections(GenServer.server(), Keyword.t()) ::
+          {:ok, cursor} | {:error, Mongo.Error.t()}
   def show_collections(topology_pid, opts \\ []) do
     ##
     # from the specs
@@ -1032,10 +1033,14 @@ defmodule Mongo do
     #
     # In versions 2.8.0-rc3 and later, the listCollections command returns a cursor!
     #
+
     with {:ok, conn, _, _} <- select_server(topology_pid, :read, opts) do
-      aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts)
-      |> Stream.filter(fn coll -> coll["type"] == "collection" end)
-      |> Stream.map(fn coll -> coll["name"] end)
+      cursor =
+        aggregation_cursor(conn, "$cmd", [listCollections: 1], nil, opts)
+        |> Stream.filter(fn coll -> coll["type"] == "collection" end)
+        |> Stream.map(fn coll -> coll["name"] end)
+
+      {:ok, cursor}
     end
   end
 
