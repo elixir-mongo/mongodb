@@ -1015,7 +1015,7 @@ defmodule Mongo do
   Convenient function that returns a cursor with the names of the indexes.
   """
   @spec list_index_names(GenServer.server(), String.t(), Keyword.t()) ::
-          %Stream{} | {:error, Mongo.Error.t()}
+   {:ok,  %Stream{}} | {:error, Mongo.Error.t()}
   def list_index_names(topology_pid, coll, opts \\ []) do
     list_indexes(topology_pid, coll, opts)
     |> Stream.map(fn %{"name" => name} -> name end)
