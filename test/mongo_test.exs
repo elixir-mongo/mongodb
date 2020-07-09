@@ -72,7 +72,7 @@ defmodule Mongo.Test do
     indexes =
       c.pid
       |> Mongo.list_index_names(coll_1)
-      |> Enum.to_list() 
+      |> Enum.to_list()
 
     assert Enum.count(indexes) == 3
     assert Enum.member?(indexes, "_id_")
@@ -89,6 +89,7 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 45})
 
     assert {:ok, colls0} = c.pid |> Mongo.aggregate(coll, [])
+
     assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}, %{"foo" => 45}] =
              colls0 |> Enum.to_list()
 
