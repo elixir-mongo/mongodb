@@ -69,7 +69,7 @@ defmodule Mongo.Specification.CRUD.Helpers do
       |> atomize_keys()
 
     {:ok, cursor} = pid |> Mongo.aggregate(collection, pipeline, opts) |> Enum.to_list()
-    cursor 
+    cursor
   end
 
   def match_operation_result?(expected, actual) do
