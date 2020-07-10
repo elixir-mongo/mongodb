@@ -61,10 +61,12 @@ defmodule Mongo do
   @type conn :: DbConnection.Conn
   @type collection :: String.t()
   @opaque cursor :: Mongo.Cursor.t() | Mongo.AggregationCursor.t()
+  @type basic_result(t) :: {:ok, t} | {:error, Mongo.Error.t()}
   @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t()}
   @type write_result(t) ::
           :ok | {:ok, t} | {:error, Mongo.Error.t()} | {:error, Mongo.WriteError.t()}
   @type result!(t) :: nil | t | no_return
+  @type basic_result!(t) :: t | no_return
 
   defmacrop bangify(result) do
     quote do
@@ -72,6 +74,15 @@ defmodule Mongo do
         {:ok, value} -> value
         {:error, error} -> raise error
         :ok -> nil
+      end
+    end
+  end
+
+  defmacrop bangify_basic_result(basic_result) do
+    quote do
+      case unquote(basic_result) do
+        {:ok, value} -> value
+        {:error, error} -> raise error
       end
     end
   end
@@ -222,7 +233,7 @@ defmodule Mongo do
           BSON.document(),
           BSON.document(),
           Keyword.t()
-        ) :: result(BSON.document()) | {:ok, nil}
+        ) :: basic_result(BSON.document()) | {:ok, nil}
   def find_one_and_update(topology_pid, coll, filter, update, opts \\ []) do
     _ = modifier_docs(update, :update)
 
@@ -277,7 +288,7 @@ defmodule Mongo do
           BSON.document(),
           BSON.document(),
           Keyword.t()
-        ) :: result(BSON.document())
+        ) :: basic_result(BSON.document())
   def find_one_and_replace(topology_pid, coll, filter, replacement, opts \\ []) do
     _ = modifier_docs(replacement, :replace)
 
@@ -321,7 +332,7 @@ defmodule Mongo do
     * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and higher.
   """
   @spec find_one_and_delete(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result(BSON.document())
+          basic_result(BSON.document())
   def find_one_and_delete(topology_pid, coll, filter, opts \\ []) do
     query =
       filter_nils(
@@ -343,7 +354,7 @@ defmodule Mongo do
 
   @doc false
   @spec count(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result(non_neg_integer)
+          basic_result(non_neg_integer)
   def count(topology_pid, coll, filter, opts \\ []) do
     query =
       filter_nils(
@@ -364,9 +375,9 @@ defmodule Mongo do
 
   @doc false
   @spec count!(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result!(non_neg_integer)
+          basic_result!(non_neg_integer)
   def count!(topology_pid, coll, filter, opts \\ []) do
-    bangify(count(topology_pid, coll, filter, opts))
+    bangify_basic_result(count(topology_pid, coll, filter, opts))
   end
 
   @doc """
@@ -377,7 +388,7 @@ defmodule Mongo do
     * `:skip` - Number of documents to skip before returning the first
   """
   @spec count_documents(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result(non_neg_integer)
+          basic_result(non_neg_integer)
   def count_documents(topology_pid, coll, filter, opts \\ []) do
     pipeline =
       [
@@ -407,7 +418,7 @@ defmodule Mongo do
   Similar to `count_documents/4` but unwraps the result and raises on error.
   """
   @spec count_documents!(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result!(non_neg_integer)
+          basic_result!(non_neg_integer)
   def count_documents!(topology_pid, coll, filter, opts \\ []) do
     bangify(count_documents(topology_pid, coll, filter, opts))
   end
@@ -416,7 +427,7 @@ defmodule Mongo do
   Estimate the number of documents in a collection using collection metadata.
   """
   @spec estimated_document_count(GenServer.server(), collection, Keyword.t()) ::
-          result(non_neg_integer)
+          basic_result(non_neg_integer)
   def estimated_document_count(topology_pid, coll, opts) do
     opts = Keyword.drop(opts, [:skip, :limit, :hint, :collation])
     count(topology_pid, coll, %{}, opts)
@@ -427,9 +438,9 @@ defmodule Mongo do
   error.
   """
   @spec estimated_document_count!(GenServer.server(), collection, Keyword.t()) ::
-          result!(non_neg_integer)
+          basic_result!(non_neg_integer)
   def estimated_document_count!(topology_pid, coll, opts) do
-    bangify(estimated_document_count(topology_pid, coll, opts))
+    bangify_basic_result(estimated_document_count(topology_pid, coll, opts))
   end
 
   @doc """
@@ -441,7 +452,7 @@ defmodule Mongo do
     * `:collation` - Optionally specifies a collation to use in MongoDB 3.4 and
   """
   @spec distinct(GenServer.server(), collection, String.t() | atom, BSON.document(), Keyword.t()) ::
-          result([BSON.t()])
+          basic_result([BSON.t()])
   def distinct(topology_pid, coll, field, filter, opts \\ []) do
     query =
       filter_nils(
@@ -463,9 +474,9 @@ defmodule Mongo do
   Similar to `distinct/5` but unwraps the result and raises on error.
   """
   @spec distinct!(GenServer.server(), collection, String.t() | atom, BSON.document(), Keyword.t()) ::
-          result!([BSON.t()])
+          basic_result!([BSON.t()])
   def distinct!(topology_pid, coll, field, filter, opts \\ []) do
-    bangify(distinct(topology_pid, coll, field, filter, opts))
+    bangify_basic_result(distinct(topology_pid, coll, field, filter, opts))
   end
 
   @doc """
