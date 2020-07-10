@@ -64,7 +64,7 @@ defmodule Mongo do
   @type basic_result(t) :: {:ok, t} | {:error, Mongo.Error.t()}
   @type result(t) :: :ok | {:ok, t} | {:error, Mongo.Error.t()}
   @type write_result(t) ::
-          :ok | {:ok, t} | {:error, Mongo.Error.t()} | {:error, Mongo.WriteError.t()}
+          {:ok, t} | {:error, Mongo.Error.t()} | {:error, Mongo.WriteError.t()}
   @type result!(t) :: nil | t | no_return
   @type basic_result!(t) :: t | no_return
 
@@ -420,7 +420,7 @@ defmodule Mongo do
   @spec count_documents!(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
           basic_result!(non_neg_integer)
   def count_documents!(topology_pid, coll, filter, opts \\ []) do
-    bangify(count_documents(topology_pid, coll, filter, opts))
+    bangify_basic_result(count_documents(topology_pid, coll, filter, opts))
   end
 
   @doc """
@@ -715,9 +715,9 @@ defmodule Mongo do
   Similar to `insert_one/4` but unwraps the result and raises on error.
   """
   @spec insert_one!(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result!(Mongo.InsertOneResult.t())
+          basic_result!(Mongo.InsertOneResult.t())
   def insert_one!(topology_pid, coll, doc, opts \\ []) do
-    bangify(insert_one(topology_pid, coll, doc, opts))
+    bangify_basic_result(insert_one(topology_pid, coll, doc, opts))
   end
 
   @doc """
@@ -783,9 +783,9 @@ defmodule Mongo do
   Similar to `insert_many/4` but unwraps the result and raises on error.
   """
   @spec insert_many!(GenServer.server(), collection, [BSON.document()], Keyword.t()) ::
-          result!(Mongo.InsertManyResult.t())
+          basic_result!(Mongo.InsertManyResult.t())
   def insert_many!(topology_pid, coll, docs, opts \\ []) do
-    bangify(insert_many(topology_pid, coll, docs, opts))
+    bangify_basic_result(insert_many(topology_pid, coll, docs, opts))
   end
 
   @doc """
@@ -801,9 +801,9 @@ defmodule Mongo do
   Similar to `delete_one/4` but unwraps the result and raises on error.
   """
   @spec delete_one!(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result!(Mongo.DeleteResult.t())
+          basic_result!(Mongo.DeleteResult.t())
   def delete_one!(topology_pid, coll, filter, opts \\ []) do
-    bangify(delete_one(topology_pid, coll, filter, opts))
+    bangify_basic_result(delete_one(topology_pid, coll, filter, opts))
   end
 
   @doc """
@@ -819,9 +819,9 @@ defmodule Mongo do
   Similar to `delete_many/4` but unwraps the result and raises on error.
   """
   @spec delete_many!(GenServer.server(), collection, BSON.document(), Keyword.t()) ::
-          result!(Mongo.DeleteResult.t())
+          basic_result!(Mongo.DeleteResult.t())
   def delete_many!(topology_pid, coll, filter, opts \\ []) do
-    bangify(delete_many(topology_pid, coll, filter, opts))
+    bangify_basic_result(delete_many(topology_pid, coll, filter, opts))
   end
 
   defp do_delete(topology_pid, coll, filter, limit, opts) do
@@ -887,9 +887,9 @@ defmodule Mongo do
           BSON.document(),
           BSON.document(),
           Keyword.t()
-        ) :: result!(Mongo.UpdateResult.t())
+        ) :: basic_result!(Mongo.UpdateResult.t())
   def replace_one!(topology_pid, coll, filter, replacement, opts \\ []) do
-    bangify(replace_one(topology_pid, coll, filter, replacement, opts))
+    bangify_basic_result(replace_one(topology_pid, coll, filter, replacement, opts))
   end
 
   @doc """
@@ -923,9 +923,9 @@ defmodule Mongo do
   Similar to `update_one/5` but unwraps the result and raises on error.
   """
   @spec update_one!(GenServer.server(), collection, BSON.document(), BSON.document(), Keyword.t()) ::
-          result!(Mongo.UpdateResult.t())
+          basic_result!(Mongo.UpdateResult.t())
   def update_one!(topology_pid, coll, filter, update, opts \\ []) do
-    bangify(update_one(topology_pid, coll, filter, update, opts))
+    bangify_basic_result(update_one(topology_pid, coll, filter, update, opts))
   end
 
   @doc """
@@ -957,9 +957,9 @@ defmodule Mongo do
           BSON.document(),
           BSON.document(),
           Keyword.t()
-        ) :: result!(Mongo.UpdateResult.t())
+        ) :: basic_result!(Mongo.UpdateResult.t())
   def update_many!(topology_pid, coll, filter, update, opts \\ []) do
-    bangify(update_many(topology_pid, coll, filter, update, opts))
+    bangify_basic_result(update_many(topology_pid, coll, filter, update, opts))
   end
 
   defp do_update(topology_pid, coll, filter, update, multi, opts) do
