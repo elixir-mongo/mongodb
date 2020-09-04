@@ -61,6 +61,7 @@ defmodule Mongo.SessionPool do
           if Mongo.Session.ended?(session) do
             state.sessions
           else
+            Mongo.Session.abort_transaction(session)
             [session | state.sessions]
           end
 
