@@ -56,12 +56,13 @@ defmodule Mongo.SessionPool do
 
         {:noreply, struct(state, sessions: sessions)}
 
-      {_, monitors} ->
+      {session, monitors} ->
         sessions =
-          if Mongo.Session.ended?(pid) do
+          if Mongo.Session.ended?(session) do
             state.sessions
           else
-            [pid | state.sessions]
+            Mongo.Session.abort_transaction(session)
+            [session | state.sessions]
           end
 
         {:noreply, struct(state, sessions: sessions, monitors: monitors)}
