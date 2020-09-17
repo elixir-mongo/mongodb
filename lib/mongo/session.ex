@@ -1,5 +1,5 @@
 defmodule Mongo.Session do
-  @enforce_keys [:id, :pid]
+  @enforce_keys [:session, :pid]
   defstruct @enforce_keys ++
               [
                 :ref,
@@ -9,11 +9,7 @@ defmodule Mongo.Session do
                 operation_time: nil,
                 causal_consistency: true,
                 retry_writes: false,
-                txn: %{
-                  seq: 0,
-                  read_concern: nil,
-                  write_concern: nil
-                }
+                active_txn: nil
               ]
 
   @opaque session :: pid()
@@ -24,8 +20,8 @@ defmodule Mongo.Session do
   defmodule Supervisor do
     @moduledoc false
 
-    def start_child(conn, id, opts) do
-      DynamicSupervisor.start_child(__MODULE__, {Mongo.Session, {conn, id, opts, self()}})
+    def start_child(conn, session, opts, parent) do
+      DynamicSupervisor.start_child(__MODULE__, {Mongo.Session, {conn, session, opts, parent}})
     end
 
     def child_spec(_) do
@@ -66,9 +62,9 @@ defmodule Mongo.Session do
   """
   @spec end_session(session()) :: :ok
   def end_session(pid) do
-    Mongo.SessionPool.checkin(pid)
-
-    :ok
+    with {:ok, id, txn} <- :gen_statem.call(pid, :end_session) do
+      Mongo.SessionPool.checkin(id, txn)
+    end
   end
 
   @doc """
@@ -106,25 +102,6 @@ defmodule Mongo.Session do
   end
 
   @doc false
-  def set_options(pid, opts) do
-    causal_consistency = Keyword.get(opts, :causal_consistency, true)
-    read_concern = Keyword.get(opts, :read_concern, %{})
-    read_preference = Keyword.get(opts, :read_preference)
-    retry_writes = Keyword.get(opts, :retry_writes, true)
-    write_concern = Keyword.get(opts, :write_concern)
-
-    state = %{
-      causal_consistency: causal_consistency,
-      read_concern: read_concern,
-      read_preference: read_preference,
-      retry_writes: retry_writes,
-      write_concern: write_concern
-    }
-
-    :gen_statem.call(pid, {:set_options, state})
-  end
-
-  @doc false
   def update_session(doc, nil), do: doc
 
   def update_session(%{"operationTime" => operation_ts} = doc, pid) do
@@ -151,7 +128,7 @@ defmodule Mongo.Session do
   @outside_txn @states -- @in_txn
 
   @doc false
-  def child_spec({topology_pid, id, opts, parent}) do
+  def child_spec({topology_pid, session, opts, parent}) do
     causal_consistency = Keyword.get(opts, :causal_consistency, true)
     read_concern = Keyword.get(opts, :read_concern, %{})
     read_preference = Keyword.get(opts, :read_preference)
@@ -159,7 +136,7 @@ defmodule Mongo.Session do
     write_concern = Keyword.get(opts, :write_concern)
 
     state = %__MODULE__{
-      id: id,
+      session: session,
       pid: topology_pid,
       causal_consistency: causal_consistency,
       read_concern: read_concern,
@@ -200,25 +177,27 @@ defmodule Mongo.Session do
   end
 
   # Start new transaction if there isn't one already.
-  def handle_event({:call, from}, {:start_transaction, opts}, state, %{txn: %{seq: seq}} = data)
+  def handle_event({:call, from}, {:start_transaction, opts}, state, %{session: session} = data)
       when state in @outside_txn do
     write_concern = Keyword.get(opts, :write_concern, data.write_concern)
     read_concern = Keyword.get(opts, :read_concern, data.read_concern)
 
     txn = %{
-      seq: seq + 1,
       write_concern: write_concern,
       read_concern: read_concern
     }
 
-    {:next_state, :transaction_started, struct(data, txn: txn), {:reply, from, :ok}}
+    session = Map.update!(session, :txn, & &1 + 1)
+
+    {:next_state, :transaction_started, struct(data, session: session, active_txn: txn),
+     {:reply, from, :ok}}
   end
 
   # Add session information to the query metadata.
   def handle_event({:call, from}, {:add_session, query}, :transaction_started, data) do
     %{
-      txn: %{
-        seq: seq,
+      session: %{txn: seq, id: id} = session,
+      active_txn: %{
         read_concern: read_concern,
         write_concern: write_concern
       }
@@ -227,7 +206,7 @@ defmodule Mongo.Session do
     new_query =
       query
       |> Keyword.new()
-      |> add_option(:lsid, data.id)
+      |> add_option(:lsid, %{id: id})
       |> add_option(:txnNumber, {:long, seq})
       |> add_option(:startTransaction, true)
       |> add_option(:autocommit, false)
@@ -235,7 +214,10 @@ defmodule Mongo.Session do
       |> add_option(:readConcern, read_concern)
       |> set_read_concern(data.operation_time, data.causal_consistency)
 
-    {:next_state, :in_transaction, data, {:reply, from, {:ok, new_query}}}
+    session = Map.put(session, :last_use, :erlang.monotonic_time())
+
+    {:next_state, :in_transaction, struct(data, session: session),
+     {:reply, from, {:ok, new_query}}}
   end
 
   def handle_event({:call, from}, {:add_session, query}, :in_transaction, data) do
@@ -243,17 +225,20 @@ defmodule Mongo.Session do
       query
       |> Keyword.new()
       |> Keyword.merge(
-        lsid: data.id,
-        txnNumber: {:long, data.txn},
+        lsid: %{id: data.session.id},
+        txnNumber: {:long, data.session.txn},
         autocommit: false
       )
 
+    session = Map.put(data.session, :last_use, :erlang.monotonic_time())
+    data = struct(data, session: session)
+
     case Keyword.get(new_query, :read_preference, %{mode: :primary}) do
       %{mode: :primary} ->
-        {:keep_state_and_data, {:reply, from, {:ok, new_query}}}
+        {:keep_state, data, {:reply, from, {:ok, new_query}}}
 
       %{mode: mode} ->
-        {:keep_state_and_data,
+        {:keep_state, data,
          {:reply, from,
           {:error,
            Mongo.Error.exception(message: "Read preference must be primary, not: #{mode}")}}}
@@ -267,7 +252,7 @@ defmodule Mongo.Session do
       new_query =
         query
         |> Keyword.new()
-        |> add_option(:lsid, data.id)
+        |> add_option(:lsid, data.session.id)
         |> set_read_concern(data.operation_time, data.causal_consistency)
 
       {:next_state, :no_transaction, data, {:reply, from, {:ok, new_query}}}
@@ -303,8 +288,13 @@ defmodule Mongo.Session do
 
   # Finish session by ending process (for further "closing" see `terminate/3`
   # handler.
-  def handle_event({:call, from}, :end_session, _state, _data) do
-    {:stop_and_reply, :normal, {:reply, from, :ok}}
+  def handle_event({:call, from}, :end_session, state, %{session: session} = data) do
+    _ =
+      if state == :in_transaction do
+        try_run_txn_command(data, :abortTransaction)
+      end
+
+    {:stop_and_reply, :normal, [{:reply, from, {:ok, session}}]}
   end
 
   def handle_event({:call, from}, {:advance_operation_time, timestamp}, _state, data) do
@@ -316,10 +306,6 @@ defmodule Mongo.Session do
     else
       {:keep_state_and_data, [{:reply, from, :ok}, @timeout]}
     end
-  end
-
-  def handle_event({:call, from}, {:set_options, opts}, _state, data) do
-    {:keep_state, struct(data, opts), {:reply, from, :ok}}
   end
 
   # If parent process died before session then stop process and handle aborting
@@ -339,12 +325,13 @@ defmodule Mongo.Session do
   @impl :gen_statem
   # Abort all pending transactions if there any and end session itself.
   def terminate(_reason, state, %{pid: pid} = data) do
-    if state == :in_transaction do
-      _ = try_run_txn_command(data, :abortTransaction)
-    end
+    _ =
+      if state == :in_transaction do
+        try_run_txn_command(data, :abortTransaction)
+      end
 
     query = %{
-      endSessions: [data.id]
+      endSessions: [data.session.id]
     }
 
     with {:ok, conn, _, _} <- Mongo.select_server(pid, :write, []),
@@ -380,9 +367,9 @@ defmodule Mongo.Session do
     query =
       [
         {command, 1},
-        lsid: state.id,
+        lsid: %{id: state.session.id},
         autocommit: false,
-        txnNumber: {:long, state.txn.seq}
+        txnNumber: {:long, state.session.txn}
       ]
       |> add_option(:writeConcern, state.write_concern)
 
