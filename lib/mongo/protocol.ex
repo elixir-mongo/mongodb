@@ -172,42 +172,16 @@ defmodule Mongo.Protocol do
   end
 
   @impl DBConnection
-  def handle_begin(opts, %{topology_pid: pid} = state) do
-    with {:ok, session} <- Mongo.start_session(pid, opts),
-         :ok <- Mongo.Session.start_transaction(session, opts) do
-      {:ok, :ok, %{state | session: session}}
-    else
-      _ ->
-        {:idle, state}
-    end
-  end
+  def handle_begin(_opts, state), do: {:ok, nil, state}
 
   @impl DBConnection
-  def handle_commit(_opts, state) do
-    with false <- is_nil(state.session),
-         :ok <- Mongo.Session.commit_transaction(state.session),
-         :ok <- Mongo.Session.end_session(state.session) do
-      {:ok, :ok, %{state | session: nil}}
-    else
-      _ -> {:idle, state}
-    end
-  end
+  def handle_commit(_opts, state), do: {:ok, nil, state}
 
   @impl DBConnection
-  def handle_rollback(_opts, state) do
-    with false <- is_nil(state.session),
-         :ok <- Mongo.Session.abort_transaction(state.session),
-         :ok <- Mongo.Session.end_session(state.session) do
-      {:ok, :ok, %{state | session: nil}}
-    else
-      _ -> {:idle, state}
-    end
-  end
+  def handle_rollback(_opts, state), do: {:ok, nil, state}
 
   @impl DBConnection
-  def handle_close(_query, _opts, state) do
-    {:ok, nil, state}
-  end
+  def handle_close(_query, _opts, state), do: {:ok, nil, state}
 
   @impl DBConnection
   def handle_deallocate(_query, _cursor, _opts, state) do
