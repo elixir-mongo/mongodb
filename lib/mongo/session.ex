@@ -8,7 +8,7 @@ defmodule Mongo.Session do
                 :read_preference,
                 operation_time: nil,
                 causal_consistency: true,
-                retry_writes: false,
+                retry_writes: true,
                 active_txn: nil
               ]
 
@@ -187,7 +187,7 @@ defmodule Mongo.Session do
       read_concern: read_concern
     }
 
-    session = Map.update!(session, :txn, & &1 + 1)
+    session = Map.update!(session, :txn, &(&1 + 1))
 
     {:next_state, :transaction_started, struct(data, session: session, active_txn: txn),
      {:reply, from, :ok}}
@@ -344,19 +344,19 @@ defmodule Mongo.Session do
         :ok
 
       {:error, error} = val ->
-        if Mongo.Error.retryable(error) do
-          new_data =
-            Map.update!(data, :write_concern, fn
-              nil ->
-                %{w: :majority, wtimeout: 10_000}
+        if Mongo.Error.retryable(error) && data.retry_writes do
+          data
+          |> struct(retry_writes: false)
+          |> Map.update!(:write_concern, fn
+            nil ->
+              %{w: :majority, wtimeout: 10_000}
 
-              map when is_map(map) ->
-                map
-                |> Map.put(:w, :majority)
-                |> Map.put_new(:wtimeout, 10_000)
-            end)
-
-          try_run_txn_command(new_data, command)
+            map when is_map(map) ->
+              map
+              |> Map.put(:w, :majority)
+              |> Map.put_new(:wtimeout, 10_000)
+          end)
+          |> try_run_txn_command(command)
         else
           val
         end

@@ -1037,6 +1037,21 @@ defmodule Mongo do
 
   @doc """
   Start new session for given `topology_pid`.
+
+  ## Options
+
+  - `:causal_consistency` - whether the causal consistency should be persisted within
+    session. Default to `true`.
+  - `:read_concern` - what should be the level for read consistency in session. Should
+    be map with value `:level` that is one of the described in [*Read Concern*][rc]
+    documentation. Applied only when `:casual_consistency` is set to `true`. Bu default
+    uses cluster configuration.
+  - `:retry_writes` - whether retryable faliures should be retried. Defaults to `true`.
+
+  `:causal_consistency` can be set only during the session creation, but the `:read_concern`
+  can be set for each transaction independently.
+
+  [rc]: https://docs.mongodb.com/manual/reference/read-concern/index.html
   """
   @spec start_session(GenServer.server(), keyword()) ::
           {:ok, Mongo.Session.session()} | {:error, term()}
