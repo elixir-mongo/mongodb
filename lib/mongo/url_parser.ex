@@ -6,6 +6,7 @@ defmodule Mongo.UrlParser do
   # https://docs.mongodb.com/manual/reference/connection-string/#connections-connection-options
   @mongo_options %{
     # Path options
+    "appName" => :string,
     "username" => :string,
     "password" => :string,
     "database" => :string,
