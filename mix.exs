@@ -30,7 +30,7 @@ defmodule Mongodb.Mixfile do
     [
       mod: {Mongo.App, []},
       env: [],
-      extra_applications: [:crytpo, :logger, :ssl],
+      extra_applications: [:crypto, :logger, :ssl],
       registered: [
         Mongo.PBKDF2Cache,
         Mongo.Session.Supervisor,
