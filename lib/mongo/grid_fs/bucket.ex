@@ -72,31 +72,30 @@ defmodule Mongo.GridFs.Bucket do
   Given a `id`, delete this stored file’s files collection document and
   associated chunks from a GridFS bucket.
   """
-  @spec delete(Bucket.t(), String.t()) :: {:ok, %Mongo.DeleteResult{}}
+  @spec delete(Bucket.t(), String.t()) :: {:ok, %Mongo.DeleteResult{}} | {:error, Mongo.Error.t()}
   def delete(%Bucket{} = bucket, file_id) when is_binary(file_id) do
     delete(bucket, ObjectId.decode!(file_id))
   end
 
-  @spec delete(Bucket.t(), BSON.ObjectId.t()) :: {:ok, %Mongo.DeleteResult{}}
+  @spec delete(Bucket.t(), BSON.ObjectId.t()) ::
+          {:ok, %Mongo.DeleteResult{}} | {:error, Mongo.Error.t()}
   def delete(%Bucket{topology_pid: topology_pid, opts: opts} = bucket, %BSON.ObjectId{} = oid) do
-    # first delete files document
-    collection = files_collection_name(bucket)
-
-    {:ok, %Mongo.DeleteResult{deleted_count: _}} =
-      Mongo.delete_one(topology_pid, collection, %{_id: oid}, opts)
-
-    # then delete all chunk documents
-    collection = chunks_collection_name(bucket)
-
-    {:ok, %Mongo.DeleteResult{deleted_count: _}} =
-      Mongo.delete_many(topology_pid, collection, %{files_id: oid}, opts)
+    with collection <- files_collection_name(bucket),
+         # first delete files document
+         {:ok, %Mongo.DeleteResult{deleted_count: _}} <-
+           Mongo.delete_one(topology_pid, collection, %{_id: oid}, opts),
+         # then delete all chunk documents
+         collection <- chunks_collection_name(bucket),
+         {:ok, %Mongo.DeleteResult{deleted_count: del_count}} <-
+           Mongo.delete_many(topology_pid, collection, %{files_id: oid}, opts),
+         do: {:ok, %Mongo.DeleteResult{deleted_count: del_count}}
   end
 
   @doc """
   Drops the files and chunks collections associated with
   this bucket.
   """
-  @spec drop(Bucket.t()) :: Mongo.result(BSON.document())
+  @spec drop(Bucket.t()) :: Mongo.basic_result(BSON.document())
   def drop(%Bucket{topology_pid: topology_pid, opts: opts} = bucket) do
     {:ok, _} = Mongo.command(topology_pid, %{drop: files_collection_name(bucket)}, opts)
     {:ok, _} = Mongo.command(topology_pid, %{drop: chunks_collection_name(bucket)}, opts)
@@ -105,7 +104,8 @@ defmodule Mongo.GridFs.Bucket do
   @doc """
   Returns a cursor from the fs.files collection.
   """
-  @spec find(Bucket.t(), BSON.document(), Keyword.t()) :: Mongo.cursor()
+  @spec find(Bucket.t(), BSON.document(), Keyword.t()) ::
+          Mongo.cursor() | {:error, Mongo.Error.t()}
   def find(%Bucket{topology_pid: topology_pid} = bucket, filter, opts \\ []) do
     Mongo.find(topology_pid, files_collection_name(bucket), filter, opts)
   end
@@ -178,9 +178,9 @@ defmodule Mongo.GridFs.Bucket do
 
   # returns true if the collection contains a index with the given name
   defp index_member?(topology_pid, coll, index, opts) do
-    topology_pid
-    |> Mongo.list_indexes(coll, opts)
-    |> Enum.member?(index)
+    {:ok, cursor} = Mongo.list_indexes(topology_pid, coll, opts)
+
+    Enum.member?(cursor, index)
   end
 
   ##

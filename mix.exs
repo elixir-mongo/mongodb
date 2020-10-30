@@ -15,6 +15,7 @@ defmodule Mongodb.Mixfile do
       description: description(),
       package: package(),
       dialyzer: [
+        ignore_warnings: ".dialyzer-ignore.exs",
         flags: [:underspecs, :unknown, :unmatched_returns],
         plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
         plt_add_deps: :transitive

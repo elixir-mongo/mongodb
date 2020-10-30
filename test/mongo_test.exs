@@ -44,9 +44,10 @@ defmodule Mongo.Test do
     cmd = [createIndexes: coll_2, indexes: [[key: [foo: 1, bar: 1], name: "not-a-collection"]]]
     assert {:ok, _} = Mongo.command(c.pid, cmd)
 
+    assert {:ok, colls0} = Mongo.show_collections(c.pid)
+
     colls =
-      c.pid
-      |> Mongo.show_collections()
+      colls0
       |> Enum.to_list()
 
     assert Enum.member?(colls, coll_1)
@@ -87,8 +88,10 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 44})
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 45})
 
+    assert {:ok, colls0} = Mongo.aggregate(c.pid, coll, [])
+
     assert [%{"foo" => 42}, %{"foo" => 43}, %{"foo" => 44}, %{"foo" => 45}] =
-             c.pid |> Mongo.aggregate(coll, []) |> Enum.to_list()
+             Enum.to_list(colls0)
 
     query = [
       %{
@@ -104,27 +107,44 @@ defmodule Mongo.Test do
       }
     ]
 
-    assert [%{"_id" => "foo", "total" => 89}] =
-             c.pid |> Mongo.aggregate(coll, query) |> Enum.to_list()
+    assert {:ok, colls1} = Mongo.aggregate(c.pid, coll, query)
+    assert [%{"_id" => "foo", "total" => 89}] == Enum.to_list(colls1)
 
-    assert [] = c.pid |> Mongo.aggregate(coll, []) |> Enum.take(0)
-    assert [] = c.pid |> Mongo.aggregate(coll, []) |> Enum.drop(4)
-    assert [%{"foo" => 42}] = c.pid |> Mongo.aggregate(coll, []) |> Enum.take(1)
-    assert [%{"foo" => 45}] = c.pid |> Mongo.aggregate(coll, []) |> Enum.drop(3)
+    assert {:ok, colls2} = Mongo.aggregate(c.pid, coll, [])
+    assert [] == Enum.take(colls2, 0)
 
-    assert [] = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.take(0)
-    assert [] = Mongo.aggregate(c.pid, coll, [], use_cursor: false) |> Enum.drop(4)
+    assert {:ok, colls3} = Mongo.aggregate(c.pid, coll, [])
+    assert [] == Enum.drop(colls3, 4)
 
-    assert [%{"foo" => 42}] =
-             c.pid |> Mongo.aggregate(coll, [], use_cursor: false) |> Enum.take(1)
+    assert {:ok, colls4} = Mongo.aggregate(c.pid, coll, [])
+    assert [%{"foo" => 42}] == Enum.take(colls4, 1)
 
-    assert [%{"foo" => 45}] =
-             c.pid |> Mongo.aggregate(coll, [], use_cursor: false) |> Enum.drop(3)
+    assert {:ok, colls5} = Mongo.aggregate(c.pid, coll, [])
+    assert [%{"foo" => 45}] == Enum.drop(colls5, 3)
 
-    assert [] = Mongo.aggregate(c.pid, coll, [], batch_size: 1) |> Enum.take(0)
-    assert [] = Mongo.aggregate(c.pid, coll, [], batch_size: 1) |> Enum.drop(4)
-    assert [%{"foo" => 42}] = c.pid |> Mongo.aggregate(coll, [], batch_size: 1) |> Enum.take(1)
-    assert [%{"foo" => 45}] = c.pid |> Mongo.aggregate(coll, [], batch_size: 1) |> Enum.drop(3)
+    assert {:ok, colls6} = Mongo.aggregate(c.pid, coll, [], use_cursor: false)
+    assert [] == Enum.take(colls6, 0)
+
+    assert {:ok, colls7} = Mongo.aggregate(c.pid, coll, [], use_cursor: false)
+    assert [] == Enum.drop(colls7, 4)
+
+    assert {:ok, colls8} = Mongo.aggregate(c.pid, coll, [], use_cursor: false)
+    assert [%{"foo" => 42}] = Enum.take(colls8, 1)
+
+    assert {:ok, colls9} = Mongo.aggregate(c.pid, coll, [], use_cursor: false)
+    assert [%{"foo" => 45}] == Enum.drop(colls9, 3)
+
+    assert {:ok, colls10} = Mongo.aggregate(c.pid, coll, [], batch_size: 1)
+    assert [] == Enum.take(colls10, 0)
+
+    assert {:ok, colls11} = Mongo.aggregate(c.pid, coll, [], batch_size: 1)
+    assert [] == Enum.drop(colls11, 4)
+
+    assert {:ok, colls12} = Mongo.aggregate(c.pid, coll, [], batch_size: 1)
+    assert [%{"foo" => 42}] == Enum.take(colls12, 1)
+
+    assert {:ok, colls13} = Mongo.aggregate(c.pid, coll, [], batch_size: 1)
+    assert [%{"foo" => 45}] == Enum.drop(colls13, 3)
   end
 
   test "count", c do
