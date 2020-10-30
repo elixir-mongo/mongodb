@@ -400,13 +400,9 @@ defmodule Mongo do
       |> filter_nils
       |> Enum.map(&List.wrap/1)
 
-    {:ok, cursor} =
-      topology_pid
-      |> Mongo.aggregate(coll, pipeline, opts)
+    {:ok, cursor} = Mongo.aggregate(topology_pid, coll, pipeline, opts)
 
-    documents =
-      cursor
-      |> Enum.to_list()
+    documents = Enum.to_list(cursor)
 
     case documents do
       [%{"n" => count}] -> {:ok, count}
@@ -1033,7 +1029,7 @@ defmodule Mongo do
   def list_index_names(topology_pid, coll, opts \\ []) do
     case list_indexes(topology_pid, coll, opts) do
       {:ok, colls} ->
-        colls |> Stream.map(fn %{"name" => name} -> name end)
+        Stream.map(colls, fn %{"name" => name} -> name end)
 
       error = {:error, _} ->
         error
