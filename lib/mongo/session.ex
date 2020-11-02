@@ -62,7 +62,7 @@ defmodule Mongo.Session do
   """
   @spec end_session(session()) :: :ok
   def end_session(pid) do
-    with {:ok, id, txn} <- :gen_statem.call(pid, :end_session) do
+    with {:ok, %{id: id, txn: txn}} <- :gen_statem.call(pid, :end_session) do
       Mongo.SessionPool.checkin(id, txn)
     end
   end
