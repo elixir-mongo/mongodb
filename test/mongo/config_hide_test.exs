@@ -2,8 +2,6 @@ defmodule Mongo.HideConfigTest do
   use ExUnit.Case, async: true
   alias Mongo.ConfigHide
 
-  @password_masked "***"
-
   setup_all do
     :ok
   end
