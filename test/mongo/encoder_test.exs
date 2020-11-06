@@ -65,7 +65,7 @@ defmodule Mongo.EncoderTest do
   test "insert encoded struct without protocol" do
     pid = connect_auth()
     coll = unique_name()
-    {:ok, conn, _, _} = Mongo.select_server(pid, :write)
+    {:ok, _conn, _, _} = Mongo.select_server(pid, :write)
 
     struct_to_insert = %CustomStructWithoutProtocol{a: 10, b: 20, c: 30, id: "x"}
 
