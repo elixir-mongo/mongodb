@@ -41,6 +41,7 @@ defmodule Mongo.UrlParser do
     "serverSelectionTryOnce" => ["true", "false"],
     "heartbeatFrequencyMS" => :number,
     "retryWrites" => ["true", "false"],
+    "tls" => ["true", "false"],
     "uuidRepresentation" => ["standard", "csharpLegacy", "javaLegacy", "pythonLegacy"],
     # Elixir Driver options
     "type" => ["unknown", "single", "replicaSetNoPrimary", "sharded"]

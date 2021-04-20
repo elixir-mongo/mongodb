@@ -18,7 +18,7 @@ defmodule Mongo.UrlParserTest do
       assert password = "2yPK}Bzj|qE($^1JDdk4J42*&4lLgV%C"
     end
 
-    test "cluster url" do
+    test "cluster url with ssl" do
       url =
         "mongodb://user:password@seed1.domain.com:27017,seed2.domain.com:27017,seed3.domain.com:27017/db_name?ssl=true&replicaSet=set-name&authSource=admin&maxPoolSize=5"
 
@@ -30,6 +30,26 @@ defmodule Mongo.UrlParserTest do
                auth_source: "admin",
                set_name: "set-name",
                ssl: true,
+               seeds: [
+                 "seed1.domain.com:27017",
+                 "seed2.domain.com:27017",
+                 "seed3.domain.com:27017"
+               ]
+             ]
+    end
+
+    test "cluster url with tls" do
+      url =
+        "mongodb://user:password@seed1.domain.com:27017,seed2.domain.com:27017,seed3.domain.com:27017/db_name?tls=true&replicaSet=set-name&authSource=admin&maxPoolSize=5"
+
+      assert UrlParser.parse_url(url: url) == [
+               username: "user",
+               password: "password",
+               database: "db_name",
+               pool_size: 5,
+               auth_source: "admin",
+               set_name: "set-name",
+               tls: true,
                seeds: [
                  "seed1.domain.com:27017",
                  "seed2.domain.com:27017",
