@@ -8,3 +8,7 @@ end
 defimpl Mongo.Encoder, for: Map do
   def encode(v), do: v
 end
+
+defimpl Mongo.Encoder, for: List do
+  def encode(v), do: v
+end

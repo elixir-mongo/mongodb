@@ -142,7 +142,7 @@ defmodule BSON.Encoder do
           type = type(value)
 
           value =
-            if Mongo.Encoder.impl_for(value),
+            if Mongo.Encoder.impl_for(value) != nil,
               do: value |> Mongo.Encoder.encode() |> encode(),
               else: value |> encode()
 
