@@ -1,4 +1,5 @@
 /_build
+.DS_Store
 /doc
 /deps
 erl_crash.dump
