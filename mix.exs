@@ -1,7 +1,7 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.5.1"
+  @version "0.5.3"
 
   def project do
     [
@@ -43,12 +43,12 @@ defmodule Mongodb.Mixfile do
 
   defp deps do
     [
-      {:db_connection, "~> 2.0"},
-      {:decimal, "~> 1.5"},
-      {:jason, "~> 1.0", only: :test},
-      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:db_connection, "~> 2.4"},
+      {:decimal, "~> 2.0"},
+      {:jason, "~> 1.2", only: :test},
+      {:ex_doc, "~> 0.24.2 ", only: :dev},
       {:earmark, ">= 0.0.0", only: :dev},
-      {:dialyxir, "~> 1.0.0-rc.4", only: :dev, runtime: false}
+      {:dialyxir, "~> 1.1", only: :dev, runtime: false}
     ]
   end
 

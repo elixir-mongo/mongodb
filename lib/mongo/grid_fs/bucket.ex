@@ -118,9 +118,6 @@ defmodule Mongo.GridFs.Bucket do
     find_one(bucket, ObjectId.decode!(file_id))
   end
 
-  @doc """
-  Finds one file document with the file_id as an ObjectID-struct
-  """
   @spec find_one(Bucket.t(), BSON.ObjectId.t()) :: BSON.document() | nil
   def find_one(%Bucket{topology_pid: topology_pid, opts: opts} = bucket, %BSON.ObjectId{} = oid) do
     Mongo.find_one(topology_pid, files_collection_name(bucket), %{"_id" => oid}, opts)
