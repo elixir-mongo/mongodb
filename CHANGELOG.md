@@ -1,3 +1,8 @@
+## Unreleased
+
+* Possible incompatibilities
+  * Bump supported OTP version to v24
+
 ## v0.6.0-dev
 
 * Enhancements
