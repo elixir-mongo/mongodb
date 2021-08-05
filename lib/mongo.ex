@@ -999,7 +999,20 @@ defmodule Mongo do
   defp upserted_ids(docs), do: Enum.map(docs, fn d -> d["_id"] end)
 
   @doc """
-  Returns a cursor to enumerate all indexes
+  Creates `indexes` for the specified collection `coll`.
+
+  See
+  https://docs.mongodb.com/manual/reference/method/db.collection.createIndexes/#mongodb-method-db.collection.createIndexes
+  for the syntax of `indexes`.
+  """
+  @spec create_indexes(GenServer.server(), String.t(), [Keyword.t()], Keyword.t()) ::
+          :ok | {:error, Mongo.Error.t()}
+  def create_indexes(topology_pid, coll, indexes, opts \\ []) do
+    Mongo.command(topology_pid, [createIndexes: coll, indexes: indexes], opts)
+  end
+
+  @doc """
+  Returns a cursor to enumerate all indexes.
   """
   @spec list_indexes(GenServer.server(), String.t(), Keyword.t()) :: cursor
   def list_indexes(topology_pid, coll, opts \\ []) do
@@ -1018,7 +1031,7 @@ defmodule Mongo do
   end
 
   @doc """
-  Getting Collection Names
+  Lists collection names
   """
   @spec show_collections(GenServer.server(), Keyword.t()) :: cursor
   def show_collections(topology_pid, opts \\ []) do

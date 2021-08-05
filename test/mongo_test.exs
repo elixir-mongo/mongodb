@@ -38,11 +38,13 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 3})
     assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 4})
 
-    cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1], name: "not-a-collection"]]]
-    assert {:ok, _} = Mongo.command(c.pid, cmd)
+    assert {:ok, _} =
+             Mongo.create_indexes(c.pid, coll_1, [[key: [foo: 1], name: "not-a-collection"]])
 
-    cmd = [createIndexes: coll_2, indexes: [[key: [foo: 1, bar: 1], name: "not-a-collection"]]]
-    assert {:ok, _} = Mongo.command(c.pid, cmd)
+    assert {:ok, _} =
+             Mongo.create_indexes(c.pid, coll_2, [
+               [key: [foo: 1, bar: 1], name: "not-a-collection"]
+             ])
 
     colls =
       c.pid
@@ -54,6 +56,28 @@ defmodule Mongo.Test do
     assert not Enum.member?(colls, "not-a-collection")
   end
 
+  test "create_indexes", c do
+    coll_1 = unique_name()
+
+    valid_index_spec = [[key: [foo: 1], name: "foo"]]
+
+    # Create the index
+    assert {:ok, %{"ok" => 1.0, "numIndexesBefore" => 1, "numIndexesAfter" => 2}} =
+             Mongo.create_indexes(c.pid, coll_1, valid_index_spec)
+
+    # Repeated calls to create the index should be ok / idemptodent
+    assert {:ok, %{"ok" => 1.0, "numIndexesBefore" => 2, "numIndexesAfter" => 2}} =
+             Mongo.create_indexes(c.pid, coll_1, valid_index_spec)
+
+    # Subsequent conflicting indexes should result in an error
+    conflicting_index_spec = [[key: [foo_bar: 1], name: "foo"]]
+    assert {:error, %Mongo.Error{code: 86}} = Mongo.create_indexes(c.pid, coll_1, conflicting_index_spec)
+
+    # Bad index specification should result in an error
+    bad_index_spec = [[key: [foo_bar: 1]]]
+    assert {:error, %Mongo.Error{code: 9}} = Mongo.create_indexes(c.pid, coll_1, bad_index_spec)
+  end
+
   test "list_indexes", c do
     coll_1 = unique_name()
 
@@ -62,11 +86,10 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 3})
     assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 4})
 
-    cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1], name: "foo"]]]
-    assert {:ok, _} = Mongo.command(c.pid, cmd)
+    assert {:ok, _} = Mongo.create_indexes(c.pid, coll_1, [[key: [foo: 1], name: "foo"]])
 
-    cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1, bar: 1], name: "foo-bar"]]]
-    assert {:ok, _} = Mongo.command(c.pid, cmd)
+    assert {:ok, _} =
+             Mongo.create_indexes(c.pid, coll_1, [[key: [foo: 1, bar: 1], name: "foo-bar"]])
 
     indexes =
       c.pid
