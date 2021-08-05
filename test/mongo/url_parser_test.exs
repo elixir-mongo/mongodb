@@ -85,16 +85,18 @@ defmodule Mongo.UrlParserTest do
     end
 
     test "appName option" do
-      url = "mongodb://USERNAME:PASSWORD@HOST:PORT/DATABASE?ssl=true&replicaSet=globaldb&appName=APP"
+      url =
+        "mongodb://USERNAME:PASSWORD@HOST:PORT/DATABASE?ssl=true&replicaSet=globaldb&appName=APP"
+
       assert UrlParser.parse_url(url: url) == [
-        username: "USERNAME",
-        password: "PASSWORD",
-        database: "DATABASE",
-        app_name: "APP",
-        set_name: "globaldb",
-        ssl: true,
-        seeds: ["HOST:PORT"]
-      ]
+               username: "USERNAME",
+               password: "PASSWORD",
+               database: "DATABASE",
+               app_name: "APP",
+               set_name: "globaldb",
+               ssl: true,
+               seeds: ["HOST:PORT"]
+             ]
     end
   end
 end
