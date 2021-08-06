@@ -21,6 +21,9 @@ defmodule Mongo.SessionTest do
   describe "lifetime" do
     test "session can be created", %{pid: pid} do
       assert {:ok, session} = Mongo.start_session(pid)
+
+      assert is_pid(session)
+      assert Process.alive?(session)
     end
 
     test "created session is not ended", %{pid: pid} do

@@ -15,7 +15,7 @@ defmodule Mongo.UrlParserTest do
 
       opts = UrlParser.parse_url(url: url)
       password = Keyword.get(opts, :password)
-      assert password = "2yPK}Bzj|qE($^1JDdk4J42*&4lLgV%C"
+      assert password == "2yPK}Bzj|qE($^1JDdk4J42*&4lLgV%C"
     end
 
     test "cluster url" do

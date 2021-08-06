@@ -98,7 +98,7 @@ defmodule Mongo.Auth.SCRAM do
     do: result
 
   defp xor_keys(<<fa, ra::binary>>, <<fb, rb::binary>>, result),
-    do: xor_keys(ra, rb, <<result::binary, fa ^^^ fb>>)
+    do: xor_keys(ra, rb, <<result::binary, bxor(fa, fb)>>)
 
   defp nonce do
     18
