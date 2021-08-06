@@ -724,13 +724,9 @@ defmodule Mongo.Test do
   @tag :mongo_3_4
   test "correctly query NumberDecimal", c do
     coll = "number_decimal_test"
+    decimal = Decimal.new("123.456")
 
-    Mongo.command(
-      c.pid,
-      %{
-        eval: "db.#{coll}.insert({number: NumberDecimal('123.456')})"
-      }
-    )
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{number: decimal})
 
     assert %{"number" => %Decimal{coef: 123_456, exp: -3}} =
              Mongo.find(c.pid, coll, %{}, limit: 1) |> Enum.to_list() |> List.first()

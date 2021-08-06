@@ -347,7 +347,7 @@ defmodule Mongo do
     query =
       filter_nils(
         count: coll,
-        query: filter,
+        query: filter |> normalize_filter(),
         limit: opts[:limit],
         skip: opts[:skip],
         hint: opts[:hint],
@@ -380,7 +380,7 @@ defmodule Mongo do
   def count_documents(topology_pid, coll, filter, opts \\ []) do
     pipeline =
       [
-        {"$match", Map.new(filter)},
+        {"$match", filter |> normalize_filter()},
         {"$skip", opts[:skip]},
         {"$limit", opts[:limit]},
         {"$group", %{"_id" => nil, "n" => %{"$sum" => 1}}}
@@ -398,6 +398,12 @@ defmodule Mongo do
       [] -> {:ok, 0}
     end
   end
+
+  # As of at least MongoDB v4.4.3 filters are expected as a map but it seems like in the past a
+  # keyword list was accepted.  `normalize_filter` is provided to iron out the differences and
+  # provide backwards compatibilitys
+  defp normalize_filter(filter) when is_map(filter), do: filter
+  defp normalize_filter(filter), do: filter |> Enum.into(%{})
 
   @doc """
   Similar to `count_documents/4` but unwraps the result and raises on error.
