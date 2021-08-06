@@ -1006,9 +1006,18 @@ defmodule Mongo do
   for the syntax of `indexes`.
   """
   @spec create_indexes(GenServer.server(), String.t(), [Keyword.t()], Keyword.t()) ::
-          :ok | {:error, Mongo.Error.t()}
+          result(Mongo.CreateIndexesResult.t())
   def create_indexes(topology_pid, coll, indexes, opts \\ []) do
-    Mongo.command(topology_pid, [createIndexes: coll, indexes: indexes], opts)
+    with {:ok, result} <-
+           Mongo.command(topology_pid, [createIndexes: coll, indexes: indexes], opts) do
+      {:ok,
+       %Mongo.CreateIndexesResult{
+         commit_quorum: result["commitQuorum"],
+         created_collection_automatically: !!result["createdCollectionAutomatically"],
+         num_indexes_after: result["numIndexesAfter"],
+         num_indexes_before: result["numIndexesBefore"]
+       }}
+    end
   end
 
   @doc """
@@ -1022,12 +1031,23 @@ defmodule Mongo do
   end
 
   @doc """
-  Convenient function that returns a cursor with the names of the indexes.
+  Convenience function returning a cursor with the names of the indexes.
   """
   @spec list_index_names(GenServer.server(), String.t(), Keyword.t()) :: %Stream{}
   def list_index_names(topology_pid, coll, opts \\ []) do
     list_indexes(topology_pid, coll, opts)
     |> Stream.map(fn %{"name" => name} -> name end)
+  end
+
+  @doc """
+  Drops the specified `index` name in the collection `coll`.
+  """
+  @spec drop_index(GenServer.server(), String.t(), String.t(), Keyword.t()) ::
+          result(Mongo.DropIndexesResult.t())
+  def drop_index(topology_pid, coll, index, opts \\ []) do
+    with {:ok, result} <- Mongo.command(topology_pid, [dropIndexes: coll, index: index], opts) do
+      {:ok, %Mongo.DropIndexResult{num_indexes_was: result["nIndexesWas"]}}
+    end
   end
 
   @doc """

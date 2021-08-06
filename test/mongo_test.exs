@@ -62,16 +62,28 @@ defmodule Mongo.Test do
     valid_index_spec = [[key: [foo: 1], name: "foo"]]
 
     # Create the index
-    assert {:ok, %{"ok" => 1.0, "numIndexesBefore" => 1, "numIndexesAfter" => 2}} =
-             Mongo.create_indexes(c.pid, coll_1, valid_index_spec)
+    assert {:ok,
+            %Mongo.CreateIndexesResult{
+              commit_quorum: "votingMembers",
+              created_collection_automatically: true,
+              num_indexes_after: 2,
+              num_indexes_before: 1
+            }} = Mongo.create_indexes(c.pid, coll_1, valid_index_spec)
 
     # Repeated calls to create the index should be ok / idemptodent
-    assert {:ok, %{"ok" => 1.0, "numIndexesBefore" => 2, "numIndexesAfter" => 2}} =
-             Mongo.create_indexes(c.pid, coll_1, valid_index_spec)
+    assert {:ok,
+            %Mongo.CreateIndexesResult{
+              commit_quorum: nil,
+              created_collection_automatically: false,
+              num_indexes_after: 2,
+              num_indexes_before: 2
+            }} = Mongo.create_indexes(c.pid, coll_1, valid_index_spec)
 
     # Subsequent conflicting indexes should result in an error
     conflicting_index_spec = [[key: [foo_bar: 1], name: "foo"]]
-    assert {:error, %Mongo.Error{code: 86}} = Mongo.create_indexes(c.pid, coll_1, conflicting_index_spec)
+
+    assert {:error, %Mongo.Error{code: 86}} =
+             Mongo.create_indexes(c.pid, coll_1, conflicting_index_spec)
 
     # Bad index specification should result in an error
     bad_index_spec = [[key: [foo_bar: 1]]]
@@ -100,6 +112,36 @@ defmodule Mongo.Test do
     assert Enum.member?(indexes, "_id_")
     assert Enum.member?(indexes, "foo")
     assert Enum.member?(indexes, "foo-bar")
+  end
+
+  test "drop_index", c do
+    coll_1 = unique_name()
+
+    name = "foo"
+    spec = [[key: [foo: 1], name: name]]
+
+    # Create the index
+    assert {:ok, %Mongo.CreateIndexesResult{num_indexes_before: 1, num_indexes_after: 2}} =
+             Mongo.create_indexes(c.pid, coll_1, spec)
+
+    indexes =
+      c.pid
+      |> Mongo.list_index_names(coll_1)
+      |> Enum.to_list()
+
+    assert Enum.member?(indexes, name)
+
+    assert {:ok, %Mongo.DropIndexResult{num_indexes_was: 2}} =
+             Mongo.drop_index(c.pid, coll_1, name)
+
+    indexes =
+      c.pid
+      |> Mongo.list_index_names(coll_1)
+      |> Enum.to_list()
+
+    refute Enum.member?(indexes, name)
+
+    assert {:error, %Mongo.Error{}} = Mongo.drop_index(c.pid, coll_1, name)
   end
 
   test "aggregate", c do

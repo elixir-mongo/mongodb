@@ -63,3 +63,42 @@ defmodule Mongo.UpdateResult do
 
   defstruct acknowledged: true, matched_count: 0, modified_count: 0, upserted_ids: nil
 end
+
+defmodule Mongo.CreateIndexesResult do
+  @moduledoc """
+  The successful result struct of `Mongo.create_indexes/4`.
+
+  Its fields are:
+
+  * `:commit_quorum` - Quorum voting behaviour.  See https://docs.mongodb.com/manual/reference/command/createIndexes/#std-label-createIndexes-cmd-commitQuorum
+  * `:created_collection_automatically` - `true` when the collection was implicitly created as part of the index creation command, `false` otherwise
+  * `:num_indexes_after` - Number of indexes after the index creation command took place
+  * `:num_indexes_before` - Number of indexes before the index creation command took place
+  """
+
+  @type t :: %__MODULE__{
+          commit_quorum: non_neg_integer() | binary(),
+          created_collection_automatically: boolean(),
+          num_indexes_after: non_neg_integer(),
+          num_indexes_before: non_neg_integer()
+        }
+
+  defstruct [
+    :commit_quorum,
+    :created_collection_automatically,
+    :num_indexes_after,
+    :num_indexes_before
+  ]
+end
+
+defmodule Mongo.DropIndexResult do
+  @moduledoc """
+  The successful result struct of `Mongo.drop_index/4`.
+
+  Its fields are:
+
+  * `:num_indexes_was` - Number of indexes before the index was dropped.
+  """
+
+  defstruct [:num_indexes_was]
+end
