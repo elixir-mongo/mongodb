@@ -146,15 +146,19 @@ defmodule Mongo.Test do
     # Drop index with multiple indexes
     spec = [[key: [foo: 1], name: "foo"], [key: [foo_bar: 1], name: "foo_bar"]]
 
-    assert {:ok, %Mongo.CreateIndexesResult{num_indexes_before: 1, num_indexes_after: 3}} = Mongo.create_indexes(c.pid, coll_1, spec)
+    assert {:ok, %Mongo.CreateIndexesResult{num_indexes_before: 1, num_indexes_after: 3}} =
+             Mongo.create_indexes(c.pid, coll_1, spec)
 
     # Drop all with wildcard
-    assert {:ok, %Mongo.DropIndexResult{num_indexes_was: 3}} =  Mongo.drop_index(c.pid, coll_1, "*")
+    assert {:ok, %Mongo.DropIndexResult{num_indexes_was: 3}} =
+             Mongo.drop_index(c.pid, coll_1, "*")
 
-    assert {:ok, %Mongo.CreateIndexesResult{num_indexes_before: 1, num_indexes_after: 3}} = Mongo.create_indexes(c.pid, coll_1, spec)
+    assert {:ok, %Mongo.CreateIndexesResult{num_indexes_before: 1, num_indexes_after: 3}} =
+             Mongo.create_indexes(c.pid, coll_1, spec)
 
     # Drop all with list of indexes
-    assert {:ok, %Mongo.DropIndexResult{num_indexes_was: 3}} =  Mongo.drop_index(c.pid, coll_1, ["foo", "foo_bar"])
+    assert {:ok, %Mongo.DropIndexResult{num_indexes_was: 3}} =
+             Mongo.drop_index(c.pid, coll_1, ["foo", "foo_bar"])
   end
 
   test "aggregate", c do
