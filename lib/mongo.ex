@@ -1256,11 +1256,15 @@ defmodule Mongo do
   defp assert_single_doc!([]), do: :ok
   defp assert_single_doc!([{_, _} | _]), do: :ok
 
+  defp assert_single_doc!([_] = doc), do: raise_not_single_doc(doc)
+
   defp assert_single_doc!(other) do
     unless Mongo.Encoder.impl_for(other),
-      do: raise(ArgumentError, "expected single document, got: #{inspect(other)}"),
+      do: raise_not_single_doc(other),
       else: :ok
   end
+
+  defp raise_not_single_doc(doc), do: raise(ArgumentError, "expected single document, got: #{inspect(doc)}")
 
   defp assert_many_docs!([first | _]) when not is_tuple(first), do: :ok
 
