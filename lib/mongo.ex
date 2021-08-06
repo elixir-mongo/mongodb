@@ -1054,7 +1054,7 @@ defmodule Mongo do
   See https://docs.mongodb.com/manual/reference/command/dropIndexes/#dropindexes
   """
   @spec drop_index(GenServer.server(), String.t(), String.t() | [String.t()], Keyword.t()) ::
-          result(Mongo.DropIndexesResult.t())
+          result(Mongo.DropIndexResult.t())
   def drop_index(topology_pid, coll, index, opts \\ []) do
     with {:ok, result} <- Mongo.command(topology_pid, [dropIndexes: coll, index: index], opts) do
       {:ok, %Mongo.DropIndexResult{num_indexes_was: result["nIndexesWas"]}}

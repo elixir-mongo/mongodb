@@ -74,6 +74,12 @@ end
 defmodule Mongo.WriteError do
   defexception [:n, :ok, :write_errors]
 
+  @type t :: %__MODULE__{
+    n: integer(),
+    ok: integer(),
+    write_errors: [map()]
+  }
+
   def message(e) do
     "n: #{e.n}, ok: #{e.ok}, write_errors: #{inspect(e.write_errors)}"
   end

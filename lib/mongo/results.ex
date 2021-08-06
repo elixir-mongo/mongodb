@@ -100,5 +100,9 @@ defmodule Mongo.DropIndexResult do
   * `:num_indexes_was` - Number of indexes before the index was dropped.
   """
 
+  @type t :: %__MODULE__{
+    num_indexes_was: non_neg_integer()
+  }
+
   defstruct [:num_indexes_was]
 end
