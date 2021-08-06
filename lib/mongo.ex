@@ -999,7 +999,7 @@ defmodule Mongo do
   defp upserted_ids(docs), do: Enum.map(docs, fn d -> d["_id"] end)
 
   @doc """
-  Creates `indexes` for the specified collection `coll`.
+  Creates one or more `indexes` for the specified collection `coll`.
 
   See
   https://docs.mongodb.com/manual/reference/method/db.collection.createIndexes/#mongodb-method-db.collection.createIndexes
@@ -1041,8 +1041,13 @@ defmodule Mongo do
 
   @doc """
   Drops the specified `index` name in the collection `coll`.
+
+  To drop multiple indexes at once pass a list of indexes to `index`.  To drop all indexes except
+  that of `_id` pass "*" to `index`.
+
+  See https://docs.mongodb.com/manual/reference/command/dropIndexes/#dropindexes
   """
-  @spec drop_index(GenServer.server(), String.t(), String.t(), Keyword.t()) ::
+  @spec drop_index(GenServer.server(), String.t(), String.t() | [String.t()], Keyword.t()) ::
           result(Mongo.DropIndexesResult.t())
   def drop_index(topology_pid, coll, index, opts \\ []) do
     with {:ok, result} <- Mongo.command(topology_pid, [dropIndexes: coll, index: index], opts) do
