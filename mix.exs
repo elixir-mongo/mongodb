@@ -14,11 +14,7 @@ defmodule Mongodb.Mixfile do
       docs: docs(),
       description: description(),
       package: package(),
-      dialyzer: [
-        flags: [:underspecs, :unknown, :unmatched_returns],
-        plt_add_apps: [:logger, :connection, :db_connection, :mix, :elixir, :ssl, :public_key],
-        plt_add_deps: :transitive
-      ],
+      dialyzer: dialyzer(),
       consolidate_protocols: Mix.env() != :test
     ]
   end
@@ -70,6 +66,16 @@ defmodule Mongodb.Mixfile do
       maintainers: ["Eric Meadows-Jönsson", "Justin Wood"],
       licenses: ["Apache 2.0"],
       links: %{"GitHub" => "https://github.com/ankhers/mongodb"}
+    ]
+  end
+
+  # Configures dialyzer.
+  #
+  # The `dialyzer.plt` file takes a long time to generate first time round, so we store it in a
+  # custom location where it can then be easily cached during CI.
+  defp dialyzer do
+    [
+      plt_file: {:no_warn, "priv/plts/dialyzer.plt"}
     ]
   end
 end
