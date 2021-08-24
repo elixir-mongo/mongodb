@@ -689,6 +689,10 @@ defmodule Mongo do
           {:error,
            %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: doc["writeErrors"]}}
 
+        %{"writeConcernError" => writeConcernError} ->
+          {:error,
+           %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: [writeConcernError]}}
+
         _ ->
           case Map.get(write_concern, :w) do
             0 ->
@@ -1264,7 +1268,8 @@ defmodule Mongo do
       else: :ok
   end
 
-  defp raise_not_single_doc(doc), do: raise(ArgumentError, "expected single document, got: #{inspect(doc)}")
+  defp raise_not_single_doc(doc),
+    do: raise(ArgumentError, "expected single document, got: #{inspect(doc)}")
 
   defp assert_many_docs!([first | _]) when not is_tuple(first), do: :ok
 
