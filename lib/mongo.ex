@@ -1017,7 +1017,7 @@ defmodule Mongo do
     end
   end
 
-  defp normalise_updates([[{_, _} | _]] = updates) do
+  defp normalise_updates([[{_, _} | _] | _] = updates) do
     updates
     |> Enum.map(&normalise_update/1)
   end
