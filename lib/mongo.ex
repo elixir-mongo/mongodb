@@ -956,7 +956,29 @@ defmodule Mongo do
     bangify(update_many(topology_pid, coll, filter, update, opts))
   end
 
-  defp do_update(topology_pid, coll, filter, update, multi, opts) do
+  @doc """
+  Performs one or more update operations.
+
+  This function is especially useful for more complex update operations (e.g.
+  upserting multiple documents). For more straightforward use cases you may
+  prefer to use these higher level APIs:
+
+  * `update_one/5`
+  * `update_one!/5`
+  * `update_many/5`
+  * `update_many!5`
+
+  Each update in `updates` may be specified using either the short-hand
+  Mongo-style syntax (in reference to their docs) or using a long-hand, Elixir
+  friendly syntax.
+
+  See
+  https://docs.mongodb.com/manual/reference/command/update/#update-statements
+
+  e.g. long-hand `query` becomes short-hand `q`, snake case `array_filters`
+  becomes `arrayFilters`
+  """
+  def update(topology_pid, coll, updates, opts) do
     write_concern =
       filter_nils(%{
         w: Keyword.get(opts, :w),
@@ -964,25 +986,15 @@ defmodule Mongo do
         wtimeout: Keyword.get(opts, :wtimeout)
       })
 
-    update =
-      filter_nils(
-        q: filter,
-        u: update,
-        upsert: Keyword.get(opts, :upsert),
-        multi: multi,
-        collation: Keyword.get(opts, :collation),
-        arrayFilters: Keyword.get(opts, :array_filters)
-      )
+    normalised_updates = updates |> normalise_updates()
 
-    query =
-      [
-        update: coll,
-        updates: [update],
-        ordered: Keyword.get(opts, :ordered),
-        writeConcern: write_concern,
-        bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
-      ]
-      |> filter_nils()
+    query = [
+      update: coll,
+      updates: normalised_updates,
+      ordered: Keyword.get(opts, :ordered),
+      writeConcern: write_concern,
+      bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
+    ] |> filter_nils()
 
     with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
          {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
@@ -1003,6 +1015,46 @@ defmodule Mongo do
           {:ok, %Mongo.UpdateResult{acknowledged: false}}
       end
     end
+  end
+
+  defp normalise_updates([[{_, _} | _]] = updates) do
+    updates
+    |> Enum.map(&normalise_update/1)
+  end
+
+  defp normalise_updates(updates), do: normalise_updates([updates])
+
+  defp normalise_update(update) do
+    update
+    |> Enum.map(fn
+        {:query, query} -> {:q, query}
+        {:update, update} -> {:u, update}
+        {:array_filters, array_filters} -> {:arrayFilters, array_filters}
+        other -> other
+      end)
+      |> filter_nils()
+  end
+
+  defp mongo_update(filter, update, opts) do
+    [
+      q: filter,
+      u: update,
+      upsert: opts |> Keyword.get(:upsert),
+      multi: opts |> Keyword.get(:multi),
+      collation: opts |> Keyword.get(:collation),
+      arrayFilters: opts |> Keyword.get(:array_filters),
+      hint: opts |> Keyword.get(:hint)
+    ] |> filter_nils()
+  end
+
+  # do_update/6 was in existence before `update/5` and now just serves to
+  # translate between calling functions and `update/5`.  It could eventually be
+  # factored out.  2020-08-26 JP.
+  # Test. 2021-08-
+  defp do_update(topology_pid, coll, filter, update, multi, opts) do
+    update = mongo_update(filter, update, opts |> Keyword.put(:multi, multi))
+
+    update(topology_pid, coll, update, opts)
   end
 
   defp upserted_ids(nil), do: nil
