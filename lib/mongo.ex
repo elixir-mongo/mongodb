@@ -1050,7 +1050,6 @@ defmodule Mongo do
   # do_update/6 was in existence before `update/5` and now just serves to
   # translate between calling functions and `update/5`.  It could eventually be
   # factored out.  2020-08-26 JP.
-  # Test. 2021-08-
   defp do_update(topology_pid, coll, filter, update, multi, opts) do
     update = mongo_update(filter, update, opts |> Keyword.put(:multi, multi))
 
