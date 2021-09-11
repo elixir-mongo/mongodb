@@ -58,10 +58,35 @@ defmodule Mongo.UpdateResult do
           acknowledged: boolean,
           matched_count: non_neg_integer,
           modified_count: non_neg_integer,
+          # TODO this isn't always a BSON.ObjectId
           upserted_ids: nil | list(BSON.ObjectId.t())
         }
 
   defstruct acknowledged: true, matched_count: 0, modified_count: 0, upserted_ids: nil
+end
+
+defmodule Mongo.FindAndModifyResult do
+  @moduledoc """
+  The successful result struct of `Mongo.find_one_and_*` functions, which under
+  the hood use Mongo's `findAndModify` API.
+
+  See <https://docs.mongodb.com/manual/reference/command/findAndModify/> for
+  more information.
+  """
+
+  @type t :: %__MODULE__{
+          value: BSON.document(),
+          matched_count: non_neg_integer(),
+          upserted_id: String.t(),
+          updated_existing: boolean()
+        }
+
+  defstruct [
+    :value,
+    :matched_count,
+    :upserted_id,
+    :updated_existing
+  ]
 end
 
 defmodule Mongo.CreateIndexesResult do
@@ -101,8 +126,8 @@ defmodule Mongo.DropIndexResult do
   """
 
   @type t :: %__MODULE__{
-    num_indexes_was: non_neg_integer()
-  }
+          num_indexes_was: non_neg_integer()
+        }
 
   defstruct [:num_indexes_was]
 end

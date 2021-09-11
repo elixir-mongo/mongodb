@@ -248,8 +248,16 @@ defmodule Mongo do
 
     with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
          {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, doc} <- direct_command(conn, query, opts),
-         do: {:ok, doc["value"]}
+         {:ok, doc} <- direct_command(conn, query, opts) do
+
+      {:ok,
+       %Mongo.FindAndModifyResult{
+         value: doc["value"],
+         matched_count: doc["lastErrorObject"]["n"],
+         updated_existing: doc["lastErrorObject"]["updatedExisting"],
+         upserted_id: doc["lastErrorObject"]["upserted"]
+       }}
+    end
   end
 
   @doc """
@@ -301,8 +309,15 @@ defmodule Mongo do
       )
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, doc} <- direct_command(conn, query, opts),
-         do: {:ok, doc["value"]}
+         {:ok, doc} <- direct_command(conn, query, opts) do
+      {:ok,
+       %Mongo.FindAndModifyResult{
+         value: doc["value"],
+         matched_count: doc["lastErrorObject"]["n"],
+         updated_existing: doc["lastErrorObject"]["updatedExisting"],
+         upserted_id: doc["lastErrorObject"]["upserted"]
+       }}
+    end
   end
 
   defp should_return_new(:after), do: true
@@ -818,7 +833,7 @@ defmodule Mongo do
     bangify(delete_many(topology_pid, coll, filter, opts))
   end
 
-  defp do_delete(topology_pid, coll, filter, limit, opts) do
+  def delete(topology_pid, coll, deletes, opts) do
     write_concern =
       filter_nils(%{
         w: Keyword.get(opts, :w),
@@ -826,17 +841,12 @@ defmodule Mongo do
         wtimeout: Keyword.get(opts, :wtimeout)
       })
 
-    delete =
-      filter_nils(
-        q: filter,
-        limit: limit,
-        collation: Keyword.get(opts, :collation)
-      )
+    normalised_deletes = deletes |> normalise_deletes()
 
     query =
       filter_nils(
         delete: coll,
-        deletes: [delete],
+        deletes: normalised_deletes,
         ordered: Keyword.get(opts, :ordered),
         writeConcern: write_concern
       )
@@ -854,6 +864,32 @@ defmodule Mongo do
           {:ok, %Mongo.DeleteResult{acknowledged: false}}
       end
     end
+  end
+
+  defp normalise_deletes([[{_, _} | _] | _] = deletes) do
+    deletes
+    |> Enum.map(&normalise_delete/1)
+  end
+
+  defp normalise_deletes(deletes), do: normalise_deletes([deletes])
+
+  defp normalise_delete(delete) do
+    delete
+    |> Enum.map(fn
+      {:query, query} -> {:q, query}
+      other -> other
+    end)
+    |> filter_nils()
+  end
+
+  defp do_delete(topology_pid, coll, filter, limit, opts) do
+    delete = [
+      query: filter,
+      limit: limit,
+      collation: Keyword.get(opts, :collation)
+    ]
+
+    delete(topology_pid, coll, delete, opts)
   end
 
   @doc """
@@ -988,13 +1024,15 @@ defmodule Mongo do
 
     normalised_updates = updates |> normalise_updates()
 
-    query = [
-      update: coll,
-      updates: normalised_updates,
-      ordered: Keyword.get(opts, :ordered),
-      writeConcern: write_concern,
-      bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
-    ] |> filter_nils()
+    query =
+      [
+        update: coll,
+        updates: normalised_updates,
+        ordered: Keyword.get(opts, :ordered),
+        writeConcern: write_concern,
+        bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
+      ]
+      |> filter_nils()
 
     with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
          {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
@@ -1027,12 +1065,13 @@ defmodule Mongo do
   defp normalise_update(update) do
     update
     |> Enum.map(fn
-        {:query, query} -> {:q, query}
-        {:update, update} -> {:u, update}
-        {:array_filters, array_filters} -> {:arrayFilters, array_filters}
-        other -> other
-      end)
-      |> filter_nils()
+      {:query, query} -> {:q, query}
+      {:update, update} -> {:u, update}
+      {:updates, update} -> {:u, update}
+      {:array_filters, array_filters} -> {:arrayFilters, array_filters}
+      other -> other
+    end)
+    |> filter_nils()
   end
 
   defp mongo_update(filter, update, opts) do
@@ -1044,7 +1083,8 @@ defmodule Mongo do
       collation: opts |> Keyword.get(:collation),
       arrayFilters: opts |> Keyword.get(:array_filters),
       hint: opts |> Keyword.get(:hint)
-    ] |> filter_nils()
+    ]
+    |> filter_nils()
   end
 
   # do_update/6 was in existence before `update/5` and now just serves to
