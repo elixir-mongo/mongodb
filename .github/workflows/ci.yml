@@ -28,7 +28,7 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-
-      - run: MONGO_VERSION=${{ matrix.mongo-version}} docker-compose up 
+      - run: MONGO_VERSION=${{ matrix.mongo-version}} docker-compose up -d
       - run: mix deps.get
       - run: mix credo --strict
         continue-on-error: true
