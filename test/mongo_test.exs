@@ -38,11 +38,13 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 3})
     assert {:ok, _} = Mongo.insert_one(c.pid, coll_2, %{foo: 4})
 
-    cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1], name: "not-a-collection"]]]
-    assert {:ok, _} = Mongo.command(c.pid, cmd)
+    assert {:ok, _} =
+             Mongo.create_indexes(c.pid, coll_1, [[key: [foo: 1], name: "not-a-collection"]])
 
-    cmd = [createIndexes: coll_2, indexes: [[key: [foo: 1, bar: 1], name: "not-a-collection"]]]
-    assert {:ok, _} = Mongo.command(c.pid, cmd)
+    assert {:ok, _} =
+             Mongo.create_indexes(c.pid, coll_2, [
+               [key: [foo: 1, bar: 1], name: "not-a-collection"]
+             ])
 
     colls =
       c.pid
@@ -54,6 +56,40 @@ defmodule Mongo.Test do
     assert not Enum.member?(colls, "not-a-collection")
   end
 
+  test "create_indexes", c do
+    coll_1 = unique_name()
+
+    valid_index_spec = [[key: [foo: 1], name: "foo"]]
+
+    # Create the index
+    assert {:ok,
+            %Mongo.CreateIndexesResult{
+              commit_quorum: "votingMembers",
+              created_collection_automatically: true,
+              num_indexes_after: 2,
+              num_indexes_before: 1
+            }} = Mongo.create_indexes(c.pid, coll_1, valid_index_spec)
+
+    # Repeated calls to create the index should be ok / idemptodent
+    assert {:ok,
+            %Mongo.CreateIndexesResult{
+              commit_quorum: nil,
+              created_collection_automatically: false,
+              num_indexes_after: 2,
+              num_indexes_before: 2
+            }} = Mongo.create_indexes(c.pid, coll_1, valid_index_spec)
+
+    # Subsequent conflicting indexes should result in an error
+    conflicting_index_spec = [[key: [foo_bar: 1], name: "foo"]]
+
+    assert {:error, %Mongo.Error{code: 86}} =
+             Mongo.create_indexes(c.pid, coll_1, conflicting_index_spec)
+
+    # Bad index specification should result in an error
+    bad_index_spec = [[key: [foo_bar: 1]]]
+    assert {:error, %Mongo.Error{code: 9}} = Mongo.create_indexes(c.pid, coll_1, bad_index_spec)
+  end
+
   test "list_indexes", c do
     coll_1 = unique_name()
 
@@ -62,11 +98,10 @@ defmodule Mongo.Test do
     assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 3})
     assert {:ok, _} = Mongo.insert_one(c.pid, coll_1, %{foo: 4})
 
-    cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1], name: "foo"]]]
-    assert {:ok, _} = Mongo.command(c.pid, cmd)
+    assert {:ok, _} = Mongo.create_indexes(c.pid, coll_1, [[key: [foo: 1], name: "foo"]])
 
-    cmd = [createIndexes: coll_1, indexes: [[key: [foo: 1, bar: 1], name: "foo-bar"]]]
-    assert {:ok, _} = Mongo.command(c.pid, cmd)
+    assert {:ok, _} =
+             Mongo.create_indexes(c.pid, coll_1, [[key: [foo: 1, bar: 1], name: "foo-bar"]])
 
     indexes =
       c.pid
@@ -77,6 +112,53 @@ defmodule Mongo.Test do
     assert Enum.member?(indexes, "_id_")
     assert Enum.member?(indexes, "foo")
     assert Enum.member?(indexes, "foo-bar")
+  end
+
+  test "drop_index", c do
+    coll_1 = unique_name()
+
+    name = "foo"
+    spec = [[key: [foo: 1], name: name]]
+
+    # Create the index
+    assert {:ok, %Mongo.CreateIndexesResult{num_indexes_before: 1, num_indexes_after: 2}} =
+             Mongo.create_indexes(c.pid, coll_1, spec)
+
+    indexes =
+      c.pid
+      |> Mongo.list_index_names(coll_1)
+      |> Enum.to_list()
+
+    assert Enum.member?(indexes, name)
+
+    assert {:ok, %Mongo.DropIndexResult{num_indexes_was: 2}} =
+             Mongo.drop_index(c.pid, coll_1, name)
+
+    indexes =
+      c.pid
+      |> Mongo.list_index_names(coll_1)
+      |> Enum.to_list()
+
+    refute Enum.member?(indexes, name)
+
+    assert {:error, %Mongo.Error{}} = Mongo.drop_index(c.pid, coll_1, name)
+
+    # Drop index with multiple indexes
+    spec = [[key: [foo: 1], name: "foo"], [key: [foo_bar: 1], name: "foo_bar"]]
+
+    assert {:ok, %Mongo.CreateIndexesResult{num_indexes_before: 1, num_indexes_after: 3}} =
+             Mongo.create_indexes(c.pid, coll_1, spec)
+
+    # Drop all with wildcard
+    assert {:ok, %Mongo.DropIndexResult{num_indexes_was: 3}} =
+             Mongo.drop_index(c.pid, coll_1, "*")
+
+    assert {:ok, %Mongo.CreateIndexesResult{num_indexes_before: 1, num_indexes_after: 3}} =
+             Mongo.create_indexes(c.pid, coll_1, spec)
+
+    # Drop all with list of indexes
+    assert {:ok, %Mongo.DropIndexResult{num_indexes_was: 3}} =
+             Mongo.drop_index(c.pid, coll_1, ["foo", "foo_bar"])
   end
 
   test "aggregate", c do
@@ -642,13 +724,9 @@ defmodule Mongo.Test do
   @tag :mongo_3_4
   test "correctly query NumberDecimal", c do
     coll = "number_decimal_test"
+    decimal = Decimal.new("123.456")
 
-    Mongo.command(
-      c.pid,
-      %{
-        eval: "db.#{coll}.insert({number: NumberDecimal('123.456')})"
-      }
-    )
+    assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{number: decimal})
 
     assert %{"number" => %Decimal{coef: 123_456, exp: -3}} =
              Mongo.find(c.pid, coll, %{}, limit: 1) |> Enum.to_list() |> List.first()

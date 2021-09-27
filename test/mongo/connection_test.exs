@@ -227,9 +227,9 @@ defmodule Mongo.ConnectionTest do
 
   test "auth connection leak" do
     capture_log(fn ->
-      # sometimes the function tcp_count() returns 1, so the test fails.
-      # maybe it is a good idea to wait a second before counting
-      # :timer.sleep(1000)
+      # sometimes the function tcp_count() returns > 0, so the test fails.
+      # Ideally these calls to `:timer.sleep/1` would be avoided.
+      :timer.sleep(1000)
       assert tcp_count() == 0
 
       Enum.each(1..10, fn _ ->

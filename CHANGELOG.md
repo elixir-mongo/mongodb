@@ -1,3 +1,11 @@
+## Unreleased
+
+* Enhancements
+  * Add `update/5` for handling more complex update queries like multiple upserts.
+
+* Possible incompatibilities
+  * Bump supported OTP version to v24
+
 ## v0.6.0-dev
 
 * Enhancements

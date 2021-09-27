@@ -2,6 +2,11 @@
 
 needs_initiate=1
 
+# Non-replicaset mongod used for some tests
+mkdir -p tmp/db0
+mongod --fork --dbpath tmp/db0 --logpath tmp/db0/log --port 27017 --bind_ip 127.0.0.1 &>/dev/null
+
+
 # start the mongod servers of the replica set
 for i in $(seq 1 3); do
   mkdir -p tmp/db$i

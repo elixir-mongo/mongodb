@@ -31,6 +31,15 @@ defmodule BSON.Encoder do
   def encode(%BSON.ObjectId{value: <<_::binary(12)>> = value}),
     do: value
 
+  def encode(%Date{} = date) do
+    unix_ms =
+      NaiveDateTime.from_erl!({Date.to_erl(date), {0, 0, 0}}, 0, Calendar.ISO)
+      |> DateTime.from_naive!("Etc/UTC")
+      |> DateTime.to_unix(:millisecond)
+
+    <<unix_ms::int64>>
+  end
+
   def encode(%DateTime{} = datetime) do
     unix_ms = DateTime.to_unix(datetime, :millisecond)
     <<unix_ms::int64>>
@@ -38,6 +47,20 @@ defmodule BSON.Encoder do
 
   def encode(%Decimal{} = decimal) do
     BSON.Decimal128.encode(decimal)
+  end
+
+  def encode(%Time{} = time) do
+    value = Time.to_iso8601(time)
+    [<<byte_size(value) + 1::int32>>, value, 0x00]
+  end
+
+  def encode(%NaiveDateTime{} = datetime) do
+    unix_ms =
+      datetime
+      |> DateTime.from_naive!("Etc/UTC")
+      |> DateTime.to_unix(:millisecond)
+
+    <<unix_ms::int64>>
   end
 
   def encode(%BSON.Regex{pattern: pattern, options: options}),
@@ -119,7 +142,7 @@ defmodule BSON.Encoder do
           type = type(value)
 
           value =
-            if Mongo.Encoder.impl_for(value),
+            if Mongo.Encoder.impl_for(value) != nil,
               do: value |> Mongo.Encoder.encode() |> encode(),
               else: value |> encode()
 
@@ -152,6 +175,9 @@ defmodule BSON.Encoder do
   defp type(%BSON.ObjectId{}), do: @type_objectid
   defp type(%DateTime{}), do: @type_datetime
   defp type(%Decimal{}), do: @type_decimal128
+  defp type(%Date{}), do: @type_datetime
+  defp type(%Time{}), do: @type_string
+  defp type(%NaiveDateTime{}), do: @type_datetime
   defp type(%BSON.Regex{}), do: @type_regex
   defp type(%BSON.JavaScript{scope: nil}), do: @type_js
   defp type(%BSON.JavaScript{}), do: @type_js_scope

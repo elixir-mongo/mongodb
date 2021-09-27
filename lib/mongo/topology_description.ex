@@ -286,7 +286,7 @@ defmodule Mongo.TopologyDescription do
 
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#other-topologytypes
   defp check_server_in_topology(topology, server_description, num_seeds) do
-    if not (server_description.address in Map.keys(topology.servers)) do
+    if server_description.address not in Map.keys(topology.servers) do
       {[], topology}
     else
       address = server_description.address
@@ -393,7 +393,7 @@ defmodule Mongo.TopologyDescription do
   # see https://github.com/mongodb/specifications/blob/master/source/server-discovery-and-monitoring/server-discovery-and-monitoring.rst#actions
 
   defp not_in_servers?(topology, server_description) do
-    not (server_description.address in Map.keys(topology.servers))
+    server_description.address not in Map.keys(topology.servers)
   end
 
   def invalid_set_name?(topology, server_description) do
@@ -448,7 +448,7 @@ defmodule Mongo.TopologyDescription do
 
     topology =
       Enum.reduce(all_hosts, topology, fn host, topology ->
-        if not (host in Map.keys(topology.servers)) do
+        if host not in Map.keys(topology.servers) do
           # this is kinda like an "upsert"
           put_in(topology.servers[host], ServerDescription.defaults(%{address: host}))
         else

@@ -248,8 +248,16 @@ defmodule Mongo do
 
     with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
          {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, doc} <- direct_command(conn, query, opts),
-         do: {:ok, doc["value"]}
+         {:ok, doc} <- direct_command(conn, query, opts) do
+
+      {:ok,
+       %Mongo.FindAndModifyResult{
+         value: doc["value"],
+         matched_count: doc["lastErrorObject"]["n"],
+         updated_existing: doc["lastErrorObject"]["updatedExisting"],
+         upserted_id: doc["lastErrorObject"]["upserted"]
+       }}
+    end
   end
 
   @doc """
@@ -301,8 +309,15 @@ defmodule Mongo do
       )
 
     with {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
-         {:ok, doc} <- direct_command(conn, query, opts),
-         do: {:ok, doc["value"]}
+         {:ok, doc} <- direct_command(conn, query, opts) do
+      {:ok,
+       %Mongo.FindAndModifyResult{
+         value: doc["value"],
+         matched_count: doc["lastErrorObject"]["n"],
+         updated_existing: doc["lastErrorObject"]["updatedExisting"],
+         upserted_id: doc["lastErrorObject"]["upserted"]
+       }}
+    end
   end
 
   defp should_return_new(:after), do: true
@@ -347,7 +362,7 @@ defmodule Mongo do
     query =
       filter_nils(
         count: coll,
-        query: filter,
+        query: filter |> normalize_filter(),
         limit: opts[:limit],
         skip: opts[:skip],
         hint: opts[:hint],
@@ -380,7 +395,7 @@ defmodule Mongo do
   def count_documents(topology_pid, coll, filter, opts \\ []) do
     pipeline =
       [
-        {"$match", Map.new(filter)},
+        {"$match", filter |> normalize_filter()},
         {"$skip", opts[:skip]},
         {"$limit", opts[:limit]},
         {"$group", %{"_id" => nil, "n" => %{"$sum" => 1}}}
@@ -398,6 +413,12 @@ defmodule Mongo do
       [] -> {:ok, 0}
     end
   end
+
+  # As of at least MongoDB v4.4.3 filters are expected as a map but it seems like in the past a
+  # keyword list was accepted.  `normalize_filter` is provided to iron out the differences and
+  # provide backwards compatibilitys
+  defp normalize_filter(filter) when is_map(filter), do: filter
+  defp normalize_filter(filter), do: filter |> Enum.into(%{})
 
   @doc """
   Similar to `count_documents/4` but unwraps the result and raises on error.
@@ -683,6 +704,10 @@ defmodule Mongo do
           {:error,
            %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: doc["writeErrors"]}}
 
+        %{"writeConcernError" => writeConcernError} ->
+          {:error,
+           %Mongo.WriteError{n: doc["n"], ok: doc["ok"], write_errors: [writeConcernError]}}
+
         _ ->
           case Map.get(write_concern, :w) do
             0 ->
@@ -808,7 +833,7 @@ defmodule Mongo do
     bangify(delete_many(topology_pid, coll, filter, opts))
   end
 
-  defp do_delete(topology_pid, coll, filter, limit, opts) do
+  def delete(topology_pid, coll, deletes, opts) do
     write_concern =
       filter_nils(%{
         w: Keyword.get(opts, :w),
@@ -816,17 +841,12 @@ defmodule Mongo do
         wtimeout: Keyword.get(opts, :wtimeout)
       })
 
-    delete =
-      filter_nils(
-        q: filter,
-        limit: limit,
-        collation: Keyword.get(opts, :collation)
-      )
+    normalised_deletes = deletes |> normalise_deletes()
 
     query =
       filter_nils(
         delete: coll,
-        deletes: [delete],
+        deletes: normalised_deletes,
         ordered: Keyword.get(opts, :ordered),
         writeConcern: write_concern
       )
@@ -844,6 +864,32 @@ defmodule Mongo do
           {:ok, %Mongo.DeleteResult{acknowledged: false}}
       end
     end
+  end
+
+  defp normalise_deletes([[{_, _} | _] | _] = deletes) do
+    deletes
+    |> Enum.map(&normalise_delete/1)
+  end
+
+  defp normalise_deletes(deletes), do: normalise_deletes([deletes])
+
+  defp normalise_delete(delete) do
+    delete
+    |> Enum.map(fn
+      {:query, query} -> {:q, query}
+      other -> other
+    end)
+    |> filter_nils()
+  end
+
+  defp do_delete(topology_pid, coll, filter, limit, opts) do
+    delete = [
+      query: filter,
+      limit: limit,
+      collation: Keyword.get(opts, :collation)
+    ]
+
+    delete(topology_pid, coll, delete, opts)
   end
 
   @doc """
@@ -946,7 +992,29 @@ defmodule Mongo do
     bangify(update_many(topology_pid, coll, filter, update, opts))
   end
 
-  defp do_update(topology_pid, coll, filter, update, multi, opts) do
+  @doc """
+  Performs one or more update operations.
+
+  This function is especially useful for more complex update operations (e.g.
+  upserting multiple documents). For more straightforward use cases you may
+  prefer to use these higher level APIs:
+
+  * `update_one/5`
+  * `update_one!/5`
+  * `update_many/5`
+  * `update_many!5`
+
+  Each update in `updates` may be specified using either the short-hand
+  Mongo-style syntax (in reference to their docs) or using a long-hand, Elixir
+  friendly syntax.
+
+  See
+  https://docs.mongodb.com/manual/reference/command/update/#update-statements
+
+  e.g. long-hand `query` becomes short-hand `q`, snake case `array_filters`
+  becomes `arrayFilters`
+  """
+  def update(topology_pid, coll, updates, opts) do
     write_concern =
       filter_nils(%{
         w: Keyword.get(opts, :w),
@@ -954,20 +1022,12 @@ defmodule Mongo do
         wtimeout: Keyword.get(opts, :wtimeout)
       })
 
-    update =
-      filter_nils(
-        q: filter,
-        u: update,
-        upsert: Keyword.get(opts, :upsert),
-        multi: multi,
-        collation: Keyword.get(opts, :collation),
-        arrayFilters: Keyword.get(opts, :array_filters)
-      )
+    normalised_updates = updates |> normalise_updates()
 
     query =
       [
         update: coll,
-        updates: [update],
+        updates: normalised_updates,
         ordered: Keyword.get(opts, :ordered),
         writeConcern: write_concern,
         bypassDocumentValidation: Keyword.get(opts, :bypass_document_validation)
@@ -995,11 +1055,74 @@ defmodule Mongo do
     end
   end
 
+  defp normalise_updates([[{_, _} | _] | _] = updates) do
+    updates
+    |> Enum.map(&normalise_update/1)
+  end
+
+  defp normalise_updates(updates), do: normalise_updates([updates])
+
+  defp normalise_update(update) do
+    update
+    |> Enum.map(fn
+      {:query, query} -> {:q, query}
+      {:update, update} -> {:u, update}
+      {:updates, update} -> {:u, update}
+      {:array_filters, array_filters} -> {:arrayFilters, array_filters}
+      other -> other
+    end)
+    |> filter_nils()
+  end
+
+  defp mongo_update(filter, update, opts) do
+    [
+      q: filter,
+      u: update,
+      upsert: opts |> Keyword.get(:upsert),
+      multi: opts |> Keyword.get(:multi),
+      collation: opts |> Keyword.get(:collation),
+      arrayFilters: opts |> Keyword.get(:array_filters),
+      hint: opts |> Keyword.get(:hint)
+    ]
+    |> filter_nils()
+  end
+
+  # do_update/6 was in existence before `update/5` and now just serves to
+  # translate between calling functions and `update/5`.  It could eventually be
+  # factored out.  2020-08-26 JP.
+  defp do_update(topology_pid, coll, filter, update, multi, opts) do
+    update = mongo_update(filter, update, opts |> Keyword.put(:multi, multi))
+
+    update(topology_pid, coll, update, opts)
+  end
+
   defp upserted_ids(nil), do: nil
   defp upserted_ids(docs), do: Enum.map(docs, fn d -> d["_id"] end)
 
   @doc """
-  Returns a cursor to enumerate all indexes
+  Creates one or more `indexes` for the specified collection `coll`.
+
+  See
+  https://docs.mongodb.com/manual/reference/method/db.collection.createIndexes/#mongodb-method-db.collection.createIndexes
+  for the syntax of `indexes`.
+  """
+  @spec create_indexes(GenServer.server(), String.t(), [Keyword.t()], Keyword.t()) ::
+          result(Mongo.CreateIndexesResult.t())
+  def create_indexes(topology_pid, coll, indexes, opts \\ []) do
+    with {:ok, result} <-
+           Mongo.command(topology_pid, [createIndexes: coll, indexes: indexes], opts) do
+      {:ok,
+       %Mongo.CreateIndexesResult{
+         commit_quorum: result["commitQuorum"],
+         created_collection_automatically: !!result["createdCollectionAutomatically"],
+         num_indexes_after: result["numIndexesAfter"],
+         num_indexes_before: result["numIndexesBefore"]
+       }}
+    end
+  end
+
+  @doc """
+  Returns a cursor to enumerate all indexes.
   """
   @spec list_indexes(GenServer.server(), String.t(), Keyword.t()) :: cursor
   def list_indexes(topology_pid, coll, opts \\ []) do
@@ -1009,7 +1132,7 @@ defmodule Mongo do
   end
 
   @doc """
-  Convenient function that returns a cursor with the names of the indexes.
+  Convenience function returning a cursor with the names of the indexes.
   """
   @spec list_index_names(GenServer.server(), String.t(), Keyword.t()) :: %Stream{}
   def list_index_names(topology_pid, coll, opts \\ []) do
@@ -1018,7 +1141,23 @@ defmodule Mongo do
   end
 
   @doc """
-  Getting Collection Names
+  Drops the specified `index` name in the collection `coll`.
+
+  To drop multiple indexes at once pass a list of indexes to `index`.  To drop all indexes except
+  that of `_id` pass "*" to `index`.
+
+  See https://docs.mongodb.com/manual/reference/command/dropIndexes/#dropindexes
+  """
+  @spec drop_index(GenServer.server(), String.t(), String.t() | [String.t()], Keyword.t()) ::
+          result(Mongo.DropIndexResult.t())
+  def drop_index(topology_pid, coll, index, opts \\ []) do
+    with {:ok, result} <- Mongo.command(topology_pid, [dropIndexes: coll, index: index], opts) do
+      {:ok, %Mongo.DropIndexResult{num_indexes_was: result["nIndexesWas"]}}
+    end
+  end
+
+  @doc """
+  Lists collection names
   """
   @spec show_collections(GenServer.server(), Keyword.t()) :: cursor
   def show_collections(topology_pid, opts \\ []) do
@@ -1212,11 +1351,16 @@ defmodule Mongo do
   defp assert_single_doc!([]), do: :ok
   defp assert_single_doc!([{_, _} | _]), do: :ok
 
+  defp assert_single_doc!([_] = doc), do: raise_not_single_doc(doc)
+
   defp assert_single_doc!(other) do
     unless Mongo.Encoder.impl_for(other),
-      do: raise(ArgumentError, "expected single document, got: #{inspect(other)}"),
+      do: raise_not_single_doc(other),
       else: :ok
   end
+
+  defp raise_not_single_doc(doc),
+    do: raise(ArgumentError, "expected single document, got: #{inspect(doc)}")
 
   defp assert_many_docs!([first | _]) when not is_tuple(first), do: :ok
 
