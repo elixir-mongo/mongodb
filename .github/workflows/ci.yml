@@ -6,17 +6,19 @@ jobs:
       matrix:
         os: 
           - ubuntu-latest
-        otp:
+        otp-version:
           - "24.0.6"
-        elixir: 
+        elixir-version: 
           - "1.12.3"
+        mongo-version:
+          - "4.4"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{ matrix.otp }}
-          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp-version }}
+          elixir-version: ${{ matrix.elixir-version }}
       - uses: actions/cache@v2
         with:
           path: |
@@ -26,6 +28,7 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-
+      - run: MONGO_VERSION=${{ matrix.mongo-version}} docker-compose up 
       - run: mix deps.get
       - run: mix credo --strict
         continue-on-error: true
