@@ -51,7 +51,7 @@ defmodule Mongo.UpdateResult do
 
     * `:matched_count` - Number of matched documents
     * `:modified_count` - Number of modified documents
-    * `:upserted_id` - If the operation was an upsert, the upserted id
+    * `:upserted_ids` - If the operation was an upsert, the ids of the upserted documents
   """
 
   @type t :: %__MODULE__{
