@@ -4,9 +4,12 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        otp: ["24.0"]
-        elixir: ["1.12.0"]
+        os: 
+          - ubuntu-latest
+        otp:
+          - "24.0.6"
+        elixir: 
+          - "1.12.3"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
