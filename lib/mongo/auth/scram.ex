@@ -82,16 +82,24 @@ defmodule Mongo.Auth.SCRAM do
   end
 
   defp generate_proof(salted_password, auth_message) do
-    client_key = :crypto.mac(:hmac, :sha, salted_password, "Client Key")
+    client_key = mac_fun(:sha, salted_password, "Client Key")
     stored_key = :crypto.hash(:sha, client_key)
-    signature = :crypto.mac(:hmac, :sha, stored_key, auth_message)
+    signature = mac_fun(:sha, stored_key, auth_message)
     client_proof = xor_keys(client_key, signature, "")
     "p=#{Base.encode64(client_proof)}"
   end
 
   defp generate_signature(salted_password, auth_message) do
-    server_key = :crypto.mac(:hmac, :sha, salted_password, "Server Key")
-    :crypto.mac(:hmac, :sha, server_key, auth_message)
+    server_key = mac_fun(:sha, salted_password, "Server Key")
+    mac_fun(:sha, server_key, auth_message)
+  end
+
+  defp mac_fun(digest, secret, data) do
+    if System.otp_release() >= "22" do
+      :crypto.mac(:hmac, digest, secret, data)
+    else
+      :crypto.hmac(digest, secret, data)
+    end
   end
 
   defp xor_keys("", "", result),
