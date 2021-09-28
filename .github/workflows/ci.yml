@@ -29,9 +29,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mix-
       - run: MONGO_VERSION=${{ matrix.mongo-version}} docker-compose up -d
+      - name: Install mongosh
+        run: |
+          # See https://docs.mongodb.com/mongodb-shell/install/
+          wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
+          apt-get update
+          apt-get install -y mongodb-mongosh
       - run: mix deps.get
       - run: mix credo --strict
         continue-on-error: true
       - run: mix format --check-formatted
         continue-on-error: true
       - run: mix dialyzer
+      - run: mix test --cover

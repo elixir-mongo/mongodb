@@ -1,4 +1,8 @@
-# Credit https://github.com/bitnami/bitnami-docker-mongodb/blob/master/docker-compose-replicaset.yml
+# Bitnami images are used because they provide a brilliantly easy way of
+# creating a MongoDB replica set, which is required for some of the tests.
+#
+# Credit
+# https://github.com/bitnami/bitnami-docker-mongodb/blob/master/docker-compose-replicaset.yml
 version: '2'
 
 services:
