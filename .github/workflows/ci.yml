@@ -39,9 +39,6 @@ jobs:
           - maj: 4
             min: 4
             patch: 8
-          - maj: 4
-            min: 2
-            
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
