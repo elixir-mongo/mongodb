@@ -20,7 +20,9 @@ jobs:
             ${{ runner.os }}-mix-
       - run: mix deps.get
       - run: mix credo --strict
+        continue-on-error: true
       - run: mix format --check-formatted
+        continue-on-error: true
       - run: mix dialyzer
   test:
     strategy:
