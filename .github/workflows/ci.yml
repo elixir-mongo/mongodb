@@ -68,10 +68,5 @@ jobs:
           # Finally install mongodb
           sudo apt-get install -y mongodb-org
       - name: Start Mongo
-        run: |
-          # Start Mongo
-          sudo systemctl start mongod
-
-          # Get Mongo status
-          sudo systemctl status mongod
+        run: ./start_mongo.bash
       - run: mix test --cover
