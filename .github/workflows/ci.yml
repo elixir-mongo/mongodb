@@ -28,7 +28,13 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-
-      - run: MONGO_VERSION=${{ matrix.mongo-version}} docker-compose up -d
+      # - run: MONGO_VERSION=${{ matrix.mongo-version}} docker-compose up -d
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.6.0
+        with:
+          mongodb-version: ${{ matrix.mongo-version }}
+          mongodb-replica-set: rs0
+          # mongodb-port: 42069
       - name: Install mongosh
         run: |
           # See https://docs.mongodb.com/mongodb-shell/install/
