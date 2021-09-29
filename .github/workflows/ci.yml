@@ -39,6 +39,9 @@ jobs:
           - maj: 4
             min: 4
             patch: 8
+          - maj: 4
+            min: 2
+            
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -69,6 +72,7 @@ jobs:
 
           # Finally install mongodb
           sudo apt-get install -y \
+            --allow-downgrades \
             mongodb-org=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
             mongodb-org-server=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
             mongodb-org-shell=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
