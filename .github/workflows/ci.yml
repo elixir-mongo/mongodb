@@ -1,6 +1,21 @@
 on: push
 
 jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: erlef/setup-beam@v1
+      - uses: actions/cache@v2
+        with:
+          path: |
+            deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+      - run: mix credo --strict
+      - run: mix format --check-formatted
+      - run: mix dialyzer
   test:
     strategy:
       matrix:
@@ -28,13 +43,7 @@ jobs:
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-
-      # - run: MONGO_VERSION=${{ matrix.mongo-version}} docker-compose up -d
-      - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.6.0
-        with:
-          mongodb-version: ${{ matrix.mongo-version }}
-          mongodb-replica-set: rs0
-          # mongodb-port: 42069
+      - run: MONGO_VERSION=${{ matrix.mongo-version}} docker-compose up -d      
       - name: Install mongosh
         run: |
           # See https://docs.mongodb.com/mongodb-shell/install/
@@ -42,10 +51,4 @@ jobs:
           echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
           sudo apt-get update
           sudo apt-get install -y mongodb-mongosh
-      - run: mix deps.get
-      - run: mix credo --strict
-        continue-on-error: true
-      - run: mix format --check-formatted
-        continue-on-error: true
-      - run: mix dialyzer
       - run: mix test --cover
