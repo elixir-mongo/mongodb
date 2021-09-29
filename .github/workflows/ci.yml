@@ -16,6 +16,7 @@ jobs:
           path: |
             deps
             _build
+            priv/plts
           key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-mix-
