@@ -6,6 +6,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: erlef/setup-beam@v1
+        with:
+          # Just some default versions to run code quality tools with.
+          # These can be upgraded as and when but probably won't need to change much.
+          otp-version: "24.0.6"
+          elixir-version: "1.12.3"
       - uses: actions/cache@v2
         with:
           path: |
