@@ -32,8 +32,8 @@ excluded =
 ExUnit.configure(exclude: excluded)
 ExUnit.start()
 
-{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() --port 27017')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() --port 27017')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() --port 27001')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() --port 27001')
 
 {_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase()')
 {_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase()')
