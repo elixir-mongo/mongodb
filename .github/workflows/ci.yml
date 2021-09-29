@@ -36,7 +36,9 @@ jobs:
         elixir-version: 
           - "1.12.3"
         mongo-version:
-          - "4.4"
+          - maj: 4
+            min: 4
+            patch: 8
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -57,16 +59,21 @@ jobs:
           # See https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
 
           # Import MongoDB public key
-          wget -qO - https://www.mongodb.org/static/pgp/server-${{ matrix.mongo-version }}.asc | sudo apt-key add -
+          wget -qO - https://www.mongodb.org/static/pgp/server-${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.asc | sudo apt-key add -
 
           # Create a list file for MongoDB
-          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/${{ matrix.mongo-version }} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-${{ matrix.mongo-version }}.list
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.list
 
           # Update package db
           sudo apt-get update
 
           # Finally install mongodb
-          sudo apt-get install -y mongodb-org
+          sudo apt-get install -y \
+            mongodb-org=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
+            mongodb-org-server=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
+            mongodb-org-shell=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
+            mongodb-org-mongos=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
+            mongodb-org-tools=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }}
       - name: Start Mongo
         run: ./start_mongo.bash
       - run: mix test --cover
