@@ -1,4 +1,8 @@
-on: push
+on:
+  pull_request:
+  push:
+    branches:
+      - master
 
 jobs:
   code-quality:
@@ -29,11 +33,11 @@ jobs:
   test:
     strategy:
       matrix:
-        os: 
+        os:
           - ubuntu-latest
         otp-version:
           - "24.0.6"
-        elixir-version: 
+        elixir-version:
           - "1.12.3"
         mongo-version:
           - maj: 4
