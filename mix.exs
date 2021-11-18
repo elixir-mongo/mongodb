@@ -1,7 +1,7 @@
 defmodule Mongodb.Mixfile do
   use Mix.Project
 
-  @version "0.5.1"
+  @version "1.0.0-beta.1"
 
   def project do
     [
@@ -53,7 +53,7 @@ defmodule Mongodb.Mixfile do
       main: "readme",
       extras: ["README.md"],
       source_ref: "v#{@version}",
-      source_url: "https://github.com/ankhers/mongodb"
+      source_url: "https://github.com/elixir-mongo/mongodb"
     ]
   end
 
@@ -65,7 +65,7 @@ defmodule Mongodb.Mixfile do
     [
       maintainers: ["Eric Meadows-Jönsson", "Justin Wood"],
       licenses: ["Apache 2.0"],
-      links: %{"GitHub" => "https://github.com/ankhers/mongodb"}
+      links: %{"GitHub" => "https://github.com/elixir-mongo/mongodb"}
     ]
   end
 
