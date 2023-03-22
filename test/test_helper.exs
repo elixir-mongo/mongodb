@@ -33,15 +33,15 @@ excluded =
 ExUnit.configure(exclude: excluded)
 ExUnit.start()
 
-{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() #{mongodb_uri}')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() #{mongodb_uri}')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropDatabase() ')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test2 #{mongodb_uri} --eval db.dropDatabase() ')
 
-{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() #{mongodb_uri}')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() #{mongodb_uri}')
-{_, 0} = System.cmd("mongo", ~w'admin_test --eval db.dropDatabase() #{mongodb_uri}')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropDatabase() ')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test2 #{mongodb_uri} --eval db.dropDatabase() ')
+{_, 0} = System.cmd("mongo", ~w'admin_test #{mongodb_uri} --eval db.dropDatabase() ')
 
-{_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user") #{mongodb_uri}')
-{_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user2") #{mongodb_uri}')
+{_, _} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropUser("mongodb_user") ')
+{_, _} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropUser("mongodb_user2") ')
 
 {_, _} =
   System.cmd("mongo", ~w'admin_test --eval db.dropUser("mongodb_admin_user") #{mongodb_uri}')
