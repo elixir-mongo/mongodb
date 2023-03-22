@@ -48,18 +48,16 @@ jobs:
         ]
         topology: [replica_set]
     steps:
-    - name: repo checkout
-      uses: actions/checkout@v2
-      with:
-        submodules: recursive
-    - id: start-mongodb
-      name: start mongodb
-      uses: mongodb-labs/drivers-evergreen-tools@master
-      with:
-        version: "${{matrix.mongodb}}"
-        topology: "${{matrix.topology}}"
-    steps:
-      - uses: actions/checkout@v2
+      - name: repo checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - id: start-mongodb
+        name: start mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          version: "${{matrix.mongodb}}"
+          topology: "${{matrix.topology}}"
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ matrix.otpElixir.otp }}
