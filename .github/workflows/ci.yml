@@ -36,8 +36,8 @@ jobs:
       TESTOPTS: "-v"
     runs-on: ubuntu-latest
     continue-on-error: true
+    name: "mongodb-${{matrix.mongodb}} ${{matrix.otpElixir.otp}}/${{matrix.otpElixir.elixir}}"
     strategy:
-      name: "mongodb-${{matrix.mongodb}} ${{matrix.otpElixir.otp}}/${{matrix.otpElixir.elixir}}"
       fail-fast: false
       matrix:
         mongodb: ["4.2", "4.4", "5.0", "6.0"]
