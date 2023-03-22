@@ -31,14 +31,13 @@ jobs:
         continue-on-error: true
       - run: mix dialyzer
   test:
-    strategy:
-        name: "mongodb-${{matrix.mongodb}} ${{matrix.otpElixir.otp}}/${{matrix.otpElixir.elixir}}"
     env:
       CI: true
       TESTOPTS: "-v"
     runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
+      name: "mongodb-${{matrix.mongodb}} ${{matrix.otpElixir.otp}}/${{matrix.otpElixir.elixir}}"
       fail-fast: false
       matrix:
         mongodb: ["4.2", "4.4", "5.0", "6.0"]
