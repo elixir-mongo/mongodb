@@ -15,7 +15,8 @@ defmodule Mongodb.Mixfile do
       description: description(),
       package: package(),
       dialyzer: dialyzer(),
-      consolidate_protocols: Mix.env() != :test
+      consolidate_protocols: Mix.env() != :test,
+      test_coverage: [summary: [threshold: 70]]
     ]
   end
 
@@ -39,12 +40,13 @@ defmodule Mongodb.Mixfile do
 
   defp deps do
     [
+      {:credo, "~> 1.5.6", only: [:dev, :test], runtime: false},
       {:db_connection, "~> 2.4.0"},
       {:decimal, "~> 2.0.0"},
-      {:jason, "~> 1.2.2", only: :test},
-      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:dialyxir, "~> 1.1.0", only: :dev, runtime: false},
       {:earmark, ">= 0.0.0", only: :dev},
-      {:dialyxir, "~> 1.1.0", only: :dev, runtime: false}
+      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:jason, "~> 1.2.2", only: [:dev, :test]}
     ]
   end
 

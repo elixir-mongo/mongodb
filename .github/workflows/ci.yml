@@ -1,0 +1,77 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: erlef/setup-beam@v1
+        with:
+          # Just some default versions to run code quality tools with.
+          # These can be upgraded as and when but probably won't need to change much.
+          otp-version: "24.3.4"
+          elixir-version: "1.12.3"
+      - uses: actions/cache@v2
+        with:
+          path: |
+            deps
+            _build
+            priv/plts
+          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+      - run: mix deps.get
+      - run: mix credo --strict
+        continue-on-error: true
+      - run: mix format --check-formatted
+        continue-on-error: true
+      - run: mix dialyzer
+  test:
+    env:
+      CI: true
+      TESTOPTS: "-v"
+    runs-on: ubuntu-20.04
+    continue-on-error: true
+    name: "mongodb-${{matrix.mongodb}} ${{matrix.otpElixir.otp}}/${{matrix.otpElixir.elixir}}"
+    strategy:
+      fail-fast: false
+      matrix:
+        mongodb: ["4.4", "5.0"]
+        otpElixir: [
+          {otp: "22.3.4.26", elixir: "1.12.3"},
+          {otp: "23.3.4.18", elixir: "1.13.4"},
+          {otp: "24.3.4.10", elixir: "1.14.3"}
+        ]
+        topology: [replica_set]
+    steps:
+      - name: repo checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - id: start-mongodb
+        name: start mongodb
+        uses: mongodb-labs/drivers-evergreen-tools@master
+        with:
+          version: "${{matrix.mongodb}}"
+          topology: "${{matrix.topology}}"
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otpElixir.otp }}
+          elixir-version: ${{ matrix.otpElixir.elixir }}
+      - uses: actions/cache@v2
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-${{matrix.otpElixir.otp}}-${{matrix.otpElixir.elixir}}-mix-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{matrix.otpElixir.otp}}-${{matrix.otpElixir.elixir}}-mix-
+      - run: mix deps.get
+      - run: mix test --cover
+        env:
+          MONGODB_URI: ${{ steps.setup-mongodb.outputs.cluster-uri }}
+

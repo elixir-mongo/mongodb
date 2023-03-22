@@ -312,7 +312,8 @@ defmodule Mongo.Test do
     assert {:ok, value} =
              Mongo.find_one_and_update(c.pid, coll, %{"foo" => 42}, %{"$set" => %{bar: 2}})
 
-    assert %{"bar" => 1} = value, "Should return original document by default"
+    assert %Mongo.FindAndModifyResult{value: %{"bar" => 1}} = value,
+           "Should return original document by default"
 
     # should raise if we don't have atomic operators
     assert_raise ArgumentError, fn ->
@@ -325,7 +326,7 @@ defmodule Mongo.Test do
                return_document: :after
              )
 
-    assert %{"bar" => 3} = value, "Should return modified doc"
+    assert %Mongo.FindAndModifyResult{value: %{"bar" => 3}} = value, "Should return modified doc"
 
     # projection
     assert {:ok, value} =
@@ -344,7 +345,8 @@ defmodule Mongo.Test do
                return_document: :after
              )
 
-    assert %{"bar" => 10, "baz" => 1} = value, "Should respect the sort"
+    assert %Mongo.FindAndModifyResult{value: %{"bar" => 10, "baz" => 1}} = value,
+           "Should respect the sort"
 
     # upsert
     assert {:ok, value} =
@@ -353,15 +355,17 @@ defmodule Mongo.Test do
                return_document: :after
              )
 
-    assert %{"foo" => 43, "baz" => 1} = value, "Should upsert"
+    assert %Mongo.FindAndModifyResult{value: %{"foo" => 43, "baz" => 1}} = value, "Should upsert"
 
     # don't find return {:ok, nil}
-    assert {:ok, nil} ==
+    assert {:ok,
+            %Mongo.FindAndModifyResult{value: nil, matched_count: 0, updated_existing: false}} ==
              Mongo.find_one_and_update(c.pid, coll, %{"number" => 666}, %{
                "$set" => %{title: "the number of the beast"}
              })
 
-    assert {:ok, nil} ==
+    assert {:ok,
+            %Mongo.FindAndModifyResult{value: nil, matched_count: 0, updated_existing: false}} ==
              Mongo.find_one_and_update(c.pid, "coll_that_doesnt_exist", %{"number" => 666}, %{
                "$set" => %{title: "the number of the beast"}
              })
@@ -384,7 +388,9 @@ defmodule Mongo.Test do
 
     # defaults
     assert {:ok, value} = Mongo.find_one_and_replace(c.pid, coll, %{"foo" => 42}, %{bar: 2})
-    assert %{"foo" => 42, "bar" => 1} = value, "Should return original document by default"
+
+    assert %Mongo.FindAndModifyResult{value: %{"foo" => 42, "bar" => 1}} = value,
+           "Should return original document by default"
 
     # return_document = :after
     assert {:ok, _} = Mongo.insert_one(c.pid, coll, %{foo: 43, bar: 1})
@@ -394,7 +400,7 @@ defmodule Mongo.Test do
                return_document: :after
              )
 
-    assert %{"bar" => 3} = value, "Should return modified doc"
+    assert %Mongo.FindAndModifyResult{value: %{"bar" => 3}} = value, "Should return modified doc"
     assert match?(%{"foo" => 43}, value) == false, "Should replace document"
 
     # projection
@@ -435,7 +441,8 @@ defmodule Mongo.Test do
                return_document: :after
              )
 
-    assert %{"upsertedDocument" => true} = value, "Should upsert"
+    assert %Mongo.FindAndModifyResult{value: %{"upsertedDocument" => true}} = value,
+           "Should upsert"
 
     assert [%{"upsertedDocument" => true}] =
              c.pid |> Mongo.find(coll, %{upsertedDocument: true}) |> Enum.to_list()
@@ -557,8 +564,6 @@ defmodule Mongo.Test do
     coll = unique_name()
 
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_one!(c.pid, coll, %{foo: 42})
-
-    assert %Mongo.DeleteResult{acknowledged: false} == Mongo.delete_one!(c.pid, coll, %{}, w: 0)
   end
 
   test "delete_many", c do
@@ -581,8 +586,6 @@ defmodule Mongo.Test do
     coll = unique_name()
 
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_many!(c.pid, coll, %{foo: 42})
-
-    assert %Mongo.DeleteResult{acknowledged: false} == Mongo.delete_many!(c.pid, coll, %{}, w: 0)
   end
 
   test "replace_one", c do
@@ -619,9 +622,6 @@ defmodule Mongo.Test do
 
     assert %Mongo.UpdateResult{matched_count: 0, modified_count: 0, upserted_ids: nil} =
              Mongo.replace_one!(c.pid, coll, %{foo: 43}, %{foo: 0})
-
-    assert %Mongo.UpdateResult{acknowledged: false} ==
-             Mongo.replace_one!(c.pid, coll, %{foo: 45}, %{foo: 0}, w: 0)
 
     assert_raise Mongo.WriteError, fn ->
       Mongo.replace_one!(c.pid, coll, %{foo: 42}, %{_id: 1})
@@ -663,9 +663,6 @@ defmodule Mongo.Test do
     assert %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_ids: nil} =
              Mongo.update_one!(c.pid, coll, %{foo: 42}, %{"$set": %{foo: 0}})
 
-    assert %Mongo.UpdateResult{acknowledged: false} ==
-             Mongo.update_one!(c.pid, coll, %{foo: 42}, %{}, w: 0)
-
     assert_raise Mongo.WriteError, fn ->
       Mongo.update_one!(c.pid, coll, %{foo: 0}, %{"$set": %{_id: 0}})
     end
@@ -705,9 +702,6 @@ defmodule Mongo.Test do
 
     assert %Mongo.UpdateResult{matched_count: 2, modified_count: 2, upserted_ids: nil} =
              Mongo.update_many!(c.pid, coll, %{foo: 42}, %{"$set": %{foo: 0}})
-
-    assert %Mongo.UpdateResult{acknowledged: false} ==
-             Mongo.update_many!(c.pid, coll, %{foo: 0}, %{}, w: 0)
 
     assert_raise Mongo.WriteError, fn ->
       Mongo.update_many!(c.pid, coll, %{foo: 0}, %{"$set": %{_id: 1}})

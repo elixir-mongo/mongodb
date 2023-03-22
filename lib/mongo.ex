@@ -249,7 +249,6 @@ defmodule Mongo do
     with {:ok, query} <- Mongo.Session.add_session(query, opts[:session]),
          {:ok, conn, _, _} <- select_server(topology_pid, :write, opts),
          {:ok, doc} <- direct_command(conn, query, opts) do
-
       {:ok,
        %Mongo.FindAndModifyResult{
          value: doc["value"],

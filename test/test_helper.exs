@@ -1,5 +1,6 @@
 {string, 0} = System.cmd("mongod", ~w'--version')
 ["db version v" <> version, _] = String.split(string, "\n", parts: 2)
+mongodb_uri = System.get_env("MONGODB_URI")
 
 IO.puts("[mongod v#{version}]")
 
@@ -32,54 +33,42 @@ excluded =
 ExUnit.configure(exclude: excluded)
 ExUnit.start()
 
-{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() --port 27001')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() --port 27001')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() #{mongodb_uri}')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() #{mongodb_uri}')
 
-{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase()')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase()')
-{_, 0} = System.cmd("mongo", ~w'admin_test --eval db.dropDatabase()')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test --eval db.dropDatabase() #{mongodb_uri}')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test2 --eval db.dropDatabase() #{mongodb_uri}')
+{_, 0} = System.cmd("mongo", ~w'admin_test --eval db.dropDatabase() #{mongodb_uri}')
 
-if Version.match?(version, "< 2.6.0") do
-  {_, 0} =
-    System.cmd(
-      "mongo",
-      ~w'mongodb_test --eval db.addUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]})'
-    )
+{_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user") #{mongodb_uri}')
+{_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user2") #{mongodb_uri}')
 
-  {_, 0} =
-    System.cmd(
-      "mongo",
-      ~w'mongodb_test --eval db.addUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]})'
-    )
+{_, _} =
+  System.cmd("mongo", ~w'admin_test --eval db.dropUser("mongodb_admin_user") #{mongodb_uri}')
 
-  {_, 0} =
-    System.cmd(
-      "mongo",
-      ~w'mongodb_test --eval db.addUser({user:"mongodb_admin_user",pwd:"mongodb_admin_user",roles:[]})'
-    )
-else
-  {_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user")')
-  {_, _} = System.cmd("mongo", ~w'mongodb_test --eval db.dropUser("mongodb_user2")')
-  {_, _} = System.cmd("mongo", ~w'admin_test --eval db.dropUser("mongodb_admin_user")')
+{_, 0} =
+  System.cmd(
+    "mongo",
+    ~w'mongodb_test --eval db.createUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]}) #{
+      mongodb_uri
+    }'
+  )
 
-  {_, 0} =
-    System.cmd(
-      "mongo",
-      ~w'mongodb_test --eval db.createUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]})'
-    )
+{_, 0} =
+  System.cmd(
+    "mongo",
+    ~w'mongodb_test --eval db.createUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]}) #{
+      mongodb_uri
+    }'
+  )
 
-  {_, 0} =
-    System.cmd(
-      "mongo",
-      ~w'mongodb_test --eval db.createUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]})'
-    )
-
-  {_, 0} =
-    System.cmd(
-      "mongo",
-      ~w'admin_test --eval db.createUser({user:"mongodb_admin_user",pwd:"mongodb_admin_user",roles:[{role:"readWrite",db:"mongodb_test"},{role:"read",db:"mongodb_test2"}]})'
-    )
-end
+{_, 0} =
+  System.cmd(
+    "mongo",
+    ~w'admin_test --eval db.createUser({user:"mongodb_admin_user",pwd:"mongodb_admin_user",roles:[{role:"readWrite",db:"mongodb_test"},{role:"read",db:"mongodb_test2"}]}) #{
+      mongodb_uri
+    }'
+  )
 
 defmodule MongoTest.Case do
   use ExUnit.CaseTemplate
@@ -93,5 +82,11 @@ defmodule MongoTest.Case do
   defmacro unique_name do
     {function, _arity} = __CALLER__.function
     "#{__CALLER__.module}.#{function}"
+  end
+
+  defmacro mongodb_uri do
+    quote do
+      System.get_env("MONGODB_URI")
+    end
   end
 end
