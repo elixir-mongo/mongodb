@@ -1,7 +1,11 @@
-## Unreleased
+## v1.0.0
 
 * Enhancements
   * Add `update/5` for handling more complex update queries like multiple upserts.
+  * Verify support with MongoDB 4.4 and 5.0
+
+* Internal Improvements
+  * Added CI via Github actions
 
 * Possible incompatibilities
   * Bump supported OTP version to v24
