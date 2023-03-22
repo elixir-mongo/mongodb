@@ -70,6 +70,7 @@ jobs:
           key: ${{ runner.os }}-${{matrix.otpElixir.otp}}-${{matrix.otpElixir.elixir}}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
             ${{ runner.os }}-${{matrix.otpElixir.otp}}-${{matrix.otpElixir.elixir}}-mix-
+      - run: mix deps.get
       - run: mix test --cover
         env:
           MONGODB_URI: ${{ steps.setup-mongodb.outputs.cluster-uri }}
