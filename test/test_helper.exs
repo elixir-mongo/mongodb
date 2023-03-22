@@ -83,4 +83,10 @@ defmodule MongoTest.Case do
     {function, _arity} = __CALLER__.function
     "#{__CALLER__.module}.#{function}"
   end
+
+  defmacro mongodb_uri do
+    quote do
+      System.get_env("MONGODB_URI")
+    end
+  end
 end

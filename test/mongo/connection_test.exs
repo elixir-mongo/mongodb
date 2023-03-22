@@ -4,14 +4,15 @@ defmodule Mongo.ConnectionTest do
   alias Mongo
 
   defp connect do
-    assert {:ok, pid} = Mongo.start_link(hostname: "localhost", database: "mongodb_test")
+    assert {:ok, pid} = Mongo.start_link(url: mongodb_uri(), database: "mongodb_test")
+
     pid
   end
 
   defp connect_auth do
     assert {:ok, pid} =
              Mongo.start_link(
-               hostname: "localhost",
+               url: mongodb_uri(),
                database: "mongodb_test",
                username: "mongodb_user",
                password: "mongodb_user"
@@ -23,7 +24,7 @@ defmodule Mongo.ConnectionTest do
   defp connect_auth_invalid do
     assert {:ok, pid} =
              Mongo.start_link(
-               hostname: "localhost",
+               url: mongodb_uri(),
                database: "mongodb_test",
                username: "mongodb_user",
                password: "wrong_password"
@@ -35,7 +36,7 @@ defmodule Mongo.ConnectionTest do
   defp connect_auth_on_db do
     assert {:ok, pid} =
              Mongo.start_link(
-               hostname: "localhost",
+               url: mongodb_uri(),
                database: "mongodb_test",
                username: "mongodb_admin_user",
                password: "mongodb_admin_user",
@@ -46,8 +47,7 @@ defmodule Mongo.ConnectionTest do
   end
 
   defp connect_ssl do
-    assert {:ok, pid} =
-             Mongo.start_link(hostname: "localhost", database: "mongodb_test", ssl: true)
+    assert {:ok, pid} = Mongo.start_link(url: mongodb_uri(), database: "mongodb_test", ssl: true)
 
     pid
   end
@@ -128,7 +128,7 @@ defmodule Mongo.ConnectionTest do
     Process.flag(:trap_exit, true)
 
     opts = [
-      hostname: "localhost",
+      url: mongodb_uri(),
       database: "mongodb_test",
       username: "mongodb_admin_user",
       password: "wrong",
