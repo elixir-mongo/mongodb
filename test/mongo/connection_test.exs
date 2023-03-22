@@ -21,17 +21,17 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
-  defp connect_auth_invalid do
-    assert {:ok, pid} =
-             Mongo.start_link(
-               url: mongodb_uri(),
-               database: "mongodb_test",
-               username: "mongodb_user",
-               password: "wrong_password"
-             )
+  # defp connect_auth_invalid do
+  #   assert {:ok, pid} =
+  #            Mongo.start_link(
+  #              url: mongodb_uri(),
+  #              database: "mongodb_test",
+  #              username: "mongodb_user",
+  #              password: "wrong_password"
+  #            )
 
-    pid
-  end
+  #   pid
+  # end
 
   defp connect_auth_on_db do
     assert {:ok, pid} =
@@ -65,14 +65,14 @@ defmodule Mongo.ConnectionTest do
     pid
   end
 
-  defp tcp_count do
-    Enum.count(:erlang.ports(), fn port ->
-      case :erlang.port_info(port, :name) do
-        {:name, 'tcp_inet'} -> true
-        _ -> false
-      end
-    end)
-  end
+  # defp tcp_count do
+  #   Enum.count(:erlang.ports(), fn port ->
+  #     case :erlang.port_info(port, :name) do
+  #       {:name, 'tcp_inet'} -> true
+  #       _ -> false
+  #     end
+  #   end)
+  # end
 
   test "connect and ping" do
     pid = connect()
