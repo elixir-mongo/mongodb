@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mongodb: ["4.2", "4.4", "5.0", "6.0"]
+        mongodb: ["4.4", "5.0", "6.0"]
         otpElixir: [
           {otp: "22.3.4.26", elixir: "1.12.3"},
           {otp: "23.3.4.18", elixir: "1.13.4"},
