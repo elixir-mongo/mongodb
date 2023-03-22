@@ -46,7 +46,7 @@ jobs:
           {otp: "23.3.4.18", elixir: "1.13.4"},
           {otp: "24.3.4.10", elixir: "1.14.3"}
         ]
-        topology: [replica_set]
+        topology: [replica_set, server]
     steps:
       - name: repo checkout
         uses: actions/checkout@v2
