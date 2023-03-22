@@ -94,12 +94,10 @@ defmodule Mongo.Auth.SCRAM do
     mac_fun(:sha, server_key, auth_message)
   end
 
-  defp mac_fun(digest, secret, data) do
-    if System.otp_release() >= "22" do
-      :crypto.mac(:hmac, digest, secret, data)
-    else
-      :crypto.hmac(digest, secret, data)
-    end
+  if Code.ensure_loaded?(:crypto) and function_exported?(:crypto, :mac, 4) do
+    defp mac_fun(digest, secret, data), do: :crypto.mac(:hmac, digest, secret, data)
+  else
+    defp mac_fun(digest, secret, data), do: :crypto.hmac(digest, secret, data)
   end
 
   defp xor_keys("", "", result),
