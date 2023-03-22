@@ -73,5 +73,5 @@ jobs:
       - run: mix deps.get
       - run: mix test --cover
         env:
-          MONGODB_URI: ${{ steps.setup-mongodb.outputs.cluster-uri }}
+          MONGODB_URI: ${{ steps.start-mongodb.outputs.cluster-uri }}
 
