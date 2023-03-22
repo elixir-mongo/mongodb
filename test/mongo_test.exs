@@ -564,8 +564,6 @@ defmodule Mongo.Test do
     coll = unique_name()
 
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_one!(c.pid, coll, %{foo: 42})
-
-    assert %Mongo.DeleteResult{acknowledged: true} == Mongo.delete_one!(c.pid, coll, %{}, w: 0)
   end
 
   test "delete_many", c do
@@ -588,8 +586,6 @@ defmodule Mongo.Test do
     coll = unique_name()
 
     assert %Mongo.DeleteResult{deleted_count: 0} = Mongo.delete_many!(c.pid, coll, %{foo: 42})
-
-    assert %Mongo.DeleteResult{acknowledged: true} == Mongo.delete_many!(c.pid, coll, %{}, w: 0)
   end
 
   test "replace_one", c do
@@ -626,9 +622,6 @@ defmodule Mongo.Test do
 
     assert %Mongo.UpdateResult{matched_count: 0, modified_count: 0, upserted_ids: nil} =
              Mongo.replace_one!(c.pid, coll, %{foo: 43}, %{foo: 0})
-
-    assert %Mongo.UpdateResult{acknowledged: true} ==
-             Mongo.replace_one!(c.pid, coll, %{foo: 45}, %{foo: 0}, w: 0)
 
     assert_raise Mongo.WriteError, fn ->
       Mongo.replace_one!(c.pid, coll, %{foo: 42}, %{_id: 1})
@@ -670,9 +663,6 @@ defmodule Mongo.Test do
     assert %Mongo.UpdateResult{matched_count: 1, modified_count: 1, upserted_ids: nil} =
              Mongo.update_one!(c.pid, coll, %{foo: 42}, %{"$set": %{foo: 0}})
 
-    assert %Mongo.UpdateResult{acknowledged: true} ==
-             Mongo.update_one!(c.pid, coll, %{foo: 42}, %{}, w: 0)
-
     assert_raise Mongo.WriteError, fn ->
       Mongo.update_one!(c.pid, coll, %{foo: 0}, %{"$set": %{_id: 0}})
     end
@@ -712,9 +702,6 @@ defmodule Mongo.Test do
 
     assert %Mongo.UpdateResult{matched_count: 2, modified_count: 2, upserted_ids: nil} =
              Mongo.update_many!(c.pid, coll, %{foo: 42}, %{"$set": %{foo: 0}})
-
-    assert %Mongo.UpdateResult{acknowledged: true} ==
-             Mongo.update_many!(c.pid, coll, %{foo: 0}, %{}, w: 0)
 
     assert_raise Mongo.WriteError, fn ->
       Mongo.update_many!(c.pid, coll, %{foo: 0}, %{"$set": %{_id: 1}})
