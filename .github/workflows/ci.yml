@@ -32,53 +32,48 @@ jobs:
       - run: mix dialyzer
   test:
     strategy:
+        name: "mongodb-${{matrix.mongodb}} ${{matrix.otpElixir.otp}}/${{matrix.otpElixir.elixir}}"
+    env:
+      CI: true
+      TESTOPTS: "-v"
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-        otp-version:
-          - "24.0.6"
-        elixir-version:
-          - "1.12.3"
-        mongo-version:
-          - maj: 4
-            min: 4
-            patch: 8
-    runs-on: ${{ matrix.os }}
+        mongodb: ["4.2", "4.4", "5.0", "6.0"]
+        otpElixir: [
+          {otp: "22.3.4.26", elixir: "1.12.3"},
+          {otp: "23.3.4.18", elixir: "1.13.4"},
+          {otp: "24.3.4.10", elixir: "1.14.3"}
+        ]
+        topology: [replica_set]
+    steps:
+    - name: repo checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - id: start-mongodb
+      name: start mongodb
+      uses: mongodb-labs/drivers-evergreen-tools@master
+      with:
+        version: "${{matrix.mongodb}}"
+        topology: "${{matrix.topology}}"
     steps:
       - uses: actions/checkout@v2
       - uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{ matrix.otp-version }}
-          elixir-version: ${{ matrix.elixir-version }}
+          otp-version: ${{ matrix.otpElixir.otp }}
+          elixir-version: ${{ matrix.otpElixir.elixir }}
       - uses: actions/cache@v2
         with:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
+          key: ${{ runner.os }}-${{matrix.otpElixir.otp}}-${{matrix.otpElixir.elixir}}-mix-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-mix-
-      - name: Install Mongo
-        run: |
-          # See https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
-
-          # Import MongoDB public key
-          wget -qO - https://www.mongodb.org/static/pgp/server-${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.asc | sudo apt-key add -
-
-          # Create a list file for MongoDB
-          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }} multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.list
-
-          # Update package db
-          sudo apt-get update
-
-          # Finally install mongodb
-          sudo apt-get install -y \
-            --allow-downgrades \
-            mongodb-org=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
-            mongodb-org-server=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
-            mongodb-org-shell=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
-            mongodb-org-mongos=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }} \
-            mongodb-org-tools=${{ matrix.mongo-version.maj }}.${{ matrix.mongo-version.min }}.${{ matrix.mongo-version.patch }}
-      - name: Start Mongo
-        run: ./start_mongo.bash
+            ${{ runner.os }}-${{matrix.otpElixir.otp}}-${{matrix.otpElixir.elixir}}-mix-
       - run: mix test --cover
+        env:
+          MONGODB_URI: ${{ steps.setup-mongodb.outputs.cluster-uri }}
+
