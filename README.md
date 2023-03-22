@@ -6,7 +6,7 @@
 
 ## Features
 
-  * Supports MongoDB versions 3.4, 3.6, 4.0
+  * Supports MongoDB versions 3.4, 3.6, 4.0, 4.2 (on 1.0-beta)
   * Connection pooling (through `db_connection`)
   * Streaming cursors
   * Performant ObjectID generation
@@ -157,6 +157,22 @@ Mongo.find(:mongo, "collection", %{}, limit: 20)
 ```
 
 More pool options in [here](https://hexdocs.pm/db_connection/2.0.6/DBConnection.html#start_link/2-options).
+
+
+### Using with MongoDB Ecto
+
+If you're using Mongo with the MongoDB Ecto library, where you have it defined in your config/runtime.exs like this: 
+
+```elixir
+config :my_app, MyApp.Repo,
+  url: "mongo connection url"
+```
+  
+You'll want to do reference mongo like this: 
+
+```elixir
+Mongo.find(MyApp.Repo.pool(), collection, %{_id: %{"$in" =>"some_ids"}})
+```
 
 ### Replica Sets
 
