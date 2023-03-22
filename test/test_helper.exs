@@ -33,41 +33,40 @@ excluded =
 ExUnit.configure(exclude: excluded)
 ExUnit.start()
 
-{_, 0} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropDatabase() ')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test2 #{mongodb_uri} --eval db.dropDatabase() ')
+{response, 0} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropDatabase()')
+IO.puts(response)
 
-{_, 0} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropDatabase() ')
-{_, 0} = System.cmd("mongo", ~w'mongodb_test2 #{mongodb_uri} --eval db.dropDatabase() ')
-{_, 0} = System.cmd("mongo", ~w'admin_test #{mongodb_uri} --eval db.dropDatabase() ')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropDatabase()')
 
-{_, _} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropUser("mongodb_user") ')
-{_, _} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropUser("mongodb_user2") ')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test2 #{mongodb_uri} --eval db.dropDatabase()')
+
+{_, 0} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropDatabase()')
+{_, 0} = System.cmd("mongo", ~w'mongodb_test2 #{mongodb_uri} --eval db.dropDatabase()')
+{_, 0} = System.cmd("mongo", ~w'admin_test #{mongodb_uri} --eval db.dropDatabase()')
+
+{_, _} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropUser("mongodb_user")')
+{_, _} = System.cmd("mongo", ~w'mongodb_test #{mongodb_uri} --eval db.dropUser("mongodb_user2")')
 
 {_, _} =
-  System.cmd("mongo", ~w'admin_test --eval db.dropUser("mongodb_admin_user") #{mongodb_uri}')
+  System.cmd("mongo", ~w'admin_test #{mongodb_uri} --eval db.dropUser("mongodb_admin_user") ')
 
 {_, 0} =
   System.cmd(
     "mongo",
-    ~w'mongodb_test --eval db.createUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]}) #{
-      mongodb_uri
-    }'
+    ~w'mongodb_test #{mongodb_uri} --eval db.createUser({user:"mongodb_user",pwd:"mongodb_user",roles:[]}) '
   )
 
 {_, 0} =
   System.cmd(
     "mongo",
-    ~w'mongodb_test --eval db.createUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]}) #{
-      mongodb_uri
-    }'
+    ~w'mongodb_test #{mongodb_uri} --eval db.createUser({user:"mongodb_user2",pwd:"mongodb_user2",roles:[]})
+    '
   )
 
 {_, 0} =
   System.cmd(
     "mongo",
-    ~w'admin_test --eval db.createUser({user:"mongodb_admin_user",pwd:"mongodb_admin_user",roles:[{role:"readWrite",db:"mongodb_test"},{role:"read",db:"mongodb_test2"}]}) #{
-      mongodb_uri
-    }'
+    ~w'admin_test #{mongodb_uri} --eval db.createUser({user:"mongodb_admin_user",pwd:"mongodb_admin_user",roles:[{role:"readWrite",db:"mongodb_test"},{role:"read",db:"mongodb_test2"}]}) '
   )
 
 defmodule MongoTest.Case do
