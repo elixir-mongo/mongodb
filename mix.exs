@@ -15,7 +15,8 @@ defmodule Mongodb.Mixfile do
       description: description(),
       package: package(),
       dialyzer: dialyzer(),
-      consolidate_protocols: Mix.env() != :test
+      consolidate_protocols: Mix.env() != :test,
+      test_coverage: [summary: [threshold: 70]]
     ]
   end
 
