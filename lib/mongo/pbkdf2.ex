@@ -64,11 +64,9 @@ defmodule Mongo.PBKDF2 do
     iterate(fun, iteration - 1, next, :crypto.exor(next, acc))
   end
 
-  defp mac_fun(digest, secret) do
-    if System.otp_release() >= "22" do
-      &:crypto.mac(:hmac, digest, secret, &1)
-    else
-      &:crypto.hmac(digest, secret, &1)
-    end
+  if Code.ensure_loaded?(:crypto) and function_exported?(:crypto, :mac, 4) do
+    defp mac_fun(digest, secret), do: &:crypto.mac(:hmac, digest, secret, &1)
+  else
+    defp mac_fun(digest, secret), do: &:crypto.hmac(digest, secret, &1)
   end
 end
