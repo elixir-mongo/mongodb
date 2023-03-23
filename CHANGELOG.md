@@ -1,8 +1,7 @@
 ## v1.0.0
 
-* Enhancements
-  * Add `update/5` for handling more complex update queries like multiple upserts.
-  * Verify support with MongoDB 4.4 and 5.0
+* BREAKING CHANGES
+- `Mongo.find_one_and_replace/5`, `Mongo.find_one_and_update/5` now return `{:ok, Mongo.FindAndModifyResult{:value, :matched_count, :upserted_id, :updated_existing}}` instead of `{:ok, doc}`.  The change should be rather mechanical as `value` is the same as `doc` only wrapped in a struct containing other information about the write.
 
 * Internal Improvements
   * Added CI via Github actions
@@ -10,9 +9,9 @@
 * Possible incompatibilities
   * Bump supported OTP version to v24
 
-## v0.6.0-dev
-
 * Enhancements
+  * Add `update/5` for handling more complex update queries like multiple upserts.
+  * Add support with MongoDB 4.4 and 5.0
   * Add support for MongoDB sessions
   * Add support for transactions
   * Add support for hiding configuration options from logs

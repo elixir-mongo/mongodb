@@ -4,9 +4,14 @@
 
 [Documentation for MongoDB is available online](http://hexdocs.pm/mongodb/).
 
-## Features
+## 1.0.0 Released: March 22, 2023
 
-  * Supports MongoDB versions 3.4, 3.6, 4.0, 4.2, 4.4, 5.0 (on 1.0-beta)
+There's one breaking change!
+- `Mongo.find_one_and_replace/5`, `Mongo.find_one_and_update/5` now return `{:ok, Mongo.FindAndModifyResult{:value, :matched_count, :upserted_id, :updated_existing}}` instead of `{:ok, doc}`
+  The change should be rather mechanical.
+
+## Features
+  * Supports MongoDB versions 3.4, 3.6, 4.0, 4.2, 4.4, 5.0
   * Connection pooling (through `db_connection`)
   * Streaming cursors
   * Performant ObjectID generation
@@ -16,17 +21,9 @@
   * Replica sets
   * Sessions and transactions
 
-## Immediate Roadmap
-
-  * Make sure requests don't go over the 16 MiB limit
-  * New 2.6 write queries and bulk writes
 
 ## Tentative Roadmap
-
   * Use meta-driver test suite
-  * Server selection / Read preference
-    - https://www.mongodb.com/blog/post/server-selection-next-generation-mongodb-drivers
-    - http://docs.mongodb.org/manual/reference/read-preference
 
 ## Data representation
 
