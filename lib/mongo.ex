@@ -577,26 +577,37 @@ defmodule Mongo do
 
   @doc false
   def raw_find(conn, coll, query, select, opts) do
-    params = [query, select]
-    query = %Query{action: :find, extra: coll}
+    query = filter_nils([
+      find: coll,
+      filter: query,
+      projection: select,
+      batchSize: opts[:batch_size],
+      skip: opts[:skip],
+    ])
 
-    with {:ok, _query, reply} <- DBConnection.execute(conn, query, params, defaults(opts)),
-         :ok <- maybe_failure(reply),
-         op_reply(docs: docs, cursor_id: cursor_id, from: from, num: num) = reply,
-         do: {:ok, %{from: from, num: num, cursor_id: cursor_id, docs: docs}}
+    opts = Keyword.drop(opts, [:skip, :batch_size])
+
+    with {:ok, %{"cursor" => %{"id" => id, "firstBatch" => docs}}} <-
+           direct_command(conn, query, opts) do
+      {:ok, %{from: 0, num: Enum.count(docs), cursor_id: id, docs: docs}}
+    end
   end
 
   @doc false
   def get_more(conn, coll, cursor, opts) do
-    query =
-      filter_nils(
-        getMore: cursor,
-        collection: coll,
-        batchSize: Keyword.get(opts, :batch_size),
-        maxTimeMS: Keyword.get(opts, :max_time_ms)
-      )
+    query = filter_nils([
+      getMore: cursor,
+      collection: coll,
+      batchSize: opts[:batch_size],
+      maxTimeMS: Keyword.get(opts, :max_time_ms)
+    ])
 
-    direct_command(conn, query, opts)
+    opts = Keyword.drop(opts, [:batch_size])
+
+    with {:ok, %{"cursor" => %{"id" => id, "nextBatch" => docs}}} <-
+           direct_command(conn, query, opts) do
+      {:ok, %{from: 0, num: Enum.count(docs), cursor_id: id, docs: docs}}
+    end
   end
 
   @doc false
