@@ -41,7 +41,7 @@ defmodule Mongodb.Mixfile do
   defp deps do
     [
       {:credo, "~> 1.5.6", only: [:dev, :test], runtime: false},
-      {:db_connection, "~> 2.4.0"},
+      {:db_connection, "~> 2.4"},
       {:decimal, "~> 2.0.0"},
       {:dialyxir, "~> 1.1.0", only: :dev, runtime: false},
       {:earmark, ">= 0.0.0", only: :dev},
