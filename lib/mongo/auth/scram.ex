@@ -34,7 +34,7 @@ defmodule Mongo.Auth.SCRAM do
   end
 
   defp first(
-         %{"conversationId" => 1, "payload" => server_payload, "done" => false},
+         %{"conversationId" => conversation_id, "payload" => server_payload, "done" => false},
          first_bare,
          username,
          password,
@@ -54,18 +54,18 @@ defmodule Mongo.Auth.SCRAM do
     server_signature = generate_signature(salted_password, auth_message)
     proof = generate_proof(salted_password, auth_message)
     client_final_message = %BSON.Binary{binary: "#{client_message},#{proof}"}
-    message = [saslContinue: 1, conversationId: 1, payload: client_final_message]
+    message = [saslContinue: 1, conversationId: conversation_id, payload: client_final_message]
 
     {message, server_signature}
   end
 
-  defp second(%{"conversationId" => 1, "payload" => payload, "done" => false}, signature) do
+  defp second(%{"conversationId" => conversation_id, "payload" => payload}, signature) do
     params = parse_payload(payload)
     ^signature = Base.decode64!(params["v"])
-    [saslContinue: 1, conversationId: 1, payload: %BSON.Binary{binary: ""}]
+    [saslContinue: 1, conversationId: conversation_id, payload: %BSON.Binary{binary: ""}]
   end
 
-  defp final(%{"conversationId" => 1, "payload" => %BSON.Binary{binary: ""}, "done" => true}) do
+  defp final(%{"conversationId" => _, "payload" => %BSON.Binary{binary: ""}, "done" => true}) do
     :ok
   end
 
