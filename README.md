@@ -1,5 +1,13 @@
 # MongoDB
 
+## DEPRECATED
+
+Please use [mongodb_driver](https://github.com/zookzook/elixir-mongodb-driver) instead. See https://github.com/elixir-mongo/mongodb_ecto/tree/1cc91b087#migrating-to-20 for migration advice.
+
+In particular, [mongodb_ecto](https://github.com/elixir-mongo/mongodb_ecto) has switched from using this package to mongodb_driver (as of version 2.0.0).
+
+## MongoDB
+
 [![Build Status](https://travis-ci.org/ankhers/mongodb.svg?branch=master)](https://travis-ci.org/ankhers/mongodb)
 
 [Documentation for MongoDB is available online](http://hexdocs.pm/mongodb/).
